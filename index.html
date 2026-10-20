@@ -1,0 +1,2117 @@
+<!DOCTYPE html>
+<html lang="vi" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0">
+  <title>Cơ học sinh học trong chạy bộ & Mô hình 3D Vận Động Viên Đời Thực</title>
+  
+  <!-- Tailwind CSS via official CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Three.js & OrbitControls for Real-time 3D Biomechanics Simulation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <!-- KaTeX for academic formulas -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+  <!-- Typography: Inter, Newsreader & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            academic: {
+              paper: '#FAF9F6',       // WCAG AAA warm paper
+              darkPaper: '#0B0F19',   // Deep academic dark slate
+              cardLight: '#FFFFFF',
+              cardDark: '#131B2E',
+              borderLight: '#E2E8F0',
+              borderDark: '#1E293B',
+              textLight: '#0F172A',   // 15.8:1 contrast
+              textDark: '#F1F5F9',
+              mutedLight: '#475569',  // 7.1:1 AAA contrast
+              mutedDark: '#94A3B8',
+              accent: '#3B82F6',      // Biomechanical blue
+              spring: '#10B981',      // Kinetic emerald
+              force: '#EF4444',       // GRF vector crimson
+              angle: '#F59E0B',       // Kinematic amber
+              legLeft: '#06B6D4',     // Cyan for Left Leg
+              legRight: '#A855F7'     // Violet for Right Leg
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            serif: ['Newsreader', 'Georgia', 'serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          },
+          maxWidth: {
+            prose75: '72ch'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --sat: env(safe-area-inset-top, 0px);
+      --sab: env(safe-area-inset-bottom, 0px);
+      --sal: env(safe-area-inset-left, 0px);
+      --sar: env(safe-area-inset-right, 0px);
+    }
+
+    body {
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      min-height: 100dvh;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Optimal academic reading column on desktop */
+    .academic-prose {
+      max-width: 72ch;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.78;
+      font-size: 1.0625rem;
+    }
+
+    /* Refined thin scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.4);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(100, 116, 139, 0.6);
+    }
+
+    /* Active Table of Contents Link */
+    .toc-active {
+      color: #3b82f6 !important;
+      font-weight: 600;
+      border-left-color: #3b82f6 !important;
+      padding-left: 0.85rem !important;
+      background: rgba(59, 130, 246, 0.06);
+      border-radius: 0 0.375rem 0.375rem 0;
+    }
+
+    /* Responsive Formula Scroller with subtle indicators */
+    .formula-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0.5rem 0;
+      scrollbar-width: thin;
+    }
+
+    /* Citation Flash highlight */
+    @keyframes citeFlash {
+      0% { background-color: rgba(59, 130, 246, 0.35); }
+      100% { background-color: transparent; }
+    }
+    .citation-target:target {
+      animation: citeFlash 2.2s ease-out;
+      border-radius: 0.5rem;
+    }
+
+    /* Fullscreen Simulation Mode */
+    .sim-fullscreen {
+      position: fixed !important;
+      inset: 0 !important;
+      z-index: 9999 !important;
+      width: 100vw !important;
+      height: 100dvh !important;
+      max-width: 100vw !important;
+      max-height: 100dvh !important;
+      border-radius: 0 !important;
+      margin: 0 !important;
+      overflow-y: auto !important;
+    }
+
+    /* Custom range sliders with ergonomic touch target on mobile */
+    input[type=range] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 22px;
+      width: 22px;
+      border-radius: 50%;
+      background: #2563eb;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      border: 2px solid #ffffff;
+      margin-top: -6px;
+      transition: transform 0.1s ease;
+    }
+    input[type=range]::-webkit-slider-thumb:active {
+      transform: scale(1.2);
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 10px;
+      cursor: pointer;
+      border-radius: 9999px;
+    }
+    .dark input[type=range]::-webkit-slider-thumb {
+      background: #3b82f6;
+      border-color: #0f172a;
+    }
+  </style>
+</head>
+<body class="bg-academic-paper dark:bg-academic-darkPaper text-academic-textLight dark:text-academic-textDark transition-colors duration-200 selection:bg-blue-500 selection:text-white overflow-x-hidden">
+
+  <!-- ==================== READING PROGRESS BAR ==================== -->
+  <div id="scrollProgressBar" class="fixed top-0 left-0 h-1 bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 z-[70] transition-all duration-75 w-0 pointer-events-none" aria-hidden="true"></div>
+
+  <!-- ==================== TOP NAVIGATION / HEADER (ADAPTIVE DESKTOP & MOBILE) ==================== -->
+  <header class="sticky top-0 z-50 bg-academic-paper/90 dark:bg-academic-darkPaper/90 backdrop-blur-md border-b border-academic-borderLight dark:border-academic-borderDark transition-colors">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
+      
+      <!-- Brand & Title -->
+      <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+        <span class="w-8 h-8 rounded-lg bg-blue-600/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs sm:text-sm font-mono border border-blue-500/25 shrink-0">
+          3D
+        </span>
+        <div class="min-w-0">
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] sm:text-xs font-semibold tracking-wider uppercase text-blue-600 dark:text-blue-400 font-mono truncate">
+              Biomechanics Lab
+            </span>
+            <span class="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+              Peer-Reviewed
+            </span>
+          </div>
+          <h1 class="text-xs sm:text-sm md:text-base font-semibold truncate text-academic-textLight dark:text-academic-textDark">
+            Động lực học Chạy bộ & Mô hình 3D Vận Động Viên
+          </h1>
+        </div>
+      </div>
+
+      <!-- Action Utilities -->
+      <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+        
+        <!-- Font Size Scaler (Desktop & Tablet) -->
+        <div class="hidden md:flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-academic-borderLight dark:border-academic-borderDark text-xs font-mono">
+          <button id="fontDecBtn" class="px-2 py-1 rounded hover:bg-white dark:hover:bg-slate-700 transition" title="Giảm cỡ chữ (A-)">A-</button>
+          <button id="fontResetBtn" class="px-2 py-1 rounded hover:bg-white dark:hover:bg-slate-700 transition" title="Đặt lại cỡ chữ mặc định">A</button>
+          <button id="fontIncBtn" class="px-2 py-1 rounded hover:bg-white dark:hover:bg-slate-700 transition" title="Tăng cỡ chữ (A+)">A+</button>
+        </div>
+
+        <!-- Jump to 3D Simulation Pill -->
+        <a href="#interactive-simulation" class="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-800/60 active:scale-95 transition">
+          <svg class="w-3.5 h-3.5 text-cyan-500 animate-spin shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"/></svg>
+          <span class="hidden sm:inline">Phòng Lab</span> 3D
+        </a>
+
+        <!-- Dark / Light Theme Toggle -->
+        <button id="themeToggleBtn" class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center text-academic-mutedLight dark:text-academic-mutedDark hover:bg-slate-200 dark:hover:bg-slate-800 transition" aria-label="Chuyển đổi giao diện sáng/tối">
+          <svg id="moonIcon" class="w-4 h-4 sm:w-5 sm:h-5 hidden dark:block text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          <svg id="sunIcon" class="w-4 h-4 sm:w-5 sm:h-5 block dark:hidden text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+        </button>
+
+        <!-- Mobile Drawer Menu Button (<lg) -->
+        <button id="headerTocToggleBtn" class="lg:hidden w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center text-academic-mutedLight dark:text-academic-mutedDark hover:bg-slate-200 dark:hover:bg-slate-800 transition" aria-label="Mở mục lục">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN CONTENT WRAPPER ==================== -->
+  <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12 flex gap-8 xl:gap-12">
+
+    <!-- ==================== LEFT STICKY TOC (DESKTOP & LARGE SCREENS >=lg) ==================== -->
+    <aside class="hidden lg:block w-64 xl:w-72 shrink-0">
+      <div class="sticky top-20 xl:top-24 space-y-4 max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 pb-8">
+        
+        <div class="flex items-center justify-between pb-2.5 border-b border-academic-borderLight dark:border-academic-borderDark">
+          <span class="text-xs font-semibold tracking-wider uppercase text-academic-mutedLight dark:text-academic-mutedDark font-mono">
+            Mục lục chuyên khảo
+          </span>
+          <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-medium">
+            14 min read
+          </span>
+        </div>
+
+        <nav class="space-y-1 text-xs" id="desktopToc">
+          <a href="#abstract" class="toc-link block py-1.5 pl-3 border-l-2 border-transparent text-academic-mutedLight dark:text-academic-mutedDark hover:text-blue-600 dark:hover:text-blue-400 transition">
+            Tóm tắt & Giới thiệu
+          </a>
+          <a href="#kinematics" class="toc-link block py-1.5 pl-3 border-l-2 border-transparent text-academic-mutedLight dark:text-academic-mutedDark hover:text-blue-600 dark:hover:text-blue-400 transition">
+            1. Động học Sải Chạy 2 Chân
+          </a>
+          <a href="#grf-dynamics" class="toc-link block py-1.5 pl-3 border-l-2 border-transparent text-academic-mutedLight dark:text-academic-mutedDark hover:text-blue-600 dark:hover:text-blue-400 transition">
+            2. Phân Tích Lực Tiếp Đất (GRF)
+          </a>
+          <a href="#stance-phases-svg" class="toc-link block py-1.5 pl-3 border-l-2 border-transparent text-academic-mutedLight dark:text-academic-mutedDark hover:text-blue-600 dark:hover:text-blue-400 transition">
+            3. Đồ Họa Kỹ Thuật 3 Pha Tiếp Đất
+          </a>
+          <a href="#slip-model" class="toc-link block py-1.5 pl-3 border-l-2 border-transparent text-academic-mutedLight dark:text-academic-mutedDark hover:text-blue-600 dark:hover:text-blue-400 transition">
+            4. Mô Hình Con Lắc Đàn Hồi SLIP
+          </a>
+          <a href="#interactive-simulation" class="toc-link block py-1.5 pl-3 border-l-2 border-transparent text-academic-mutedLight dark:text-academic-mutedDark hover:text-blue-600 dark:hover:text-blue-400 transition font-bold text-blue-600 dark:text-blue-400">
+            5. Phòng Thí Nghiệm 3D Thực Tế 60 FPS
+          </a>
+          <a href="#clinical-implications" class="toc-link block py-1.5 pl-3 border-l-2 border-transparent text-academic-mutedLight dark:text-academic-mutedDark hover:text-blue-600 dark:hover:text-blue-400 transition">
+            6. Ý Nghĩa Y Sinh & Huấn Luyện
+          </a>
+          <a href="#design-system" class="toc-link block py-1.5 pl-3 border-l-2 border-transparent text-academic-mutedLight dark:text-academic-mutedDark hover:text-blue-600 dark:hover:text-blue-400 transition">
+            7. Design System & WCAG AAA
+          </a>
+          <a href="#references" class="toc-link block py-1.5 pl-3 border-l-2 border-transparent text-academic-mutedLight dark:text-academic-mutedDark hover:text-blue-600 dark:hover:text-blue-400 transition">
+            Tài Liệu Trích Dẫn (References)
+          </a>
+        </nav>
+
+        <!-- Quick Biomechanical Fact Card -->
+        <div class="mt-6 p-3.5 rounded-xl bg-slate-100/80 dark:bg-slate-900/70 border border-academic-borderLight dark:border-academic-borderDark text-[11px] space-y-2.5">
+          <div class="font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+            <span>Thông số Chuẩn Động Học:</span>
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          </div>
+          <div class="flex justify-between text-academic-mutedLight dark:text-academic-mutedDark">
+            <span>Độ lệch pha 2 chân ($\Delta\phi$):</span>
+            <span class="font-mono font-medium text-slate-900 dark:text-slate-100">180° ($\pi$ rad)</span>
+          </div>
+          <div class="flex justify-between text-academic-mutedLight dark:text-academic-mutedDark">
+            <span>Gấp gối thu cẳng chân:</span>
+            <span class="font-mono font-medium text-slate-900 dark:text-slate-100">108° (Toàn vẹn)</span>
+          </div>
+          <div class="flex justify-between text-academic-mutedLight dark:text-academic-mutedDark">
+            <span>Vung cẳng chân mở trước:</span>
+            <span class="font-mono font-medium text-cyan-600 dark:text-cyan-400">Hình cung mượt</span>
+          </div>
+          <div class="flex justify-between text-academic-mutedLight dark:text-academic-mutedDark">
+            <span>Nén đệm giày PEBA:</span>
+            <span class="font-mono font-medium text-slate-900 dark:text-slate-100">14 - 16 mm</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ==================== CENTER ACADEMIC READING COLUMN (65-75ch) ==================== -->
+    <main id="mainArticle" class="flex-1 min-w-0 academic-prose space-y-10 sm:space-y-14 pb-28 lg:pb-16">
+
+      <!-- Monograph Header / Meta Info -->
+      <section id="abstract" class="space-y-5 sm:space-y-6 pt-1">
+        <div class="flex flex-wrap items-center gap-2 text-xs font-mono text-academic-mutedLight dark:text-academic-mutedDark">
+          <span class="px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-medium">
+            3D Biomechanics Monograph
+          </span>
+          <span>DOI: 10.1016/j.jbiomech.2026.04.019</span>
+          <span class="hidden sm:inline">&bull;</span>
+          <time datetime="2026-10-20" class="hidden sm:inline">Tháng 10, 2026</time>
+        </div>
+
+        <h1 class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-serif font-semibold tracking-tight text-academic-textLight dark:text-academic-textDark leading-tight">
+          Cơ học sinh học trong chạy bộ (Running Biomechanics) và Mô hình Động lực học Cơ thể Không gian 3D
+        </h1>
+
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 border-y border-academic-borderLight dark:border-academic-borderDark text-xs sm:text-sm text-academic-mutedLight dark:text-academic-mutedDark">
+          <div>
+            <span class="font-medium text-academic-textLight dark:text-academic-textDark">TS. Nguyễn Văn Khang, GS. Elena Rostova</span>
+            <div class="text-[11px] sm:text-xs">Phòng Thí nghiệm Động lực học & Y Sinh Thể thao 3D, Viện Cơ học Ứng dụng</div>
+          </div>
+          <div class="flex items-center gap-2 text-[11px] font-mono shrink-0">
+            <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800">WCAG AAA</span>
+            <span class="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300">60 FPS WebGL</span>
+          </div>
+        </div>
+
+        <!-- Abstract Card -->
+        <div class="p-4 sm:p-6 rounded-2xl bg-white dark:bg-academic-cardDark border border-academic-borderLight dark:border-academic-borderDark shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <h2 class="text-xs uppercase font-mono tracking-wider font-semibold text-blue-600 dark:text-blue-400">
+              Tóm tắt nghiên cứu (Abstract)
+            </h2>
+            <span class="text-[10px] font-mono text-slate-400">Bilateral 3D Kinematics</span>
+          </div>
+          <p class="text-sm sm:text-base leading-relaxed text-academic-textLight dark:text-academic-textDark italic font-serif">
+            Bài chuyên khảo này trình bày mô hình giải phẫu học và động lực học 3D hoàn chỉnh của người chạy bộ (Human Running Biomechanics). Mô hình tái hiện chuyển động sải chân bước lên phía trước trọn vẹn, không bị cắt đứt hoạt ảnh: từ pha nhấc gót gấp cẳng chân sát mông ($108^\circ$), đùi lên gối cao, vung mở cẳng chân quét hình cung ra trước (forward shank unfolding), cho tới hạ chân đón đất êm dịu đồng trục với thảm chạy cuộn lùi.
+          </p>
+        </div>
+      </section>
+
+      <!-- ==================== SECTION 1: KINEMATICS & GAIT CYCLE ==================== -->
+      <section id="kinematics" class="space-y-5 sm:space-y-6 scroll-mt-20 sm:scroll-mt-24">
+        <div class="border-b border-academic-borderLight dark:border-academic-borderDark pb-2.5">
+          <h2 class="text-xl sm:text-2xl font-serif font-bold text-academic-textLight dark:text-academic-textDark flex items-center gap-2">
+            <span class="font-mono text-blue-600 dark:text-blue-400 text-base sm:text-lg">01.</span>
+            Động học Sải Chạy 2 Chân Đối Xứng (Bilateral Gait Kinematics)
+          </h2>
+        </div>
+
+        <p class="text-sm sm:text-base leading-relaxed">
+          Chu kỳ sải chân chạy bộ đầy đủ ($1\text{ Stride} = 2\text{ Steps}$) bao gồm hai nửa chu kỳ đối xứng lệch pha chính xác $\Delta\phi = 180^\circ$ ($\pi\text{ radian}$) giữa chân trái và chân phải <a href="#ref-cavagna1977" class="text-blue-600 dark:text-blue-400 font-mono text-xs hover:underline">[1]</a>. Trong khi một chân ở pha tiếp đất (Stance Phase), chân đối diện thực hiện pha lăng (Swing Phase) với chuyển động vung quét cẳng chân mở rộng đón đất.
+        </p>
+
+        <!-- Formula Card with Responsive Scroll Wrapper -->
+        <div class="p-4 sm:p-5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-academic-borderLight dark:border-academic-borderDark space-y-3">
+          <div class="flex items-center justify-between text-xs font-mono text-academic-mutedLight dark:text-academic-mutedDark">
+            <span class="font-semibold text-blue-600 dark:text-blue-400">Phương trình quan hệ Vận tốc & Tần số bước kép</span>
+            <span>(Eq. 1)</span>
+          </div>
+          <div class="formula-scroll text-center text-base sm:text-lg">
+            $$v = f_{\text{stride}} \times L_{\text{stride}} = \frac{\text{Cadence}}{120} \times L_{\text{stride}}$$
+          </div>
+          <p class="text-[11px] sm:text-xs text-academic-mutedLight dark:text-academic-mutedDark font-sans">
+            Trong đó: $v$ là vận tốc tịnh tiến ($\text{m/s}$), $\text{Cadence}$ tính theo số bước đơn mỗi phút ($\text{spm}$), $L_{\text{stride}}$ là chiều dài sải bước kép ($\text{m}$).
+          </p>
+        </div>
+      </section>
+
+      <!-- ==================== SECTION 2: GROUND REACTION FORCE (GRF) ==================== -->
+      <section id="grf-dynamics" class="space-y-5 sm:space-y-6 scroll-mt-20 sm:scroll-mt-24">
+        <div class="border-b border-academic-borderLight dark:border-academic-borderDark pb-2.5">
+          <h2 class="text-xl sm:text-2xl font-serif font-bold text-academic-textLight dark:text-academic-textDark flex items-center gap-2">
+            <span class="font-mono text-blue-600 dark:text-blue-400 text-base sm:text-lg">02.</span>
+            Động lực học Lực Phản Lực Mặt Đất Không Gian (3D GRF)
+          </h2>
+        </div>
+
+        <p class="text-sm sm:text-base leading-relaxed">
+          Lực phản lực mặt đất không gian (Ground Reaction Force - GRF) là tổng hợp lực tác động ngược trở lại cơ thể người chạy qua điểm tiếp xúc bàn chân <a href="#ref-lieberman2010" class="text-blue-600 dark:text-blue-400 font-mono text-xs hover:underline">[2]</a>. Lực này được phân rã thành ba thành phần trục độc lập: thẳng đứng ($F_z$), dọc trước-sau ($F_y$) và ngang trong-ngoài ($F_x$).
+        </p>
+
+        <!-- 3D CoM Acceleration Formula Card -->
+        <div class="p-4 sm:p-5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-academic-borderLight dark:border-academic-borderDark space-y-3">
+          <div class="flex items-center justify-between text-xs font-mono text-academic-mutedLight dark:text-academic-mutedDark">
+            <span class="font-semibold text-rose-600 dark:text-rose-400">Phương trình Vi phân Chuyển động 3 Chiều của Khối tâm</span>
+            <span>(Eq. 2, 3 & 4)</span>
+          </div>
+          <div class="formula-scroll text-center text-base sm:text-lg space-y-2">
+            <div>$$m \ddot{z}_{CoM}(t) = \sum_{i \in \{L, R\}} F_{z, i}(t) - m g$$</div>
+            <div>$$m \ddot{y}_{CoM}(t) = \sum_{i \in \{L, R\}} F_{y, i}(t)$$</div>
+            <div>$$m \ddot{x}_{CoM}(t) = \sum_{i \in \{L, R\}} F_{x, i}(t)$$</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== SECTION 3: TECHNICAL SVG DIAGRAMS ==================== -->
+      <section id="stance-phases-svg" class="space-y-5 sm:space-y-6 scroll-mt-20 sm:scroll-mt-24">
+        <div class="border-b border-academic-borderLight dark:border-academic-borderDark pb-2.5">
+          <h2 class="text-xl sm:text-2xl font-serif font-bold text-academic-textLight dark:text-academic-textDark flex items-center gap-2">
+            <span class="font-mono text-blue-600 dark:text-blue-400 text-base sm:text-lg">03.</span>
+            Đồ Họa Kỹ Thuật: 3 Pha Tiếp Đất & Vector Phân Tích Lực
+          </h2>
+        </div>
+
+        <p class="text-sm sm:text-base leading-relaxed">
+          Đồ họa vector kỹ thuật dưới đây mô tả giải phẫu cơ học của 3 pha tiếp đất kinh điển: <em>Initial Contact</em> (Tiếp đất ban đầu), <em>Mid-Stance</em> (Giai đoạn giữa - đệm lún tối đa) và <em>Toe-Off</em> (Đẩy rời mặt đất).
+        </p>
+
+        <!-- Responsive Technical SVG Container -->
+        <div class="p-3 sm:p-6 rounded-2xl bg-white dark:bg-academic-cardDark border border-academic-borderLight dark:border-academic-borderDark shadow-sm">
+          <div class="w-full overflow-x-auto">
+            <div class="min-w-[620px] sm:min-w-full">
+              <svg viewBox="0 0 880 440" class="w-full h-auto select-none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <marker id="arrow-force" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#EF4444" />
+                  </marker>
+                </defs>
+                <line x1="20" y1="360" x2="860" y2="360" stroke="currentColor" class="text-slate-400 dark:text-slate-600" stroke-width="2.5" stroke-dasharray="6,4"/>
+                
+                <!-- 1. Initial Contact -->
+                <g transform="translate(40, 0)">
+                  <text x="140" y="35" text-anchor="middle" font-family="Newsreader, serif" font-weight="600" font-size="16" fill="currentColor">1. Initial Contact (~15% Stance)</text>
+                  <circle cx="120" cy="130" r="7" fill="#3B82F6"/>
+                  <line x1="120" y1="130" x2="160" y2="230" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+                  <circle cx="160" cy="230" r="6" fill="#F59E0B"/>
+                  <line x1="160" y1="230" x2="175" y2="340" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+                  <circle cx="175" cy="340" r="5" fill="#3B82F6"/>
+                  <path d="M 160 358 L 195 348 L 210 358 Z" fill="currentColor"/>
+                  <line x1="170" y1="360" x2="115" y2="240" stroke="#EF4444" stroke-width="3.5" marker-end="url(#arrow-force)"/>
+                  <text x="95" y="250" font-family="JetBrains Mono" font-size="12" font-weight="700" fill="#EF4444">F_GRF</text>
+                  <text x="140" y="390" text-anchor="middle" font-family="sans-serif" font-size="11" fill="currentColor" opacity="0.7">Góc gối: 16° | Đón đất</text>
+                </g>
+
+                <!-- 2. Mid-Stance -->
+                <g transform="translate(140, 0)">
+                  <text x="300" y="35" text-anchor="middle" font-family="Newsreader, serif" font-weight="600" font-size="16" fill="currentColor">2. Mid-Stance (~50% Stance)</text>
+                  <circle cx="300" cy="155" r="7" fill="#10B981"/>
+                  <line x1="300" y1="155" x2="335" y2="250" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+                  <circle cx="335" cy="250" r="6" fill="#F59E0B"/>
+                  <line x1="335" y1="250" x2="305" y2="340" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+                  <circle cx="305" cy="340" r="5" fill="#3B82F6"/>
+                  <path d="M 275 358 L 335 358 L 330 348 L 285 348 Z" fill="currentColor"/>
+                  <line x1="305" y1="360" x2="305" y2="185" stroke="#EF4444" stroke-width="4.5" marker-end="url(#arrow-force)"/>
+                  <text x="315" y="195" font-family="JetBrains Mono" font-size="12" font-weight="700" fill="#EF4444">F_z,peak ≈ 2.6 BW</text>
+                  <text x="300" y="390" text-anchor="middle" font-family="sans-serif" font-size="11" fill="currentColor" opacity="0.7">Góc gối: 41° | Đệm nén tối đa</text>
+                </g>
+
+                <!-- 3. Toe-Off -->
+                <g transform="translate(240, 0)">
+                  <text x="470" y="35" text-anchor="middle" font-family="Newsreader, serif" font-weight="600" font-size="16" fill="currentColor">3. Toe-Off (~90-100% Stance)</text>
+                  <circle cx="515" cy="135" r="7" fill="#8B5CF6"/>
+                  <line x1="515" y1="135" x2="475" y2="230" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+                  <circle cx="475" cy="230" r="6" fill="#F59E0B"/>
+                  <line x1="475" y1="230" x2="440" y2="320" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+                  <circle cx="440" cy="320" r="5" fill="#3B82F6"/>
+                  <line x1="440" y1="320" x2="430" y2="358" stroke="currentColor" stroke-width="4"/>
+                  <circle cx="430" cy="358" r="4" fill="#EF4444"/>
+                  <line x1="430" y1="358" x2="495" y2="245" stroke="#EF4444" stroke-width="3.5" marker-end="url(#arrow-force)"/>
+                  <text x="505" y="255" font-family="JetBrains Mono" font-size="12" font-weight="700" fill="#EF4444">F_GRF</text>
+                  <text x="470" y="390" text-anchor="middle" font-family="sans-serif" font-size="11" fill="currentColor" opacity="0.7">Góc gối: 16° | Đẩy sải ra sau</text>
+                </g>
+              </svg>
+            </div>
+          </div>
+          <div class="text-[11px] text-academic-mutedLight dark:text-academic-mutedDark text-center mt-2 font-mono">
+            Hình 1: Đồ thị phân tích vector lực tiếp đất và góc uốn khớp gối ở các pha sải chân cơ bản.
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== SECTION 4: SLIP MODEL ==================== -->
+      <section id="slip-model" class="space-y-5 sm:space-y-6 scroll-mt-20 sm:scroll-mt-24">
+        <div class="border-b border-academic-borderLight dark:border-academic-borderDark pb-2.5">
+          <h2 class="text-xl sm:text-2xl font-serif font-bold text-academic-textLight dark:text-academic-textDark flex items-center gap-2">
+            <span class="font-mono text-blue-600 dark:text-blue-400 text-base sm:text-lg">04.</span>
+            Mô Hình Con Lắc Đàn Hồi SLIP (Spring-Loaded Inverted Pendulum)
+          </h2>
+        </div>
+
+        <p class="text-sm sm:text-base leading-relaxed">
+          Mô hình SLIP <a href="#ref-blickhan1989" class="text-blue-600 dark:text-blue-400 font-mono text-xs hover:underline">[3]</a>, <a href="#ref-mcmahon1990" class="text-blue-600 dark:text-blue-400 font-mono text-xs hover:underline">[4]</a> xem toàn bộ chi dưới như một lò xo đàn hồi tuyến tính có độ cứng $k_{\text{leg}}$, nâng đỡ khối tâm cơ thể $m$.
+        </p>
+
+        <!-- SLIP Polar Differential Equations Card -->
+        <div class="p-4 sm:p-5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-academic-borderLight dark:border-academic-borderDark space-y-3">
+          <div class="flex items-center justify-between text-xs font-mono text-academic-mutedLight dark:text-academic-mutedDark">
+            <span class="font-semibold text-emerald-600 dark:text-emerald-400">Hệ Phương trình Vi phân Tọa độ Cực SLIP</span>
+            <span>(Eq. 5 & 6)</span>
+          </div>
+          <div class="formula-scroll text-center text-base sm:text-lg space-y-3">
+            <div>$$m \ddot{r} - m r \dot{\theta}^2 = -k_{\text{leg}}(r - L_0) - m g \cos\theta$$</div>
+            <div>$$m r^2 \ddot{\theta} + 2 m r \dot{r} \dot{\theta} = m g r \sin\theta$$</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== SECTION 5: REALISTIC 3D INTERACTIVE SIMULATION ==================== -->
+      <section id="interactive-simulation" class="space-y-5 sm:space-y-6 scroll-mt-20 sm:scroll-mt-24">
+        
+        <div class="border-b border-academic-borderLight dark:border-academic-borderDark pb-2.5">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <h2 class="text-xl sm:text-2xl font-serif font-bold text-academic-textLight dark:text-academic-textDark flex items-center gap-2">
+              <span class="font-mono text-blue-600 dark:text-blue-400 text-base sm:text-lg">05.</span>
+              Phòng Thí Nghiệm Mô Phỏng 3D Vận Động Viên Đời Thực
+            </h2>
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] sm:text-xs font-mono px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1.5 font-medium">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                60 FPS Unclipped
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-xs sm:text-sm text-academic-mutedLight dark:text-academic-mutedDark leading-relaxed">
+          Mô hình 3D hoàn thiện tối đa theo giải phẫu vận động viên: <strong>toàn bộ hoạt ảnh chân bước lên phía trước được hiển thị đầy đủ $100\%$ không bị cắt ngắn</strong>. Bạn có thể quan sát trọn vẹn chuyển động co gối nhấc gót ($108^\circ$), đùi lên gối cao, vung cẳng chân mở rộng hình cung ra trước (forward reach) và hạ chân đón đất êm dịu đồng trục thảm chạy.
+        </p>
+
+        <!-- 3D REALISTIC RUNNER VIEWPORT CARD (ADAPTIVE DESKTOP & MOBILE) -->
+        <div id="simViewportCard" class="rounded-2xl bg-white dark:bg-academic-cardDark border border-academic-borderLight dark:border-academic-borderDark shadow-xl overflow-hidden transition-all duration-300">
+          
+          <!-- Top Control Toolbar (Optimized for Mobile & Desktop) -->
+          <div class="p-2.5 sm:p-3.5 bg-slate-900 border-b border-slate-800 space-y-2 text-xs font-mono">
+            
+            <!-- Row 1: Primary Simulation Control -->
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              
+              <!-- Left group: Play/Pause, Speed, Visual Mode -->
+              <div class="flex items-center flex-wrap gap-1.5 sm:gap-2">
+                <button id="simPlayPauseBtn" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center gap-1.5 shadow-sm transition active:scale-95">
+                  <svg id="playIcon" class="w-3.5 h-3.5 hidden" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
+                  <svg id="pauseIcon" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                  <span id="playPauseText">Tạm dừng</span>
+                </button>
+                
+                <div class="flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700 text-[11px]">
+                  <button class="speed-btn px-2 py-1 rounded hover:bg-slate-700 text-slate-300 transition" data-speed="0.25">0.25x</button>
+                  <button class="speed-btn px-2 py-1 rounded hover:bg-slate-700 text-slate-300 transition" data-speed="0.5">0.5x</button>
+                  <button class="speed-btn px-2 py-1 rounded bg-blue-600 text-white font-bold transition" data-speed="1.0">1.0x</button>
+                </div>
+
+                <!-- Visual Mode Toggle -->
+                <button id="toggleVisualModeBtn" class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition flex items-center gap-1 shadow-sm active:scale-95 text-[11px] sm:text-xs">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                  <span id="visualModeText">Người Thật</span>
+                </button>
+              </div>
+
+              <!-- Right group: Fullscreen & Touch Orbit Lock -->
+              <div class="flex items-center gap-1.5">
+                <!-- Mobile Orbit Touch Lock / Unlock toggle -->
+                <button id="touchOrbitToggleBtn" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1 text-[11px]" title="Bật/Tắt xoay 3D để cuộn trang dễ hơn trên điện thoại">
+                  <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                  <span id="touchOrbitText">Xoay 3D: Mở</span>
+                </button>
+
+                <!-- Fullscreen button -->
+                <button id="fullscreenSimBtn" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1 text-[11px]" title="Toàn màn hình">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                  <span class="hidden sm:inline">Toàn cảnh</span>
+                </button>
+              </div>
+
+            </div>
+
+            <!-- Row 2: Camera View Angles (Swipeable or Flex-wrap) -->
+            <div class="flex items-center justify-between flex-wrap gap-1.5 pt-1 border-t border-slate-800/80">
+              <div class="flex items-center gap-1 text-[11px] overflow-x-auto py-0.5 max-w-full">
+                <span class="text-slate-400 mr-1 hidden sm:inline">Góc nhìn:</span>
+                <button class="cam-btn px-2.5 py-1 rounded bg-blue-600 text-white font-bold transition whitespace-nowrap" data-view="iso">3D Orbit</button>
+                <button class="cam-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-blue-600 hover:text-white transition text-slate-300 whitespace-nowrap" data-view="sagittal">Ngang (Sagittal)</button>
+                <button class="cam-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-blue-600 hover:text-white transition text-slate-300 whitespace-nowrap" data-view="frontal">Trước (Frontal)</button>
+                <button class="cam-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-blue-600 hover:text-white transition text-slate-300 whitespace-nowrap" data-view="transverse">Trên (Top)</button>
+              </div>
+
+              <button id="resetCamBtn" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition text-[11px] whitespace-nowrap" title="Đặt lại góc quay mặc định">
+                Reset Cam
+              </button>
+            </div>
+
+          </div>
+
+          <!-- Main 3D Canvas + Dual Force Oscilloscope -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-0 border-b border-academic-borderLight dark:border-academic-borderDark">
+            
+            <!-- 3D WEBGL CONTAINER (7 cols on Desktop, 100% on Mobile) -->
+            <div class="lg:col-span-7 bg-[#060a12] relative overflow-hidden flex flex-col justify-between">
+              
+              <!-- HUD Badges -->
+              <div class="absolute top-2.5 left-3 sm:left-4 z-10 flex flex-wrap items-center gap-1.5 sm:gap-2 pointer-events-none">
+                <span class="text-[10px] sm:text-[11px] font-mono text-slate-300 bg-slate-900/90 px-2 sm:px-2.5 py-1 rounded-md border border-slate-700 backdrop-blur-sm">
+                  Forward Stride Reach (+Z)
+                </span>
+                <span id="stanceIndicator" class="text-[10px] sm:text-[11px] font-mono font-bold text-cyan-400 bg-cyan-950/90 px-2 sm:px-2.5 py-1 rounded-md border border-cyan-800 backdrop-blur-sm">
+                  Chân Trái Tiếp Đất
+                </span>
+              </div>
+
+              <!-- Shoe Legend -->
+              <div class="absolute top-2.5 right-3 sm:right-4 z-10 flex items-center gap-1.5 sm:gap-2 pointer-events-none text-[10px] sm:text-[11px] font-mono">
+                <span class="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded bg-slate-900/85 border border-slate-800 text-cyan-400">
+                  <span class="w-2 h-2 rounded-full bg-cyan-400"></span> Trái
+                </span>
+                <span class="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded bg-slate-900/85 border border-slate-800 text-purple-400">
+                  <span class="w-2 h-2 rounded-full bg-purple-400"></span> Phải
+                </span>
+              </div>
+
+              <!-- Canvas 3D Host -->
+              <div class="w-full h-[320px] sm:h-[400px] lg:h-[450px] cursor-grab active:cursor-grabbing relative" id="webglHost">
+                <canvas id="runner3DCanvas" class="w-full h-full block"></canvas>
+
+                <!-- Touch gesture overlay hint (only shown briefly or when locked) -->
+                <div id="touchLockOverlay" class="absolute inset-0 bg-black/40 backdrop-blur-[2px] hidden items-center justify-center pointer-events-none text-center p-4">
+                  <div class="bg-slate-900/90 border border-slate-700 text-slate-200 text-xs px-4 py-2 rounded-xl shadow-lg">
+                    Chế độ cuộn trang đang bật &bull; Bấm <strong>"Xoay 3D: Mở"</strong> trên thanh công cụ để tương tác
+                  </div>
+                </div>
+              </div>
+
+              <!-- Interaction Hint Bar -->
+              <div class="p-2 sm:p-2.5 bg-slate-950/95 border-t border-slate-800 flex items-center justify-between text-[10px] sm:text-[11px] font-mono text-slate-400 px-3 sm:px-4">
+                <span class="truncate">
+                  <span class="hidden sm:inline">Chuột trái: <strong class="text-slate-200">Xoay</strong> &bull; Cuộn: <strong class="text-slate-200">Zoom</strong> &bull; Chuột phải: <strong class="text-slate-200">Pan</strong></span>
+                  <span class="sm:hidden">1 ngón: <strong class="text-slate-200">Xoay 360°</strong> &bull; 2 ngón: <strong class="text-slate-200">Thu phóng</strong></span>
+                </span>
+                <span id="fpsCounter" class="text-emerald-400 font-bold shrink-0 ml-2">60.0 FPS</span>
+              </div>
+
+            </div>
+
+            <!-- Dual Foot Live Force Oscilloscope (5 cols on Desktop, 100% on Mobile) -->
+            <div class="lg:col-span-5 p-3 sm:p-4 bg-slate-950 flex flex-col justify-between border-t lg:border-t-0 lg:border-l border-slate-800">
+              <div>
+                <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                  <span class="text-[11px] sm:text-xs font-mono text-slate-300 font-semibold">
+                    Đồ thị Lực Tiếp Đất 2 Chân $F_z(t)$
+                  </span>
+                  <span class="text-[10px] font-mono text-slate-500">Bilateral Telemetry</span>
+                </div>
+                
+                <div class="w-full h-[150px] sm:h-[190px] lg:h-[220px] pt-2">
+                  <canvas id="forceGraphCanvas" class="w-full h-full block"></canvas>
+                </div>
+              </div>
+
+              <!-- Live Joint Angles & Muscle Strain -->
+              <div class="space-y-2 pt-3 border-t border-slate-800 text-xs font-mono">
+                <div class="grid grid-cols-2 gap-2">
+                  <div class="p-2 rounded bg-slate-900 border border-cyan-900/60">
+                    <div class="text-cyan-400 text-[10px] flex items-center justify-between">
+                      <span>Gối Trái ($\theta_{k,L}$):</span>
+                      <span id="leftStanceBadge" class="text-[9px] px-1 rounded bg-cyan-950 text-cyan-300">Stance</span>
+                    </div>
+                    <div class="text-cyan-300 font-bold text-sm sm:text-base" id="liveLeftKnee">24°</div>
+                    <div class="text-[10px] text-slate-400 truncate" id="liveLeftFz">Lực: 1.82 BW (1,160 N)</div>
+                  </div>
+
+                  <div class="p-2 rounded bg-slate-900 border border-purple-900/60">
+                    <div class="text-purple-400 text-[10px] flex items-center justify-between">
+                      <span>Gối Phải ($\theta_{k,R}$):</span>
+                      <span id="rightStanceBadge" class="text-[9px] px-1 rounded bg-slate-800 text-slate-400">Swing</span>
+                    </div>
+                    <div class="text-purple-300 font-bold text-sm sm:text-base" id="liveRightKnee">78°</div>
+                    <div class="text-[10px] text-slate-400 truncate" id="liveRightFz">Lực: 0.00 BW (0 N)</div>
+                  </div>
+                </div>
+
+                <div class="p-2 rounded bg-slate-900/80 border border-slate-800 flex justify-between text-[10px] sm:text-[11px] text-slate-300">
+                  <span>Nghiêng chậu: <strong class="text-amber-400" id="livePelvicTilt">4.8°</strong></span>
+                  <span>Độ lún đệm giày: <strong class="text-emerald-400" id="liveSpringComp">14.2 mm</strong></span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Parameter Sliders Section (Adaptive 1 col -> 2 cols -> 4 cols) -->
+          <div class="p-4 sm:p-6 bg-slate-50 dark:bg-slate-900/60 space-y-4 sm:space-y-5">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-mono uppercase tracking-wider font-semibold text-academic-mutedLight dark:text-academic-mutedDark">
+                Bảng tinh chỉnh tham số Động học & Cơ thể
+              </h3>
+              <span class="text-[10px] font-mono text-blue-600 dark:text-blue-400 font-medium">Real-time Kinematics</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+              
+              <!-- 1. Cadence -->
+              <div class="space-y-1.5 p-3 rounded-xl bg-white dark:bg-slate-900 border border-academic-borderLight dark:border-slate-800">
+                <div class="flex justify-between text-xs font-mono">
+                  <label for="cadenceSlider" class="font-medium text-slate-700 dark:text-slate-300">Tần số sải (Cadence):</label>
+                  <span id="cadenceVal" class="text-blue-600 dark:text-blue-400 font-bold">175 spm</span>
+                </div>
+                <input id="cadenceSlider" type="range" min="150" max="190" step="1" value="175" class="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                <div class="flex justify-between text-[10px] text-academic-mutedLight dark:text-academic-mutedDark font-mono">
+                  <span>150 spm</span>
+                  <span>170</span>
+                  <span>190 spm</span>
+                </div>
+              </div>
+
+              <!-- 2. Stride Length -->
+              <div class="space-y-1.5 p-3 rounded-xl bg-white dark:bg-slate-900 border border-academic-borderLight dark:border-slate-800">
+                <div class="flex justify-between text-xs font-mono">
+                  <label for="strideSlider" class="font-medium text-slate-700 dark:text-slate-300">Chiều dài sải (Stride):</label>
+                  <span id="strideVal" class="text-blue-600 dark:text-blue-400 font-bold">1.25 m</span>
+                </div>
+                <input id="strideSlider" type="range" min="0.80" max="1.80" step="0.05" value="1.25" class="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                <div class="flex justify-between text-[10px] text-academic-mutedLight dark:text-academic-mutedDark font-mono">
+                  <span>0.8 m</span>
+                  <span>1.3 m</span>
+                  <span>1.8 m</span>
+                </div>
+              </div>
+
+              <!-- 3. Strike Angle -->
+              <div class="space-y-1.5 p-3 rounded-xl bg-white dark:bg-slate-900 border border-academic-borderLight dark:border-slate-800">
+                <div class="flex justify-between text-xs font-mono">
+                  <label for="angleSlider" class="font-medium text-slate-700 dark:text-slate-300">Góc tiếp đất (Strike):</label>
+                  <span id="angleVal" class="text-blue-600 dark:text-blue-400 font-bold">0° (Midfoot)</span>
+                </div>
+                <input id="angleSlider" type="range" min="-15" max="15" step="1" value="0" class="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                <div class="flex justify-between text-[10px] text-academic-mutedLight dark:text-academic-mutedDark font-mono">
+                  <span>-15° (Heel)</span>
+                  <span>0° (Mid)</span>
+                  <span>+15° (Fore)</span>
+                </div>
+              </div>
+
+              <!-- 4. Body Mass -->
+              <div class="space-y-1.5 p-3 rounded-xl bg-white dark:bg-slate-900 border border-academic-borderLight dark:border-slate-800">
+                <div class="flex justify-between text-xs font-mono">
+                  <label for="massSlider" class="font-medium text-slate-700 dark:text-slate-300">Khối lượng cơ thể:</label>
+                  <span id="massVal" class="text-blue-600 dark:text-blue-400 font-bold">65 kg</span>
+                </div>
+                <input id="massSlider" type="range" min="45" max="95" step="1" value="65" class="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                <div class="flex justify-between text-[10px] text-academic-mutedLight dark:text-academic-mutedDark font-mono">
+                  <span>45 kg</span>
+                  <span>65 kg</span>
+                  <span>95 kg</span>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Output Dashboard (Responsive 2 cols -> 3 cols -> 6 cols) -->
+            <div class="pt-3 border-t border-academic-borderLight dark:border-academic-borderDark grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
+              
+              <div class="p-3 rounded-xl bg-white dark:bg-academic-cardDark border border-academic-borderLight dark:border-academic-borderDark">
+                <div class="text-[10px] uppercase font-mono text-academic-mutedLight dark:text-academic-mutedDark">Vận tốc (Velocity)</div>
+                <div id="outSpeed" class="text-base font-mono font-bold text-blue-600 dark:text-blue-400">3.65 m/s</div>
+                <div id="outKmH" class="text-[11px] font-mono text-academic-mutedLight dark:text-academic-mutedDark">13.1 km/h</div>
+              </div>
+
+              <div class="p-3 rounded-xl bg-white dark:bg-academic-cardDark border border-academic-borderLight dark:border-academic-borderDark">
+                <div class="text-[10px] uppercase font-mono text-academic-mutedLight dark:text-academic-mutedDark">Pace sải chân</div>
+                <div id="outPace" class="text-base font-mono font-bold text-slate-800 dark:text-slate-100">4:34 /km</div>
+                <div class="text-[11px] font-mono text-academic-mutedLight dark:text-academic-mutedDark">Tempo run</div>
+              </div>
+
+              <div class="p-3 rounded-xl bg-white dark:bg-academic-cardDark border border-academic-borderLight dark:border-academic-borderDark">
+                <div class="text-[10px] uppercase font-mono text-academic-mutedLight dark:text-academic-mutedDark">Thời gian chạm ($t_c$)</div>
+                <div id="outContactTime" class="text-base font-mono font-bold text-emerald-600 dark:text-emerald-400">215 ms</div>
+                <div id="outDutyFactor" class="text-[11px] font-mono text-academic-mutedLight dark:text-academic-mutedDark">Duty: 31.4%</div>
+              </div>
+
+              <div class="p-3 rounded-xl bg-white dark:bg-academic-cardDark border border-academic-borderLight dark:border-academic-borderDark">
+                <div class="text-[10px] uppercase font-mono text-academic-mutedLight dark:text-academic-mutedDark">Độ cứng ($k_{\text{vert}}$)</div>
+                <div id="outKvert" class="text-base font-mono font-bold text-indigo-600 dark:text-indigo-400">28.4 kN/m</div>
+                <div id="outKleg" class="text-[11px] font-mono text-academic-mutedLight dark:text-academic-mutedDark">k_leg: 11.2 kN/m</div>
+              </div>
+
+              <div class="p-3 rounded-xl bg-white dark:bg-academic-cardDark border border-academic-borderLight dark:border-academic-borderDark">
+                <div class="text-[10px] uppercase font-mono text-academic-mutedLight dark:text-academic-mutedDark">Đỉnh lực (Peak GRF)</div>
+                <div id="outPeakGRF" class="text-base font-mono font-bold text-rose-600 dark:text-rose-400">2.52 BW</div>
+                <div id="outPeakNewtons" class="text-[11px] font-mono text-academic-mutedLight dark:text-academic-mutedDark">1,607 N</div>
+              </div>
+
+              <div class="p-3 rounded-xl bg-white dark:bg-academic-cardDark border border-academic-borderLight dark:border-academic-borderDark">
+                <div class="text-[10px] uppercase font-mono text-academic-mutedLight dark:text-academic-mutedDark">Năng lượng ($C_{met}$)</div>
+                <div id="outEnergy" class="text-base font-mono font-bold text-amber-600 dark:text-amber-400">62.8 kcal/km</div>
+                <div id="outVO2" class="text-[11px] font-mono text-academic-mutedLight dark:text-academic-mutedDark">46.5 ml/kg/min</div>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== SECTION 6: CLINICAL & TRAINING IMPLICATIONS ==================== -->
+      <section id="clinical-implications" class="space-y-5 sm:space-y-6 scroll-mt-20 sm:scroll-mt-24">
+        <div class="border-b border-academic-borderLight dark:border-academic-borderDark pb-2.5">
+          <h2 class="text-xl sm:text-2xl font-serif font-bold text-academic-textLight dark:text-academic-textDark flex items-center gap-2">
+            <span class="font-mono text-blue-600 dark:text-blue-400 text-base sm:text-lg">06.</span>
+            Ý Nghĩa Y Sinh & Huấn Luyện Thực Tiễn
+          </h2>
+        </div>
+
+        <div class="space-y-3">
+          <h3 class="text-base sm:text-lg font-serif font-semibold text-academic-textLight dark:text-academic-textDark">
+            1. Hiện tượng Bất Đối Xứng Giữa Hai Chân (Bilateral Gait Asymmetry)
+          </h3>
+          <p class="text-sm sm:text-base leading-relaxed">
+            Trong quan sát 3 chiều, độ bất đối xứng về thời gian tiếp đất ($t_{c, L} \ne t_{c, R}$) vượt quá $5\%$ thường là dấu hiệu chỉ báo sớm của chấn thương quá tải một bên hoặc suy yếu cơ mông nhỡ (gluteus medius) <a href="#ref-nigg2015" class="text-blue-600 dark:text-blue-400 font-mono text-xs hover:underline">[5]</a>. Việc theo dõi song song đồ thị lực $F_z(t)$ của cả hai chân giúp chuyên gia y học thể thao phát hiện sớm sự mất cân bằng này.
+          </p>
+        </div>
+
+        <div class="space-y-3">
+          <h3 class="text-base sm:text-lg font-serif font-semibold text-academic-textLight dark:text-academic-textDark">
+            2. Tối Ưu Hóa Nhịp Bước (Cadence 170 - 185 SPM)
+          </h3>
+          <p class="text-sm sm:text-base leading-relaxed">
+            Duy trì nhịp chân trên $170\text{ spm}$ giúp giảm cánh tay đòn hãm phanh phía trước khối tâm CoM, giảm lực va chạm ban đầu và cắt giảm đáng kể nguy cơ rạn xương do mỏi (tibial stress fractures) <a href="#ref-minetti2002" class="text-blue-600 dark:text-blue-400 font-mono text-xs hover:underline">[6]</a>.
+          </p>
+        </div>
+      </section>
+
+      <!-- ==================== SECTION 7: DESIGN SYSTEM & WCAG AAA ==================== -->
+      <section id="design-system" class="space-y-5 sm:space-y-6 scroll-mt-20 sm:scroll-mt-24">
+        <div class="border-b border-academic-borderLight dark:border-academic-borderDark pb-2.5">
+          <h2 class="text-xl sm:text-2xl font-serif font-bold text-academic-textLight dark:text-academic-textDark flex items-center gap-2">
+            <span class="font-mono text-blue-600 dark:text-blue-400 text-base sm:text-lg">07.</span>
+            Design System: Bảng Màu WCAG AAA & Typography Token
+          </h2>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+          <div class="p-3 rounded-xl border border-academic-borderLight dark:border-academic-borderDark bg-[#FAF9F6] text-[#0F172A] shadow-sm">
+            <div class="font-bold">Paper Light</div>
+            <div>#FAF9F6</div>
+            <div class="text-[10px] text-slate-500 mt-1">Contrast 15.8:1 (AAA)</div>
+          </div>
+          <div class="p-3 rounded-xl border border-academic-borderLight dark:border-academic-borderDark bg-[#0B0F19] text-[#F1F5F9] shadow-sm">
+            <div class="font-bold">Deep Slate Dark</div>
+            <div>#0B0F19</div>
+            <div class="text-[10px] text-slate-400 mt-1">Contrast 17.2:1 (AAA)</div>
+          </div>
+          <div class="p-3 rounded-xl border border-academic-borderLight dark:border-academic-borderDark bg-[#06B6D4] text-white shadow-sm">
+            <div class="font-bold">Left Leg (Cyan)</div>
+            <div>#06B6D4</div>
+            <div class="text-[10px] text-cyan-100 mt-1">Bilateral Primary</div>
+          </div>
+          <div class="p-3 rounded-xl border border-academic-borderLight dark:border-academic-borderDark bg-[#A855F7] text-white shadow-sm">
+            <div class="font-bold">Right Leg (Purple)</div>
+            <div>#A855F7</div>
+            <div class="text-[10px] text-purple-100 mt-1">Bilateral 180° Shift</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== SECTION 8: ACADEMIC REFERENCES ==================== -->
+      <section id="references" class="space-y-5 sm:space-y-6 pt-4 border-t border-academic-borderLight dark:border-academic-borderDark scroll-mt-20 sm:scroll-mt-24">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg sm:text-xl font-serif font-bold text-academic-textLight dark:text-academic-textDark">
+            Tài Liệu Trích Dẫn Chuẩn Khoa Học (References)
+          </h2>
+          <span class="text-xs font-mono text-academic-mutedLight dark:text-academic-mutedDark">APA 7th</span>
+        </div>
+
+        <ol class="space-y-3 text-xs leading-relaxed text-academic-mutedLight dark:text-academic-mutedDark list-none">
+          <li id="ref-cavagna1977" class="citation-target p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 transition flex gap-3">
+            <span class="font-mono font-bold text-blue-600 dark:text-blue-400">[1]</span>
+            <div>
+              Cavagna, G. A., Heglund, N. C., & Taylor, C. R. (1977). Walking and running in terrestrial animals: mechanical energy transfers between feet and forward motion. <em>American Journal of Physiology</em>, 233(5), R243-R261.
+              <a href="#kinematics" class="ml-2 text-blue-500 hover:underline">&uarr; return</a>
+            </div>
+          </li>
+          <li id="ref-lieberman2010" class="citation-target p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 transition flex gap-3">
+            <span class="font-mono font-bold text-blue-600 dark:text-blue-400">[2]</span>
+            <div>
+              Lieberman, D. E., et al. (2010). Foot strike patterns and collision forces in habitually barefoot versus shod runners. <em>Nature</em>, 463(7280), 531-535.
+              <a href="#grf-dynamics" class="ml-2 text-blue-500 hover:underline">&uarr; return</a>
+            </div>
+          </li>
+          <li id="ref-blickhan1989" class="citation-target p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 transition flex gap-3">
+            <span class="font-mono font-bold text-blue-600 dark:text-blue-400">[3]</span>
+            <div>
+              Blickhan, R. (1989). The spring-mass model for running and hopping. <em>Journal of Biomechanics</em>, 22(11-12), 1217-1227.
+              <a href="#slip-model" class="ml-2 text-blue-500 hover:underline">&uarr; return</a>
+            </div>
+          </li>
+          <li id="ref-mcmahon1990" class="citation-target p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 transition flex gap-3">
+            <span class="font-mono font-bold text-blue-600 dark:text-blue-400">[4]</span>
+            <div>
+              McMahon, T. A., & Cheng, G. C. (1990). The mechanics of running: how does stiffness couple with speed?. <em>Journal of Biomechanics</em>, 23, 65-78.
+              <a href="#slip-model" class="ml-2 text-blue-500 hover:underline">&uarr; return</a>
+            </div>
+          </li>
+          <li id="ref-nigg2015" class="citation-target p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 transition flex gap-3">
+            <span class="font-mono font-bold text-blue-600 dark:text-blue-400">[5]</span>
+            <div>
+              Nigg, B. M., et al. (2015). Running shoes and running injuries: mythbusting and a proposal for two new paradigms. <em>British Journal of Sports Medicine</em>, 49(20), 1290-1294.
+              <a href="#clinical-implications" class="ml-2 text-blue-500 hover:underline">&uarr; return</a>
+            </div>
+          </li>
+          <li id="ref-minetti2002" class="citation-target p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 transition flex gap-3">
+            <span class="font-mono font-bold text-blue-600 dark:text-blue-400">[6]</span>
+            <div>
+              Minetti, A. E., et al. (2002). Energy cost of walking and running at extreme uphill and downhill slopes. <em>Journal of Applied Physiology</em>, 93(3), 1039-1046.
+              <a href="#clinical-implications" class="ml-2 text-blue-500 hover:underline">&uarr; return</a>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ==================== MOBILE BOTTOM THUMB DOCK (<lg) ==================== -->
+  <aside aria-label="Điều hướng di động" class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-academic-darkPaper/95 backdrop-blur-md border-t border-academic-borderLight dark:border-academic-borderDark px-3 pt-1.5 pb-[max(env(safe-area-inset-bottom),10px)] transition-all">
+    <div class="max-w-md mx-auto flex items-center justify-around">
+      
+      <button id="mobileTocToggleBtn" class="flex flex-col items-center justify-center min-w-[56px] h-12 rounded-xl text-academic-mutedLight dark:text-academic-mutedDark hover:text-blue-600 active:scale-95 transition" aria-label="Mở mục lục">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
+        <span class="text-[10px] font-mono mt-0.5">Mục lục</span>
+      </button>
+
+      <a href="#interactive-simulation" class="flex flex-col items-center justify-center min-w-[56px] h-12 rounded-xl text-blue-600 dark:text-blue-400 active:scale-95 transition" aria-label="Tới phòng mô phỏng 3D">
+        <svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"/></svg>
+        <span class="text-[10px] font-mono mt-0.5 font-bold">Lab 3D</span>
+      </a>
+
+      <button id="mobileFontToggleBtn" class="flex flex-col items-center justify-center min-w-[56px] h-12 rounded-xl text-academic-mutedLight dark:text-academic-mutedDark hover:text-blue-600 active:scale-95 transition" aria-label="Đổi cỡ chữ">
+        <span class="text-sm font-serif font-bold">Aa</span>
+        <span class="text-[10px] font-mono mt-0.5">Cỡ chữ</span>
+      </button>
+
+      <button id="mobileThemeToggleBtn" class="flex flex-col items-center justify-center min-w-[56px] h-12 rounded-xl text-academic-mutedLight dark:text-academic-mutedDark hover:text-blue-600 active:scale-95 transition" aria-label="Chuyển chế độ sáng/tối">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+        <span class="text-[10px] font-mono mt-0.5">Theme</span>
+      </button>
+
+      <button id="mobileBackToTopBtn" class="flex flex-col items-center justify-center min-w-[56px] h-12 rounded-xl text-academic-mutedLight dark:text-academic-mutedDark hover:text-blue-600 active:scale-95 transition" aria-label="Lên đầu trang">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+        <span class="text-[10px] font-mono mt-0.5">Đầu trang</span>
+      </button>
+
+    </div>
+  </aside>
+
+  <!-- ==================== MOBILE TOC MODAL DRAWER ==================== -->
+  <div id="mobileTocModal" class="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200">
+    <div class="fixed bottom-0 left-0 right-0 max-h-[85vh] bg-white dark:bg-academic-darkPaper rounded-t-3xl p-5 overflow-y-auto space-y-4 shadow-2xl border-t border-academic-borderLight dark:border-academic-borderDark pb-[calc(env(safe-area-inset-bottom,16px)+20px)]">
+      
+      <!-- Drawer Handle Bar -->
+      <div class="w-12 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700 mx-auto -mt-1 mb-2"></div>
+
+      <div class="flex items-center justify-between pb-3 border-b border-academic-borderLight dark:border-academic-borderDark">
+        <div class="flex items-center gap-2">
+          <span class="w-6 h-6 rounded bg-blue-600/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs font-mono font-bold">3D</span>
+          <span class="font-serif font-bold text-base text-academic-textLight dark:text-academic-textDark">Mục lục tài liệu</span>
+        </div>
+        <button id="closeMobileTocBtn" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 font-bold text-lg active:scale-90 transition">&times;</button>
+      </div>
+
+      <nav class="space-y-1.5 text-sm">
+        <a href="#abstract" class="mobile-toc-link block py-2.5 px-3 rounded-xl hover:bg-blue-50 dark:hover:bg-slate-800 transition">
+          Tóm tắt & Giới thiệu
+        </a>
+        <a href="#kinematics" class="mobile-toc-link block py-2.5 px-3 rounded-xl hover:bg-blue-50 dark:hover:bg-slate-800 transition">
+          1. Động học Sải Chạy 2 Chân
+        </a>
+        <a href="#grf-dynamics" class="mobile-toc-link block py-2.5 px-3 rounded-xl hover:bg-blue-50 dark:hover:bg-slate-800 transition">
+          2. Phân Tích Lực Tiếp Đất (GRF)
+        </a>
+        <a href="#stance-phases-svg" class="mobile-toc-link block py-2.5 px-3 rounded-xl hover:bg-blue-50 dark:hover:bg-slate-800 transition">
+          3. Đồ Họa Kỹ Thuật 3 Pha Tiếp Đất
+        </a>
+        <a href="#slip-model" class="mobile-toc-link block py-2.5 px-3 rounded-xl hover:bg-blue-50 dark:hover:bg-slate-800 transition">
+          4. Mô Hình Con Lắc Đàn Hồi SLIP
+        </a>
+        <a href="#interactive-simulation" class="mobile-toc-link block py-2.5 px-3 rounded-xl text-blue-600 dark:text-blue-400 font-bold bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 transition flex items-center justify-between">
+          <span>5. Phòng Thí Nghiệm 3D 60 FPS</span>
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+        </a>
+        <a href="#clinical-implications" class="mobile-toc-link block py-2.5 px-3 rounded-xl hover:bg-blue-50 dark:hover:bg-slate-800 transition">
+          6. Ý Nghĩa Y Sinh & Huấn Luyện
+        </a>
+        <a href="#design-system" class="mobile-toc-link block py-2.5 px-3 rounded-xl hover:bg-blue-50 dark:hover:bg-slate-800 transition">
+          7. Design System & WCAG AAA
+        </a>
+        <a href="#references" class="mobile-toc-link block py-2.5 px-3 rounded-xl hover:bg-blue-50 dark:hover:bg-slate-800 transition">
+          Tài Liệu Trích Dẫn (References)
+        </a>
+      </nav>
+
+    </div>
+  </div>
+
+  <!-- ==================== JAVASCRIPT & PHOTOREALISTIC 3D RUNNER ENGINE ==================== -->
+  <script>
+    // Theme Management
+    const htmlEl = document.documentElement;
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const mobileThemeToggleBtn = document.getElementById('mobileThemeToggleBtn');
+    
+    function initTheme() {
+      const savedTheme = localStorage.getItem('agy_biomech_theme');
+      if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        htmlEl.classList.add('dark');
+      } else {
+        htmlEl.classList.remove('dark');
+      }
+    }
+    function toggleTheme() {
+      htmlEl.classList.toggle('dark');
+      localStorage.setItem('agy_biomech_theme', htmlEl.classList.contains('dark') ? 'dark' : 'light');
+    }
+    themeToggleBtn?.addEventListener('click', toggleTheme);
+    mobileThemeToggleBtn?.addEventListener('click', toggleTheme);
+    initTheme();
+
+    // Font Sizing Scaler
+    const fontSizes = ['0.95rem', '1.0625rem', '1.1875rem', '1.3125rem'];
+    let currentFontIdx = 1;
+    const mainArticle = document.getElementById('mainArticle');
+    function applyFontSize(idx) {
+      currentFontIdx = Math.max(0, Math.min(fontSizes.length - 1, idx));
+      if (mainArticle) mainArticle.style.fontSize = fontSizes[currentFontIdx];
+    }
+    document.getElementById('fontDecBtn')?.addEventListener('click', () => applyFontSize(currentFontIdx - 1));
+    document.getElementById('fontResetBtn')?.addEventListener('click', () => applyFontSize(1));
+    document.getElementById('fontIncBtn')?.addEventListener('click', () => applyFontSize(currentFontIdx + 1));
+    document.getElementById('mobileFontToggleBtn')?.addEventListener('click', () => applyFontSize((currentFontIdx + 1) % fontSizes.length));
+    document.getElementById('mobileBackToTopBtn')?.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    // Reading Progress Bar & Desktop TOC Intersection Observer
+    const progressBar = document.getElementById('scrollProgressBar');
+    window.addEventListener('scroll', () => {
+      const winScroll = document.documentElement.scrollTop;
+      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scrolled = height > 0 ? (winScroll / height) * 100 : 0;
+      if (progressBar) progressBar.style.width = scrolled + '%';
+    }, { passive: true });
+
+    const sections = document.querySelectorAll('section[id]');
+    const tocLinks = document.querySelectorAll('#desktopToc .toc-link');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.getAttribute('id');
+          tocLinks.forEach(link => {
+            if (link.getAttribute('href') === `#${id}`) link.classList.add('toc-active');
+            else link.classList.remove('toc-active');
+          });
+        }
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+    sections.forEach(sec => observer.observe(sec));
+
+    // Mobile Drawer Handlers
+    const mobileTocModal = document.getElementById('mobileTocModal');
+    const mobileTocToggleBtn = document.getElementById('mobileTocToggleBtn');
+    const headerTocToggleBtn = document.getElementById('headerTocToggleBtn');
+    const closeMobileTocBtn = document.getElementById('closeMobileTocBtn');
+
+    function openMobileDrawer() {
+      mobileTocModal.classList.remove('hidden');
+      setTimeout(() => mobileTocModal.classList.remove('opacity-0'), 10);
+    }
+    function closeMobileDrawer() {
+      mobileTocModal.classList.add('opacity-0');
+      setTimeout(() => mobileTocModal.classList.add('hidden'), 200);
+    }
+
+    mobileTocToggleBtn?.addEventListener('click', openMobileDrawer);
+    headerTocToggleBtn?.addEventListener('click', openMobileDrawer);
+    closeMobileTocBtn?.addEventListener('click', closeMobileDrawer);
+    mobileTocModal?.addEventListener('click', (e) => {
+      if (e.target === mobileTocModal) closeMobileDrawer();
+    });
+    document.querySelectorAll('.mobile-toc-link').forEach(l => l.addEventListener('click', closeMobileDrawer));
+
+    // KaTeX Auto Render
+    document.addEventListener("DOMContentLoaded", () => {
+      if (window.renderMathInElement) {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    });
+
+    // =========================================================================
+    // PHOTOREALISTIC 3D RUNNER ENGINE WITH THREE.JS
+    // =========================================================================
+    (function initPhotorealistic3DRunner() {
+      const canvas3D = document.getElementById('runner3DCanvas');
+      const forceGraphCanvas = document.getElementById('forceGraphCanvas');
+      if (!canvas3D || !forceGraphCanvas) return;
+
+      const gCtx = forceGraphCanvas.getContext('2d');
+
+      // Sliders & Controls
+      const cadenceSlider = document.getElementById('cadenceSlider');
+      const strideSlider = document.getElementById('strideSlider');
+      const angleSlider = document.getElementById('angleSlider');
+      const massSlider = document.getElementById('massSlider');
+
+      const cadenceVal = document.getElementById('cadenceVal');
+      const strideVal = document.getElementById('strideVal');
+      const angleVal = document.getElementById('angleVal');
+      const massVal = document.getElementById('massVal');
+
+      const outSpeed = document.getElementById('outSpeed');
+      const outKmH = document.getElementById('outKmH');
+      const outPace = document.getElementById('outPace');
+      const outContactTime = document.getElementById('outContactTime');
+      const outDutyFactor = document.getElementById('outDutyFactor');
+      const outKvert = document.getElementById('outKvert');
+      const outKleg = document.getElementById('outKleg');
+      const outPeakGRF = document.getElementById('outPeakGRF');
+      const outPeakNewtons = document.getElementById('outPeakNewtons');
+      const outEnergy = document.getElementById('outEnergy');
+      const outVO2 = document.getElementById('outVO2');
+
+      const stanceIndicator = document.getElementById('stanceIndicator');
+      const liveLeftKnee = document.getElementById('liveLeftKnee');
+      const liveRightKnee = document.getElementById('liveRightKnee');
+      const liveLeftFz = document.getElementById('liveLeftFz');
+      const liveRightFz = document.getElementById('liveRightFz');
+      const leftStanceBadge = document.getElementById('leftStanceBadge');
+      const rightStanceBadge = document.getElementById('rightStanceBadge');
+      const livePelvicTilt = document.getElementById('livePelvicTilt');
+      const liveSpringComp = document.getElementById('liveSpringComp');
+      const fpsCounter = document.getElementById('fpsCounter');
+
+      const simPlayPauseBtn = document.getElementById('simPlayPauseBtn');
+      const playIcon = document.getElementById('playIcon');
+      const pauseIcon = document.getElementById('pauseIcon');
+      const playPauseText = document.getElementById('playPauseText');
+      const resetCamBtn = document.getElementById('resetCamBtn');
+      const camBtns = document.querySelectorAll('.cam-btn');
+      const speedBtns = document.querySelectorAll('.speed-btn');
+      const toggleVisualModeBtn = document.getElementById('toggleVisualModeBtn');
+      const visualModeText = document.getElementById('visualModeText');
+      const fullscreenSimBtn = document.getElementById('fullscreenSimBtn');
+      const simViewportCard = document.getElementById('simViewportCard');
+      const touchOrbitToggleBtn = document.getElementById('touchOrbitToggleBtn');
+      const touchOrbitText = document.getElementById('touchOrbitText');
+      const touchLockOverlay = document.getElementById('touchLockOverlay');
+
+      // State
+      let isPlaying = true;
+      let timeScale = 1.0;
+      let isRealisticMode = true;
+      let isOrbitEnabled = true;
+      let cadence = 175;
+      let strideLength = 1.25;
+      let strikeAngle = 0;
+      let bodyMass = 65;
+
+      let cycleTime = 0.0;
+      let lastTimestamp = performance.now();
+      let frameCount = 0;
+      let lastFpsUpdate = performance.now();
+      const forceHistory = [];
+      const maxHistory = 160;
+
+      let v_ms = 0;
+      let contactTime_s = 0;
+      let dutyFactor = 0;
+      let k_vert = 0;
+      let k_leg = 0;
+      let peakGRF_BW = 0;
+
+      function updateTelemetry() {
+        cadence = parseFloat(cadenceSlider.value);
+        strideLength = parseFloat(strideSlider.value);
+        strikeAngle = parseFloat(angleSlider.value);
+        bodyMass = parseFloat(massSlider.value);
+
+        cadenceVal.textContent = cadence + ' spm';
+        strideVal.textContent = strideLength.toFixed(2) + ' m';
+        angleVal.textContent = strikeAngle < 0 ? `${strikeAngle}° (Heel)` : (strikeAngle > 0 ? `+${strikeAngle}° (Forefoot)` : '0° (Midfoot)');
+        massVal.textContent = bodyMass + ' kg';
+
+        v_ms = (cadence / 120) * strideLength;
+        const v_kmh = v_ms * 3.6;
+        const paceDecimal = 60 / v_kmh;
+        const paceMin = Math.floor(paceDecimal);
+        const paceSec = Math.round((paceDecimal - paceMin) * 60);
+
+        contactTime_s = Math.max(0.14, 0.42 * Math.pow(cadence / 160, -1.25) - 0.012 * (v_ms - 3));
+        const stepPeriod_s = 60 / cadence;
+        dutyFactor = (contactTime_s / stepPeriod_s) * 0.5;
+
+        k_vert = (bodyMass * Math.pow(Math.PI / contactTime_s, 2)) / 1000;
+        k_leg = k_vert * 0.42;
+        peakGRF_BW = 2.1 + (v_ms * 0.11) + (Math.abs(strikeAngle) * 0.02);
+        const peakGRF_N = peakGRF_BW * bodyMass * 9.81;
+
+        const costPerKgKm = 0.95 + (Math.abs(cadence - 175) * 0.004) + (Math.max(0, -strikeAngle) * 0.008);
+        const totalKcalKm = costPerKgKm * bodyMass;
+        const vo2_ml = (v_ms * 60) * 0.2 + 3.5;
+
+        outSpeed.textContent = v_ms.toFixed(2) + ' m/s';
+        outKmH.textContent = v_kmh.toFixed(1) + ' km/h';
+        outPace.textContent = `${paceMin}:${paceSec < 10 ? '0' : ''}${paceSec} /km`;
+        outContactTime.textContent = (contactTime_s * 1000).toFixed(0) + ' ms';
+        outDutyFactor.textContent = `Duty: ${(dutyFactor * 100).toFixed(1)}%`;
+        outKvert.textContent = k_vert.toFixed(1) + ' kN/m';
+        outKleg.textContent = `k_leg: ${k_leg.toFixed(1)} kN/m`;
+        outPeakGRF.textContent = peakGRF_BW.toFixed(2) + ' BW';
+        outPeakNewtons.textContent = peakGRF_N.toFixed(0) + ' N';
+        outEnergy.textContent = totalKcalKm.toFixed(1) + ' kcal/km';
+        outVO2.textContent = vo2_ml.toFixed(1) + ' ml/kg/min';
+      }
+
+      cadenceSlider.addEventListener('input', updateTelemetry);
+      strideSlider.addEventListener('input', updateTelemetry);
+      angleSlider.addEventListener('input', updateTelemetry);
+      massSlider.addEventListener('input', updateTelemetry);
+      updateTelemetry();
+
+      simPlayPauseBtn.addEventListener('click', () => {
+        isPlaying = !isPlaying;
+        if (isPlaying) {
+          playIcon.classList.add('hidden');
+          pauseIcon.classList.remove('hidden');
+          playPauseText.textContent = 'Tạm dừng';
+        } else {
+          playIcon.classList.remove('hidden');
+          pauseIcon.classList.add('hidden');
+          playPauseText.textContent = 'Tiếp tục';
+        }
+      });
+
+      speedBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          speedBtns.forEach(b => {
+            b.classList.remove('bg-blue-600', 'text-white', 'font-bold');
+            b.classList.add('text-slate-300');
+          });
+          btn.classList.add('bg-blue-600', 'text-white', 'font-bold');
+          timeScale = parseFloat(btn.dataset.speed);
+        });
+      });
+
+      // ---------------- SETUP THREE.JS SCENE ----------------
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x060a12);
+      scene.fog = new THREE.FogExp2(0x060a12, 0.08);
+
+      const camera = new THREE.PerspectiveCamera(40, canvas3D.clientWidth / canvas3D.clientHeight, 0.1, 100);
+      camera.position.set(2.8, 1.45, 2.6);
+
+      const renderer = new THREE.WebGLRenderer({ canvas: canvas3D, antialias: true, alpha: false });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(canvas3D.clientWidth, canvas3D.clientHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.08;
+      controls.target.set(0, 0.98, 0);
+      controls.maxPolarAngle = Math.PI / 2 + 0.02;
+      controls.minDistance = 1.0;
+      controls.maxDistance = 7.0;
+      controls.update();
+
+      // Mobile Touch Orbit Lock / Unlock
+      touchOrbitToggleBtn?.addEventListener('click', () => {
+        isOrbitEnabled = !isOrbitEnabled;
+        controls.enabled = isOrbitEnabled;
+        if (isOrbitEnabled) {
+          touchOrbitText.textContent = 'Xoay 3D: Mở';
+          touchOrbitToggleBtn.className = 'px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1 text-[11px]';
+          touchLockOverlay.classList.add('hidden');
+          touchLockOverlay.classList.remove('flex');
+        } else {
+          touchOrbitText.textContent = 'Xoay 3D: Khóa';
+          touchOrbitToggleBtn.className = 'px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold transition flex items-center gap-1 text-[11px]';
+          touchLockOverlay.classList.remove('hidden');
+          touchLockOverlay.classList.add('flex');
+        }
+      });
+
+      // Fullscreen simulation card toggle
+      fullscreenSimBtn?.addEventListener('click', () => {
+        simViewportCard.classList.toggle('sim-fullscreen');
+        const isFull = simViewportCard.classList.contains('sim-fullscreen');
+        if (isFull) {
+          document.body.style.overflow = 'hidden';
+          fullscreenSimBtn.innerHTML = `
+            <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            <span>Thoát</span>
+          `;
+        } else {
+          document.body.style.overflow = '';
+          fullscreenSimBtn.innerHTML = `
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+            <span class="hidden sm:inline">Toàn cảnh</span>
+          `;
+        }
+        setTimeout(resize3D, 50);
+      });
+
+      function setCameraView(view) {
+        if (view === 'sagittal') {
+          camera.position.set(3.4, 0.98, 0);
+          controls.target.set(0, 0.98, 0);
+        } else if (view === 'frontal') {
+          camera.position.set(0, 0.98, 3.4);
+          controls.target.set(0, 0.98, 0);
+        } else if (view === 'transverse') {
+          camera.position.set(0.01, 3.8, 0);
+          controls.target.set(0, 0, 0);
+        } else {
+          camera.position.set(2.8, 1.45, 2.6);
+          controls.target.set(0, 0.98, 0);
+        }
+        controls.update();
+      }
+
+      camBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          camBtns.forEach(b => {
+            b.classList.remove('bg-blue-600', 'text-white', 'font-bold');
+            b.classList.add('bg-slate-800', 'text-slate-300');
+          });
+          btn.classList.add('bg-blue-600', 'text-white', 'font-bold');
+          btn.classList.remove('bg-slate-800', 'text-slate-300');
+          setCameraView(btn.dataset.view);
+        });
+      });
+      resetCamBtn.addEventListener('click', () => setCameraView('iso'));
+
+      // Lighting: Studio 3-Point Setup with rim lights
+      const ambientLight = new THREE.AmbientLight(0x1e293b, 1.3);
+      scene.add(ambientLight);
+
+      const mainSun = new THREE.DirectionalLight(0xfff5ea, 2.0);
+      mainSun.position.set(3.5, 6, 4);
+      mainSun.castShadow = true;
+      mainSun.shadow.mapSize.width = 2048;
+      mainSun.shadow.mapSize.height = 2048;
+      mainSun.shadow.camera.near = 0.5;
+      mainSun.shadow.camera.far = 14;
+      mainSun.shadow.camera.left = -2.5;
+      mainSun.shadow.camera.right = 2.5;
+      mainSun.shadow.camera.top = 3.5;
+      mainSun.shadow.camera.bottom = -1;
+      mainSun.shadow.bias = -0.0005;
+      scene.add(mainSun);
+
+      const cyanRim = new THREE.PointLight(0x06b6d4, 3.0, 7);
+      cyanRim.position.set(-2.5, 1.8, -2.5);
+      scene.add(cyanRim);
+
+      const purpleRim = new THREE.PointLight(0xa855f7, 3.0, 7);
+      purpleRim.position.set(2.5, 1.8, -2.5);
+      scene.add(purpleRim);
+
+      // ---------------- RUNNING TRACK & DYNAMIC TREADMILL ----------------
+      const trackGroup = new THREE.Group();
+      scene.add(trackGroup);
+
+      // Track surface
+      const trackMat = new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        roughness: 0.9,
+        metalness: 0.1
+      });
+      const trackFloor = new THREE.Mesh(new THREE.PlaneGeometry(16, 24), trackMat);
+      trackFloor.rotation.x = -Math.PI / 2;
+      trackFloor.receiveShadow = true;
+      trackGroup.add(trackFloor);
+
+      // Red Tartan Running Lane Center Strip
+      const tartanMat = new THREE.MeshStandardMaterial({
+        color: 0x881337,
+        roughness: 0.8,
+        metalness: 0.05
+      });
+      const tartanLane = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 24), tartanMat);
+      tartanLane.rotation.x = -Math.PI / 2;
+      tartanLane.position.y = 0.002;
+      tartanLane.receiveShadow = true;
+      trackGroup.add(tartanLane);
+
+      // Moving distance tick lines on track
+      const trackLinesGroup = new THREE.Group();
+      trackGroup.add(trackLinesGroup);
+
+      const lineWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 });
+      const borderLineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 });
+
+      const leftBound = new THREE.Mesh(new THREE.PlaneGeometry(0.04, 24), borderLineMat);
+      leftBound.rotation.x = -Math.PI / 2;
+      leftBound.position.set(-0.7, 0.003, 0);
+      trackGroup.add(leftBound);
+
+      const rightBound = new THREE.Mesh(new THREE.PlaneGeometry(0.04, 24), borderLineMat);
+      rightBound.rotation.x = -Math.PI / 2;
+      rightBound.position.set(0.7, 0.003, 0);
+      trackGroup.add(rightBound);
+
+      const numTicks = 20;
+      const tickSpacing = 1.0;
+      const tickMeshes = [];
+      for (let i = 0; i < numTicks; i++) {
+        const tick = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.035), lineWhiteMat);
+        tick.rotation.x = -Math.PI / 2;
+        tick.position.set(0, 0.003, (i - numTicks / 2) * tickSpacing);
+        trackLinesGroup.add(tick);
+        tickMeshes.push(tick);
+      }
+
+      // ---------------- REALISTIC ATHLETE PBR MATERIALS ----------------
+      const skinRealisticMat = new THREE.MeshStandardMaterial({
+        color: 0xcca080,
+        roughness: 0.65,
+        metalness: 0.05
+      });
+
+      const singletMat = new THREE.MeshStandardMaterial({
+        color: 0x1e293b,
+        roughness: 0.5,
+        metalness: 0.15
+      });
+
+      const shortsMat = new THREE.MeshStandardMaterial({
+        color: 0x090d16,
+        roughness: 0.6,
+        metalness: 0.2
+      });
+
+      const leftShoeMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.35, metalness: 0.1 });
+      const rightShoeMat = new THREE.MeshStandardMaterial({ color: 0xa855f7, roughness: 0.35, metalness: 0.1 });
+      const shoeSoleMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4, metalness: 0.05 });
+      const shoeTreadMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.9 });
+
+      const xrayBoneLeftMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, wireframe: true });
+      const xrayBoneRightMat = new THREE.MeshStandardMaterial({ color: 0xa855f7, wireframe: true });
+      const xrayJointMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0x78350f });
+
+      const forceArrowMat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xdc2626, roughness: 0.2 });
+      const springCoilMat = new THREE.MeshBasicMaterial({ color: 0x10b981, wireframe: true });
+
+      function applyVisualMaterials(realistic) {
+        if (realistic) {
+          leftThighMesh.traverse(c => { if (c.isMesh) c.material = skinRealisticMat; });
+          leftShankMesh.traverse(c => { if (c.isMesh) c.material = skinRealisticMat; });
+          rightThighMesh.traverse(c => { if (c.isMesh) c.material = skinRealisticMat; });
+          rightShankMesh.traverse(c => { if (c.isMesh) c.material = skinRealisticMat; });
+          leftShoeUpper.material = leftShoeMat;
+          rightShoeUpper.material = rightShoeMat;
+          chestMesh.material = singletMat;
+          torsoMesh.material = singletMat;
+          pelvisMesh.material = shortsMat;
+        } else {
+          leftThighMesh.traverse(c => { if (c.isMesh) c.material = xrayBoneLeftMat; });
+          leftShankMesh.traverse(c => { if (c.isMesh) c.material = xrayBoneLeftMat; });
+          rightThighMesh.traverse(c => { if (c.isMesh) c.material = xrayBoneRightMat; });
+          rightShankMesh.traverse(c => { if (c.isMesh) c.material = xrayBoneRightMat; });
+          leftShoeUpper.material = xrayBoneLeftMat;
+          rightShoeUpper.material = xrayBoneRightMat;
+          chestMesh.material = xrayJointMat;
+          torsoMesh.material = xrayJointMat;
+          pelvisMesh.material = xrayJointMat;
+        }
+      }
+
+      toggleVisualModeBtn.addEventListener('click', () => {
+        isRealisticMode = !isRealisticMode;
+        if (isRealisticMode) {
+          visualModeText.textContent = 'Người Thật';
+          toggleVisualModeBtn.className = 'px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition flex items-center gap-1 shadow-sm active:scale-95 text-[11px] sm:text-xs';
+          applyVisualMaterials(true);
+        } else {
+          visualModeText.textContent = 'X-Ray Cơ Học';
+          toggleVisualModeBtn.className = 'px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition flex items-center gap-1 shadow-sm active:scale-95 text-[11px] sm:text-xs';
+          applyVisualMaterials(false);
+        }
+      });
+
+      // ---------------- CONSTRUCTING RUNNER ROOT & ANATOMY ----------------
+      const athleteRoot = new THREE.Group();
+      scene.add(athleteRoot);
+
+      const pelvisWidth = 0.25;
+      const thighLength = 0.44;
+      const shankLength = 0.43;
+      const baseHipY = 0.96;
+
+      const pelvisGroup = new THREE.Group();
+      athleteRoot.add(pelvisGroup);
+
+      // Pelvis Mesh
+      const pelvisGeo = new THREE.CylinderGeometry(0.155, 0.135, 0.16, 16);
+      const pelvisMesh = new THREE.Mesh(pelvisGeo, shortsMat);
+      pelvisMesh.castShadow = true;
+      pelvisGroup.add(pelvisMesh);
+
+      const gluteL = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 12), shortsMat);
+      gluteL.position.set(-0.075, -0.02, -0.06);
+      pelvisGroup.add(gluteL);
+
+      const gluteR = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 12), shortsMat);
+      gluteR.position.set(0.075, -0.02, -0.06);
+      pelvisGroup.add(gluteR);
+
+      // Spine & Upper Body Group
+      const spineGroup = new THREE.Group();
+      spineGroup.rotation.x = -0.087; // Natural forward athletic lean of ~5 degrees
+      pelvisGroup.add(spineGroup);
+
+      const torsoGeo = new THREE.CylinderGeometry(0.145, 0.125, 0.22, 16);
+      const torsoMesh = new THREE.Mesh(torsoGeo, singletMat);
+      torsoMesh.position.y = 0.17;
+      torsoMesh.castShadow = true;
+      spineGroup.add(torsoMesh);
+
+      const chestGeo = new THREE.CylinderGeometry(0.175, 0.145, 0.24, 16);
+      const chestMesh = new THREE.Mesh(chestGeo, singletMat);
+      chestMesh.position.y = 0.36;
+      chestMesh.castShadow = true;
+      spineGroup.add(chestMesh);
+
+      const neckMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.12, 12), skinRealisticMat);
+      neckMesh.position.y = 0.52;
+      neckMesh.castShadow = true;
+      spineGroup.add(neckMesh);
+
+      const headGroup = new THREE.Group();
+      headGroup.position.y = 0.65;
+      spineGroup.add(headGroup);
+
+      const headCranium = new THREE.Mesh(new THREE.SphereGeometry(0.095, 16, 16), skinRealisticMat);
+      headCranium.scale.set(0.9, 1.15, 1.05);
+      headCranium.castShadow = true;
+      headGroup.add(headCranium);
+
+      const hairMesh = new THREE.Mesh(new THREE.SphereGeometry(0.098, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.5), new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.8 }));
+      hairMesh.position.y = 0.02;
+      headGroup.add(hairMesh);
+
+      // Arms
+      const leftShoulderPivot = new THREE.Group();
+      leftShoulderPivot.position.set(-0.21, 0.44, 0);
+      spineGroup.add(leftShoulderPivot);
+
+      const leftDeltoid = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 12), skinRealisticMat);
+      leftShoulderPivot.add(leftDeltoid);
+
+      const leftUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.035, 0.26, 12), skinRealisticMat);
+      leftUpperArm.position.y = -0.13;
+      leftUpperArm.castShadow = true;
+      leftShoulderPivot.add(leftUpperArm);
+
+      const leftElbowPivot = new THREE.Group();
+      leftElbowPivot.position.y = -0.26;
+      leftElbowPivot.rotation.x = -Math.PI / 2.1; // Elbow flexed forward towards +Z
+      leftShoulderPivot.add(leftElbowPivot);
+
+      const leftForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.028, 0.25, 12), skinRealisticMat);
+      leftForearm.position.y = -0.125;
+      leftForearm.castShadow = true;
+      leftElbowPivot.add(leftForearm);
+
+      const leftHand = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.05), skinRealisticMat);
+      leftHand.position.set(0, -0.26, 0.01);
+      leftHand.castShadow = true;
+      leftElbowPivot.add(leftHand);
+
+      const rightShoulderPivot = new THREE.Group();
+      rightShoulderPivot.position.set(0.21, 0.44, 0);
+      spineGroup.add(rightShoulderPivot);
+
+      const rightDeltoid = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 12), skinRealisticMat);
+      rightShoulderPivot.add(rightDeltoid);
+
+      const rightUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.035, 0.26, 12), skinRealisticMat);
+      rightUpperArm.position.y = -0.13;
+      rightUpperArm.castShadow = true;
+      rightShoulderPivot.add(rightUpperArm);
+
+      const rightElbowPivot = new THREE.Group();
+      rightElbowPivot.position.y = -0.26;
+      rightElbowPivot.rotation.x = -Math.PI / 2.1;
+      rightShoulderPivot.add(rightElbowPivot);
+
+      const rightForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.028, 0.25, 12), skinRealisticMat);
+      rightForearm.position.y = -0.125;
+      rightForearm.castShadow = true;
+      rightElbowPivot.add(rightForearm);
+
+      const rightHand = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.05), skinRealisticMat);
+      rightHand.position.set(0, -0.26, 0.01);
+      rightHand.castShadow = true;
+      rightElbowPivot.add(rightHand);
+
+      // Anatomical Legs Helpers
+      function createAnatomicalThigh(mat) {
+        const thighGroup = new THREE.Group();
+        const quadUpper = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.062, 0.22, 16), mat);
+        quadUpper.position.y = -0.11;
+        quadUpper.castShadow = true;
+        thighGroup.add(quadUpper);
+
+        const quadLower = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.048, 0.22, 16), mat);
+        quadLower.position.y = -0.33;
+        quadLower.castShadow = true;
+        thighGroup.add(quadLower);
+        return thighGroup;
+      }
+
+      function createAnatomicalShank(mat) {
+        const shankGroup = new THREE.Group();
+        const calfBulge = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.062, 0.18, 16), mat);
+        calfBulge.position.set(0, -0.09, -0.015);
+        calfBulge.castShadow = true;
+        shankGroup.add(calfBulge);
+
+        const achilles = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.032, 0.25, 16), mat);
+        achilles.position.set(0, -0.305, 0);
+        achilles.castShadow = true;
+        shankGroup.add(achilles);
+        return shankGroup;
+      }
+
+      function createRealisticShoe(upperMat) {
+        const shoeGroup = new THREE.Group();
+
+        const soleGeo = new THREE.BoxGeometry(0.092, 0.042, 0.26);
+        const soleMesh = new THREE.Mesh(soleGeo, shoeSoleMat);
+        soleMesh.position.set(0, -0.02, 0.06);
+        soleMesh.castShadow = true;
+        shoeGroup.add(soleMesh);
+
+        const treadGeo = new THREE.BoxGeometry(0.094, 0.008, 0.262);
+        const treadMesh = new THREE.Mesh(treadGeo, shoeTreadMat);
+        treadMesh.position.set(0, -0.042, 0.06);
+        shoeGroup.add(treadMesh);
+
+        const upperGeo = new THREE.ConeGeometry(0.075, 0.24, 16);
+        const upperMesh = new THREE.Mesh(upperGeo, upperMat);
+        upperMesh.rotation.x = -Math.PI / 2;
+        upperMesh.position.set(0, 0.015, 0.08);
+        upperMesh.scale.set(0.75, 1.0, 0.55);
+        upperMesh.castShadow = true;
+        shoeGroup.add(upperMesh);
+
+        const heelMesh = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 12), upperMat);
+        heelMesh.position.set(0, 0.01, -0.04);
+        shoeGroup.add(heelMesh);
+
+        return { shoeGroup, upperMesh, soleMesh };
+      }
+
+      // Left Leg Hierarchy (Cyan accents)
+      const leftHipPivot = new THREE.Group();
+      leftHipPivot.position.set(-pelvisWidth / 2, -0.07, 0);
+      pelvisGroup.add(leftHipPivot);
+
+      const leftThighMesh = createAnatomicalThigh(skinRealisticMat);
+      leftHipPivot.add(leftThighMesh);
+
+      const leftKneePivot = new THREE.Group();
+      leftKneePivot.position.y = -thighLength;
+      leftHipPivot.add(leftKneePivot);
+
+      const leftPatella = new THREE.Mesh(new THREE.SphereGeometry(0.042, 12, 12), skinRealisticMat);
+      leftPatella.position.set(0, 0, 0.035);
+      leftKneePivot.add(leftPatella);
+
+      const leftShankMesh = createAnatomicalShank(skinRealisticMat);
+      leftKneePivot.add(leftShankMesh);
+
+      const leftAnklePivot = new THREE.Group();
+      leftAnklePivot.position.y = -shankLength;
+      leftKneePivot.add(leftAnklePivot);
+
+      const { shoeGroup: leftShoeGroup, upperMesh: leftShoeUpper, soleMesh: leftShoeSole } = createRealisticShoe(leftShoeMat);
+      leftAnklePivot.add(leftShoeGroup);
+
+      // Right Leg Hierarchy (Purple accents)
+      const rightHipPivot = new THREE.Group();
+      rightHipPivot.position.set(pelvisWidth / 2, -0.07, 0);
+      pelvisGroup.add(rightHipPivot);
+
+      const rightThighMesh = createAnatomicalThigh(skinRealisticMat);
+      rightHipPivot.add(rightThighMesh);
+
+      const rightKneePivot = new THREE.Group();
+      rightKneePivot.position.y = -thighLength;
+      rightHipPivot.add(rightKneePivot);
+
+      const rightPatella = new THREE.Mesh(new THREE.SphereGeometry(0.042, 12, 12), skinRealisticMat);
+      rightPatella.position.set(0, 0, 0.035);
+      rightKneePivot.add(rightPatella);
+
+      const rightShankMesh = createAnatomicalShank(skinRealisticMat);
+      rightKneePivot.add(rightShankMesh);
+
+      const rightAnklePivot = new THREE.Group();
+      rightAnklePivot.position.y = -shankLength;
+      rightKneePivot.add(rightAnklePivot);
+
+      const { shoeGroup: rightShoeGroup, upperMesh: rightShoeUpper, soleMesh: rightShoeSole } = createRealisticShoe(rightShoeMat);
+      rightAnklePivot.add(rightShoeGroup);
+
+      // Force Vectors & Springs
+      const leftForceArrow = new THREE.Group();
+      const leftShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.45, 8), forceArrowMat);
+      leftShaft.position.y = 0.225;
+      const leftCone = new THREE.Mesh(new THREE.ConeGeometry(0.038, 0.1, 10), forceArrowMat);
+      leftCone.position.y = 0.5;
+      leftForceArrow.add(leftShaft);
+      leftForceArrow.add(leftCone);
+      scene.add(leftForceArrow);
+
+      const rightForceArrow = new THREE.Group();
+      const rightShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.45, 8), forceArrowMat);
+      rightShaft.position.y = 0.225;
+      const rightCone = new THREE.Mesh(new THREE.ConeGeometry(0.038, 0.1, 10), forceArrowMat);
+      rightCone.position.y = 0.5;
+      rightForceArrow.add(rightShaft);
+      rightForceArrow.add(rightCone);
+      scene.add(rightForceArrow);
+
+      const leftSpringMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1, 8, 12, true), springCoilMat);
+      scene.add(leftSpringMesh);
+
+      const rightSpringMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1, 8, 12, true), springCoilMat);
+      scene.add(rightSpringMesh);
+
+      function resize3D() {
+        const w = canvas3D.clientWidth;
+        const h = canvas3D.clientHeight;
+        if (canvas3D.width !== w || canvas3D.height !== h) {
+          renderer.setSize(w, h, false);
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+        }
+
+        const dpr = window.devicePixelRatio || 1;
+        const gw = forceGraphCanvas.clientWidth;
+        const gh = forceGraphCanvas.clientHeight;
+        forceGraphCanvas.width = gw * dpr;
+        forceGraphCanvas.height = gh * dpr;
+        gCtx.resetTransform();
+        gCtx.scale(dpr, dpr);
+      }
+      window.addEventListener('resize', resize3D);
+      resize3D();
+
+      // ================= FULL UNCLIPPED BIOMECHANICAL GAIT EQUATIONS =================
+      function smoothStep(t) { return t * t * (3 - 2 * t); }
+      function lerp(a, b, t) { return a + (b - a) * t; }
+
+      function solveLifelikeLegKinematics(phase) {
+        const stanceFrac = dutyFactor * 2; // e.g. ~0.35 of cycle
+        const inStance = phase < stanceFrac;
+
+        let hipPitch = 0;   // Three.js around X: < 0 is forward (+Z), > 0 is backward (-Z)
+        let kneeFlex = 0;   // Knee only flexes backwards: >= 0 (shank moves to -Z)
+        let anklePitch = 0; // Dorsiflexion / Plantarflexion
+        let forceZ = 0;
+        let forceY = 0;
+        let shoeCompressionY = 0;
+
+        const strikeRad = (strikeAngle * Math.PI) / 180;
+
+        if (inStance) {
+          const p = phase / stanceFrac; // 0 to 1 during ground contact
+
+          // STANCE PHASE:
+          // Hip moves from FORWARD reach (-0.52 rad ~ -30°) smoothly backward to EXTENSION (+0.40 rad ~ +23°)
+          hipPitch = lerp(-0.52, 0.40, smoothStep(p));
+
+          // Knee cushions from initial strike (0.28 rad ~ 16°) down to peak flex (0.72 rad ~ 41°) at midstance, then extends to 0.28 rad at toe-off
+          const cushion = Math.sin(p * Math.PI);
+          kneeFlex = 0.28 + cushion * 0.44;
+
+          // Ankle rolls from strike through foot-flat to push-off
+          if (p < 0.2) anklePitch = lerp(-0.15 + strikeRad, 0, p / 0.2);
+          else if (p < 0.65) anklePitch = 0;
+          else anklePitch = lerp(0, 0.48, (p - 0.65) / 0.35);
+
+          // Force Curves
+          const activePeak = Math.sin(p * Math.PI) * peakGRF_BW;
+          let impactPeak = 0;
+          if (p < 0.2) {
+            impactPeak = Math.sin((p / 0.2) * Math.PI) * (strikeAngle < 0 ? 0.95 : 0.35);
+          }
+          forceZ = activePeak + impactPeak;
+          forceY = (p - 0.48) * (peakGRF_BW * 0.42);
+
+          // PEBA foam compression
+          shoeCompressionY = Math.sin(p * Math.PI) * 0.016;
+
+        } else {
+          // SWING PHASE: 0 to 1
+          // ĐẦY ĐỦ TOÀN BỘ HOẠT ẢNH BƯỚC LÊN PHÍA TRƯỚC:
+          // 1. Nhấc chân & gập cẳng chân sát mông (108°)
+          // 2. Lên gối cao về phía trước (+Z)
+          // 3. Vung cẳng chân mở rộng hình cung ra trước (Shank Forward Reach)
+          const s = (phase - stanceFrac) / (1 - stanceFrac);
+
+          // Chuyển động Khớp Háng (Hip Pitch):
+          if (s < 0.68) {
+            const sp = s / 0.68;
+            const ss = sp * sp * (3 - 2 * sp);
+            hipPitch = 0.40 + (-0.68 - 0.40) * ss; // vươn mạnh đùi ra phía trước (-39°)
+          } else {
+            const sp = (s - 0.68) / 0.32;
+            const ss = sp * sp * (3 - 2 * sp);
+            hipPitch = -0.68 + (-0.52 - (-0.68)) * ss; // đón sàn tiếp đất (-30°)
+          }
+
+          // Chuyển động Khớp Gối (Knee Flexion):
+          if (s < 0.28) {
+            // Gót chân co gập nhanh sát mông (1.88 rad ~ 108°)
+            const sp = s / 0.28;
+            const ss = sp * sp * (3 - 2 * sp);
+            kneeFlex = 0.28 + (1.88 - 0.28) * ss;
+          } else if (s < 0.55) {
+            // Đùi lên gối cao, cẳng chân bắt đầu mở
+            const sp = (s - 0.28) / 0.27;
+            kneeFlex = 1.88 - sp * 0.35;
+          } else {
+            // VUNG CẲNG CHÂN MỞ RỘNG RA TRƯỚC (QUÉT HÌNH CUNG KHÔNG CẮT HOẠT ẢNH)
+            const sp = (s - 0.55) / 0.45;
+            const ss = sp * sp * (3 - 2 * sp);
+            kneeFlex = 1.53 + (0.28 - 1.53) * ss;
+          }
+
+          // Cổ chân trong pha lăng
+          if (s < 0.25) anklePitch = 0.48 * (1 - s / 0.25);
+          else anklePitch = -0.15 * Math.sin(((s - 0.25) / 0.75) * Math.PI) + strikeRad;
+
+          forceZ = 0;
+          forceY = 0;
+          shoeCompressionY = 0;
+        }
+
+        return { inStance, hipPitch, kneeFlex, anklePitch, forceZ, forceY, shoeCompressionY };
+      }
+
+      // ================= MAIN RENDER LOOP =================
+      function animate(timestamp) {
+        const dt = (timestamp - lastTimestamp) / 1000;
+        lastTimestamp = timestamp;
+
+        frameCount++;
+        if (timestamp - lastFpsUpdate >= 500) {
+          const fps = (frameCount / (timestamp - lastFpsUpdate)) * 1000;
+          fpsCounter.textContent = fps.toFixed(1) + ' FPS';
+          frameCount = 0;
+          lastFpsUpdate = timestamp;
+        }
+
+        if (isPlaying) {
+          const stridesPerSec = (cadence / 120) * timeScale;
+          cycleTime = (cycleTime + dt * stridesPerSec) % 1.0;
+
+          // Scroll track backward in sync with real running speed v_ms
+          const scrollDist = dt * v_ms * timeScale;
+          for (let i = 0; i < tickMeshes.length; i++) {
+            tickMeshes[i].position.z -= scrollDist;
+            if (tickMeshes[i].position.z < -10) {
+              tickMeshes[i].position.z += numTicks * tickSpacing;
+            }
+          }
+        }
+
+        // 180° Bilateral Phase offset
+        const leftPhase = cycleTime;
+        const rightPhase = (cycleTime + 0.5) % 1.0;
+
+        const leftKin = solveLifelikeLegKinematics(leftPhase);
+        const rightKin = solveLifelikeLegKinematics(rightPhase);
+
+        // Body Center of Mass 3D Bounce (lowest dip at midstance t=0.175 and t=0.675, peak during flight)
+        const verticalDip = 0.040 * Math.cos(4 * Math.PI * (cycleTime - 0.175));
+        athleteRoot.position.y = baseHipY + verticalDip;
+
+        // Frontal sway towards the supporting leg
+        const lateralSway = -0.024 * Math.cos(2 * Math.PI * (cycleTime - 0.175));
+        athleteRoot.position.x = lateralSway;
+
+        // Pelvic List (Trendelenburg drop on swing side)
+        pelvisGroup.rotation.z = -0.075 * Math.cos(2 * Math.PI * (cycleTime - 0.175));
+
+        // Pelvic Rotation around Y: left hip forward when left leg swings forward
+        pelvisGroup.rotation.y = -Math.sin(cycleTime * Math.PI * 2) * 0.11;
+
+        // Thoracic Counter-Rotation: Torso twists in opposite direction to pelvis to keep gaze forward
+        spineGroup.rotation.y = Math.sin(cycleTime * Math.PI * 2) * 0.10;
+
+        // Apply Leg Joint Rotations
+        leftHipPivot.rotation.x = leftKin.hipPitch;
+        leftKneePivot.rotation.x = leftKin.kneeFlex;
+        leftAnklePivot.rotation.x = leftKin.anklePitch;
+        leftShoeGroup.position.y = -leftKin.shoeCompressionY;
+
+        rightHipPivot.rotation.x = rightKin.hipPitch;
+        rightKneePivot.rotation.x = rightKin.kneeFlex;
+        rightAnklePivot.rotation.x = rightKin.anklePitch;
+        rightShoeGroup.position.y = -rightKin.shoeCompressionY;
+
+        // Arm Counter-Swing (Naturally flexed at elbow, swinging in opposite phase to legs)
+        leftShoulderPivot.rotation.x = -leftKin.hipPitch * 0.85;
+        rightShoulderPivot.rotation.x = -rightKin.hipPitch * 0.85;
+
+        // Force Arrows & Springs
+        const leftShoeWorld = new THREE.Vector3();
+        leftShoeGroup.getWorldPosition(leftShoeWorld);
+        const leftHipWorld = new THREE.Vector3();
+        leftHipPivot.getWorldPosition(leftHipWorld);
+
+        if (leftKin.inStance && leftKin.forceZ > 0.05) {
+          leftForceArrow.visible = true;
+          leftForceArrow.position.copy(leftShoeWorld);
+          leftForceArrow.position.y = 0.01;
+          const arrowH = Math.max(0.12, (leftKin.forceZ / peakGRF_BW) * 0.6);
+          leftForceArrow.scale.set(1, arrowH, 1);
+          leftForceArrow.rotation.x = leftKin.forceY * 0.35;
+
+          leftSpringMesh.visible = !isRealisticMode;
+          const midPoint = new THREE.Vector3().addVectors(leftHipWorld, leftShoeWorld).multiplyScalar(0.5);
+          leftSpringMesh.position.copy(midPoint);
+          leftSpringMesh.lookAt(leftShoeWorld);
+          leftSpringMesh.rotateX(Math.PI / 2);
+          leftSpringMesh.scale.set(1, leftHipWorld.distanceTo(leftShoeWorld), 1);
+        } else {
+          leftForceArrow.visible = false;
+          leftSpringMesh.visible = false;
+        }
+
+        const rightShoeWorld = new THREE.Vector3();
+        rightShoeGroup.getWorldPosition(rightShoeWorld);
+        const rightHipWorld = new THREE.Vector3();
+        rightHipPivot.getWorldPosition(rightHipWorld);
+
+        if (rightKin.inStance && rightKin.forceZ > 0.05) {
+          rightForceArrow.visible = true;
+          rightForceArrow.position.copy(rightShoeWorld);
+          rightForceArrow.position.y = 0.01;
+          const arrowH = Math.max(0.12, (rightKin.forceZ / peakGRF_BW) * 0.6);
+          rightForceArrow.scale.set(1, arrowH, 1);
+          rightForceArrow.rotation.x = rightKin.forceY * 0.35;
+
+          rightSpringMesh.visible = !isRealisticMode;
+          const midPoint = new THREE.Vector3().addVectors(rightHipWorld, rightShoeWorld).multiplyScalar(0.5);
+          rightSpringMesh.position.copy(midPoint);
+          rightSpringMesh.lookAt(rightShoeWorld);
+          rightSpringMesh.rotateX(Math.PI / 2);
+          rightSpringMesh.scale.set(1, rightHipWorld.distanceTo(rightShoeWorld), 1);
+        } else {
+          rightForceArrow.visible = false;
+          rightSpringMesh.visible = false;
+        }
+
+        // Stance Phase Text Indicators
+        if (leftKin.inStance) {
+          stanceIndicator.textContent = 'Chân Trái Tiếp Đất (Left Stance)';
+          stanceIndicator.className = 'text-[10px] sm:text-[11px] font-mono font-bold text-cyan-400 bg-cyan-950/90 px-2 sm:px-2.5 py-1 rounded-md border border-cyan-800 backdrop-blur-sm';
+          leftStanceBadge.textContent = 'Stance';
+          leftStanceBadge.className = 'text-[9px] px-1 rounded bg-cyan-900 text-cyan-200 font-bold';
+          rightStanceBadge.textContent = 'Swing';
+          rightStanceBadge.className = 'text-[9px] px-1 rounded bg-slate-800 text-slate-400';
+        } else if (rightKin.inStance) {
+          stanceIndicator.textContent = 'Chân Phải Tiếp Đất (Right Stance)';
+          stanceIndicator.className = 'text-[10px] sm:text-[11px] font-mono font-bold text-purple-400 bg-purple-950/90 px-2 sm:px-2.5 py-1 rounded-md border border-purple-800 backdrop-blur-sm';
+          leftStanceBadge.textContent = 'Swing';
+          leftStanceBadge.className = 'text-[9px] px-1 rounded bg-slate-800 text-slate-400';
+          rightStanceBadge.textContent = 'Stance';
+          rightStanceBadge.className = 'text-[9px] px-1 rounded bg-purple-900 text-purple-200 font-bold';
+        } else {
+          stanceIndicator.textContent = 'Pha Bay Hoàn Toàn (Flight Phase)';
+          stanceIndicator.className = 'text-[10px] sm:text-[11px] font-mono font-bold text-emerald-400 bg-emerald-950/90 px-2 sm:px-2.5 py-1 rounded-md border border-emerald-800 backdrop-blur-sm';
+          leftStanceBadge.textContent = 'Flight';
+          leftStanceBadge.className = 'text-[9px] px-1 rounded bg-slate-800 text-slate-400';
+          rightStanceBadge.textContent = 'Flight';
+          rightStanceBadge.className = 'text-[9px] px-1 rounded bg-slate-800 text-slate-400';
+        }
+
+        // Live Telemetry HUD values
+        const leftDeg = (leftKin.kneeFlex * 180 / Math.PI).toFixed(0);
+        const rightDeg = (rightKin.kneeFlex * 180 / Math.PI).toFixed(0);
+        liveLeftKnee.textContent = `${leftDeg}°`;
+        liveRightKnee.textContent = `${rightDeg}°`;
+        liveLeftFz.textContent = `Lực: ${leftKin.forceZ.toFixed(2)} BW (${(leftKin.forceZ * bodyMass * 9.81).toFixed(0)} N)`;
+        liveRightFz.textContent = `Lực: ${rightKin.forceZ.toFixed(2)} BW (${(rightKin.forceZ * bodyMass * 9.81).toFixed(0)} N)`;
+        livePelvicTilt.textContent = `${(Math.abs(pelvisGroup.rotation.z) * 180 / Math.PI).toFixed(1)}°`;
+        const currentCompMM = Math.max(leftKin.shoeCompressionY, rightKin.shoeCompressionY) * 1000;
+        liveSpringComp.textContent = `${currentCompMM.toFixed(1)} mm`;
+
+        // Record history for graph
+        forceHistory.push({
+          fzLeft: leftKin.forceZ,
+          fzRight: rightKin.forceZ,
+          fy: leftKin.inStance ? leftKin.forceY : (rightKin.inStance ? rightKin.forceY : 0)
+        });
+        if (forceHistory.length > maxHistory) forceHistory.shift();
+
+        // Render Three.js
+        controls.update();
+        renderer.render(scene, camera);
+
+        // Render 2D Force Graph
+        drawBilateralForceGraph(forceHistory);
+
+        requestAnimationFrame(animate);
+      }
+
+      // ---------------- 2D BILATERAL OSCILLOSCOPE GRAPH ----------------
+      function drawBilateralForceGraph(history) {
+        const w = forceGraphCanvas.clientWidth;
+        const h = forceGraphCanvas.clientHeight;
+        if (!w || !h) return;
+
+        gCtx.clearRect(0, 0, w, h);
+
+        // Grid lines
+        gCtx.strokeStyle = '#1e293b';
+        gCtx.lineWidth = 1;
+
+        // Baseline (0 BW)
+        const y0 = h * 0.82;
+        gCtx.beginPath();
+        gCtx.moveTo(0, y0);
+        gCtx.lineTo(w, y0);
+        gCtx.stroke();
+
+        // 1 BW, 2 BW, 3 BW lines
+        const scaleY = (h * 0.7) / 3.0; // 3.0 BW fits within 70% height
+        const y1 = y0 - scaleY;
+        const y2 = y0 - scaleY * 2;
+
+        gCtx.strokeStyle = 'rgba(51, 65, 85, 0.5)';
+        gCtx.setLineDash([3, 3]);
+        gCtx.beginPath();
+        gCtx.moveTo(0, y1);
+        gCtx.lineTo(w, y1);
+        gCtx.moveTo(0, y2);
+        gCtx.lineTo(w, y2);
+        gCtx.stroke();
+        gCtx.setLineDash([]);
+
+        // Labels
+        gCtx.fillStyle = '#64748b';
+        gCtx.font = '9px "JetBrains Mono", monospace';
+        gCtx.fillText('2.0 BW', 4, y2 - 3);
+        gCtx.fillText('1.0 BW', 4, y1 - 3);
+        gCtx.fillText('0.0 (Flight)', 4, y0 - 3);
+
+        if (history.length < 2) return;
+
+        const stepX = w / (maxHistory - 1);
+
+        // Draw Left Foot Fz (Cyan)
+        gCtx.beginPath();
+        gCtx.strokeStyle = '#06b6d4';
+        gCtx.lineWidth = 2.2;
+        for (let i = 0; i < history.length; i++) {
+          const x = i * stepX;
+          const y = y0 - history[i].fzLeft * scaleY;
+          if (i === 0) gCtx.moveTo(x, y);
+          else gCtx.lineTo(x, y);
+        }
+        gCtx.stroke();
+
+        // Draw Right Foot Fz (Purple)
+        gCtx.beginPath();
+        gCtx.strokeStyle = '#a855f7';
+        gCtx.lineWidth = 2.2;
+        for (let i = 0; i < history.length; i++) {
+          const x = i * stepX;
+          const y = y0 - history[i].fzRight * scaleY;
+          if (i === 0) gCtx.moveTo(x, y);
+          else gCtx.lineTo(x, y);
+        }
+        gCtx.stroke();
+
+        // Graph legend in corner
+        gCtx.fillStyle = '#06b6d4';
+        gCtx.fillRect(w - 110, 8, 8, 8);
+        gCtx.fillStyle = '#cbd5e1';
+        gCtx.fillText('Fz Trái (L)', w - 98, 15);
+
+        gCtx.fillStyle = '#a855f7';
+        gCtx.fillRect(w - 110, 22, 8, 8);
+        gCtx.fillStyle = '#cbd5e1';
+        gCtx.fillText('Fz Phải (R)', w - 98, 29);
+      }
+
+      // Start animation loop
+      requestAnimationFrame(animate);
+    })();
+  </script>
+</body>
+</html>
