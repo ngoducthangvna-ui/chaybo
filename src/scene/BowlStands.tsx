@@ -1194,6 +1194,105 @@ function LiveConcoursePedestrians({
   );
 }
 
+/**
+ * Partitions the multi-story under-bowl galleries into architectural interior room bays
+ * and places the West Players' Tunnel Entrance Portal connecting Grid A-B directly onto the pitch.
+ */
+function UnderBowlInteriorRooms3D({
+  startAngle,
+  endAngle,
+}: {
+  startAngle: number;
+  endAngle: number;
+}) {
+  const wallsRef = useRef<THREE.InstancedMesh | null>(null);
+
+  const partitions = useMemo(() => {
+    const list: Array<{ pos: [number, number, number]; rotY: number; len: number; height: number }> = [];
+    const levels = [
+      { minR: 118, maxR: 162, yMid: 8.8, h: 17.0 },
+      { minR: 136, maxR: 162, yMid: 25.2, h: 14.4 },
+      { minR: 154, maxR: 162, yMid: 42.8, h: 19.2 },
+    ];
+    const bayCount = 16;
+
+    for (let i = 0; i < bayCount; i += 1) {
+      const a = (i / bayCount) * Math.PI * 2;
+      if (a < startAngle + 0.04 || a > endAngle - 0.04) {
+        continue;
+      }
+      for (const lvl of levels) {
+        const [ix, iz] = superEllipsePoint(a, lvl.minR, lvl.minR - 24);
+        const [ox, oz] = superEllipsePoint(a, lvl.maxR, lvl.maxR - 26);
+        const len = Math.hypot(ox - ix, oz - iz);
+        if (len < 1) continue;
+        const rotY = Math.atan2(ox - ix, oz - iz);
+        list.push({
+          pos: [(ix + ox) * 0.5, lvl.yMid, (iz + oz) * 0.5],
+          rotY,
+          len,
+          height: lvl.h,
+        });
+      }
+    }
+    return list;
+  }, [startAngle, endAngle]);
+
+  useEffect(() => {
+    const mesh = wallsRef.current;
+    if (!mesh) return;
+    const dummy = new THREE.Object3D();
+    partitions.forEach((w, idx) => {
+      dummy.position.set(...w.pos);
+      dummy.rotation.set(0, w.rotY, 0);
+      dummy.scale.set(1, w.height, w.len);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(idx, dummy.matrix);
+    });
+    mesh.count = partitions.length;
+    mesh.instanceMatrix.needsUpdate = true;
+  }, [partitions]);
+
+  const showTunnel = Math.PI >= startAngle && Math.PI <= endAngle;
+
+  return (
+    <group name="under-bowl-interior-rooms-3d">
+      <instancedMesh ref={wallsRef} args={[undefined, undefined, 64]} receiveShadow>
+        <boxGeometry args={[0.35, 1, 1]} />
+        <meshPhysicalMaterial
+          color="#1e293b"
+          transparent
+          opacity={0.62}
+          metalness={0.45}
+          roughness={0.28}
+        />
+      </instancedMesh>
+
+      {/* West Players' Tunnel Portal opening directly from Zone B0-03 onto pitch touchline */}
+      {showTunnel && (
+        <group name="west-players-tunnel-portal" position={[-66, 0, 0]}>
+          <mesh position={[0, 1.9, -6.2]} castShadow>
+            <boxGeometry args={[14, 3.8, 1.2]} />
+            <meshStandardMaterial color="#27272a" roughness={0.72} />
+          </mesh>
+          <mesh position={[0, 1.9, 6.2]} castShadow>
+            <boxGeometry args={[14, 3.8, 1.2]} />
+            <meshStandardMaterial color="#27272a" roughness={0.72} />
+          </mesh>
+          <mesh position={[0, 3.6, 0]} castShadow>
+            <boxGeometry args={[14, 0.6, 13.6]} />
+            <meshStandardMaterial color="#c5a059" metalness={0.75} roughness={0.28} />
+          </mesh>
+          <mesh position={[3.5, 0.09, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[20, 9.5]} />
+            <meshStandardMaterial color="#9f1239" roughness={0.82} />
+          </mesh>
+        </group>
+      )}
+    </group>
+  );
+}
+
 export function BowlStands({
   ledGlowIntensity,
   halfCutaway,
@@ -1298,6 +1397,8 @@ export function BowlStands({
       <RCFrameBents startAngle={startAngle} endAngle={endAngle} />
 
       <VerticalCirculationCores startAngle={startAngle} endAngle={endAngle} />
+
+      <UnderBowlInteriorRooms3D startAngle={startAngle} endAngle={endAngle} />
 
       {!bimFrameMode && occupancyPercent > 0 && (
         <LiveSeatedSpectatorCrowd

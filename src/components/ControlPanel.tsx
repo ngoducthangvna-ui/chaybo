@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  Compass,
   Eye,
   GitBranch,
   Layers,
@@ -56,6 +57,8 @@ interface ControlPanelProps {
   onToggleEvacPaths: () => void;
   liveSimActive: boolean;
   onToggleLiveSim: () => void;
+  explorer2dOpen: boolean;
+  onToggleExplorer2d: () => void;
 }
 
 const LIGHTING_OPTIONS: Array<{
@@ -89,6 +92,8 @@ export function ControlPanel({
   onToggleEvacPaths,
   liveSimActive,
   onToggleLiveSim,
+  explorer2dOpen,
+  onToggleExplorer2d,
 }: ControlPanelProps) {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<'specs' | 'complex' | 'sop'>('specs');
@@ -280,6 +285,14 @@ export function ControlPanel({
                   >
                     <Route className="h-3.5 w-3.5" />
                     {showEvacPaths ? 'Đang hiện Luồng Thoát Hiểm 3D' : 'Hiển thị Luồng Thoát Hiểm 3D'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onToggleExplorer2d}
+                    className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold transition border border-amber-400/45 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25"
+                  >
+                    <Compass className="h-3.5 w-3.5" />
+                    Mở Mặt Bằng 2D Đi Bộ Nội Khu (16 Phòng)
                   </button>
                 </div>
 
@@ -495,6 +508,20 @@ export function ControlPanel({
           >
             <Activity className="h-3.5 w-3.5" />
             Mô phỏng Trận đấu & Dòng người
+          </button>
+
+          <button
+            type="button"
+            onClick={onToggleExplorer2d}
+            aria-pressed={explorer2dOpen}
+            className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition border ${
+              explorer2dOpen
+                ? 'border-amber-400/60 bg-amber-500/20 text-amber-300'
+                : 'border-amber-500/40 bg-amber-500/15 text-amber-200 hover:bg-amber-500/25'
+            }`}
+          >
+            <Compass className="h-3.5 w-3.5" />
+            Khám Phá 2D (16 Phòng Nội Khu)
           </button>
 
           <button

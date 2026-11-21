@@ -1,3 +1,11 @@
+import {
+  FLOOR_LEVEL_SPECS,
+  STADIUM_INTERIOR_ROOMS,
+  findRoomAtPoint,
+  getRoomsByFloor,
+  isDoorwayOpen,
+  stepExplorerAvatar,
+} from './interiorRooms';
 import { describe, expect, it } from 'vitest';
 import {
   CAMERA_PRESETS,
@@ -139,5 +147,38 @@ describe('stadiumSpecs', () => {
     const end = evaluateBallProjectile(2.0, start, target, 2.0, 5.2);
     expect(end.position[0]).toBeCloseTo(32, 3);
     expect(end.position[2]).toBeCloseTo(-8, 3);
+  });
+
+  it('defines all 4 floor levels (B0, L1, L2, L3) and 16 furnished architectural stadium rooms', () => {
+    expect(FLOOR_LEVEL_SPECS).toHaveLength(4);
+    expect(STADIUM_INTERIOR_ROOMS).toHaveLength(16);
+    for (const floor of ['B0', 'L1', 'L2', 'L3'] as const) {
+      expect(getRoomsByFloor(floor).length).toBeGreaterThanOrEqual(3);
+    }
+    for (const room of STADIUM_INTERIOR_ROOMS) {
+      expect(room.areaM2).toBeGreaterThan(100);
+      expect(room.furniture.length).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('detects room entry and automatic proximity sliding door opening accurately', () => {
+    const locker = STADIUM_INTERIOR_ROOMS.find((r) => r.id === 'home-locker')!;
+    expect(findRoomAtPoint('B0', -112, -34)?.id).toBe('home-locker');
+    expect(findRoomAtPoint('L1', -112, -34)).toBeNull();
+    expect(isDoorwayOpen(locker, locker.door.x, locker.door.y + 3)).toBe(true);
+    expect(isDoorwayOpen(locker, 0, 0)).toBe(false);
+  });
+
+  it('advances 2D free-roam avatar kinematics toward WASD and click-to-walk targets within stadium bounds', () => {
+    const wasdStep = stepExplorerAvatar({ x: 0, y: 0 }, { dx: 1, dy: 0 }, 0.05);
+    expect(wasdStep.x).toBeCloseTo(0.24, 2);
+    expect(wasdStep.speedMps).toBeCloseTo(4.8, 2);
+
+    const clickStep = stepExplorerAvatar({ x: 10, y: 10 }, { dx: 0, dy: 0, targetX: 20, targetY: 10 }, 0.05);
+    expect(clickStep.x).toBeCloseTo(10.24, 2);
+
+    const clamped = stepExplorerAvatar({ x: 194.8, y: 171.8 }, { dx: 1, dy: 1 }, 0.1);
+    expect(clamped.x).toBe(195);
+    expect(clamped.y).toBe(172);
   });
 });

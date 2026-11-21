@@ -1,30 +1,30 @@
 <!-- devflow-template: solo-report@1.1 -->
-# 小型任务报告 — Vietnam 200K Microscopic Engineering & Cutaway Section Refinement
+# 小型任务报告 — Vietnam 200K 2D Free-Roam CAD/BIM Interior Explorer & Under-Bowl Rooms
 
 ## 范围
 
-Khắc phục triệt để các chi tiết hình học và kỹ thuật nhỏ trên toàn cảnh tại `d:\chaybo`: sửa góc mở mặt cắt 90° (`0.45π..1.95π`) bảo toàn nhịp đáp Skywalk, thay tường đặc mặt cắt bằng cấu kiện cột/sàn rỗng lộ thiên 3 tầng hành lang + ram dốc, căn hàng khán giả 3D chuẩn theo 12 bậc thềm + chừa lối đi thang bộ/vomitory, bổ sung đầy đủ vạch sân FIFA, lưới khung thành mở mặt trước, cabin ghế dự bị có HLV và giao thông xe trên đường vành đai 6 làn.
+Xây dựng chế độ trải nghiệm **Mặt bằng CAD/BIM 2D Di Chuyển Tự Do (`FloorplanExplorer2D`)** qua **4 tầng (`B0 +0.0m`, `L1 +10.5m`, `L2 +17.8m`, `L3 +32.8m`)** với **16 phòng chức năng đầy đủ nội thất kỹ thuật** tại `d:\chaybo`, tích hợp đồng bộ chia đôi 2D + 3D và vách ngăn buồng phòng 3D dưới khán đài.
 
 ## 计划
 
-1. Đổi góc cắt `halfCutaway` (`0.45π..1.95π`) trong `BowlStands.tsx`, `RoofStructure.tsx` và `Surroundings.tsx`; thay tường đặc `createCutawaySectionCapGeometry` bằng 4 bản xiên raker, 5 bản sàn ngang, 5 cột bê tông A–E; thu hẹp lõi kỹ thuật để hở sảnh hành lang và căn khớp `LiveSeatedSpectatorCrowd` vào đúng 12 bậc thềm bê tông có lối đi/vomitory (`src/scene/BowlStands.tsx`).
-2. Bổ sung chấm 11m, cung chữ D `9.15m`, 4 góc đá phạt, ô khu vực kỹ thuật nét đứt, lưới khung thành 4 mặt mở cửa gôn, cabin BHL có 8 ghế đỏ + 2 HLV trưởng đứng chỉ đạo và khớp cánh tay chuyển động ngược pha cho cầu thủ (`src/scene/Pitch.tsx`).
-3. Xóa khung `wireframe` chéo mái Metro, thêm sân đáp trực thăng chữ `H` trên nóc tháp khách sạn đôi 5★ và thêm `LiveRingRoadTraffic` (16 xe buýt + 24 xe con chạy 2 chiều đường vành đai) (`src/scene/Surroundings.tsx`).
+1. Tạo `src/config/interiorRooms.ts` định nghĩa 4 tầng (`FLOOR_LEVEL_SPECS`), 16 phòng chức năng (`STADIUM_INTERIOR_ROOMS`), công thức động học di chuyển `stepExplorerAvatar()`, phát hiện vào phòng `findRoomAtPoint()` và mở cửa trượt tự động `isDoorwayOpen()`. Thêm 3 unit tests trong `src/config/stadiumSpecs.test.ts` (`15/15` tests).
+2. Xây dựng `src/components/FloorplanExplorer2D.tsx` render mặt bằng CAD/BIM 2D thời gian thực 60 FPS với trục kết cấu A–E, lõi thang máy, từng chi tiết nội thất (25 locker, bể sục có gợn nước, bàn chiến thuật, cổng RFID, Video Wall AI/VAR, bàn tiệc VVIP, trạm biến áp), NPC di chuyển trong phòng, cửa trượt cảm biến tiệm cận và avatar kỹ sư điều khiển qua WASD / Phím mũi tên / Click-to-Walk / D-Pad (chế độ Cận cảnh đi bộ hoặc Tổng mặt bằng, chia đôi 2D+3D hoặc Toàn màn hình 2D).
+3. Thêm `UnderBowlInteriorRooms3D` (vách chia buồng 3D dưới khán đài & Cổng Đường hầm Cầu thủ phía Tây) trong `src/scene/BowlStands.tsx`, nối trạng thái 2D/3D vào `src/App.tsx` và nút `Khám Phá 2D (16 Phòng Nội Khu)` vào `src/components/ControlPanel.tsx`.
 
 ## 变更
 
-- `src/scene/BowlStands.tsx`, `src/scene/RoofStructure.tsx`: Mặt cắt `0.45π..1.95π` bảo toàn Podium Nam nối Skywalk, tiết diện cột-sàn rỗng lộ thiên, khán giả ngồi chuẩn 12 bậc thềm không chìm chân.
-- `src/scene/Pitch.tsx`: Vạch sân FIFA đầy đủ chuẩn quốc tế, lưới gôn 4 mặt hở miệng gôn, dugout ghế đỏ + 2 HLV trưởng + cánh tay cầu thủ đánh vung ngược pha chân.
-- `src/scene/Surroundings.tsx`: Nóc Metro sạch không sọc wireframe chéo, sân đỗ trực thăng VIP trên tháp đôi khách sạn, 40 phương tiện chạy trên 2 chiều đường vành đai ngoài.
+- `src/config/interiorRooms.ts`, `src/config/stadiumSpecs.test.ts`: Dữ liệu 16 phòng BIM 4 tầng + động học di chuyển & cửa tự động + 15 unit tests.
+- `src/components/FloorplanExplorer2D.tsx`: Trình khám phá 2D CAD/BIM tương tác đầy đủ điều khiển đi bộ, phóng to/thu nhỏ, hồ sơ MEP/PCCC và nút đồng bộ 3D mặt cắt.
+- `src/scene/BowlStands.tsx`, `src/App.tsx`, `src/components/ControlPanel.tsx`: Vách buồng nội khu 3D, cổng đường hầm cầu thủ và giao diện chuyển đổi 2D/3D song song.
 
 ## 自审
 
 - TypeScript strict mode (`tsc -b`): 0 lỗi.
-- Camera `Khán đài VIP` tại `[0, 22.8, 72]`, `Tầng 4 Sky` và `Mặt cắt 90°` thông thoáng 100%, không còn vật cản hay đứt gãy Skywalk.
+- Mỗi phòng trong 16 phòng đều có kích thước mét thực, cửa trượt tự động, đồ đạc nội thất đặc thù và đồng bộ nút nhảy nhanh.
 
 ## 测试
 
-- `npm.cmd test`: 12/12 unit tests pass (Vitest v3.2.7).
+- `npm.cmd test`: 15/15 unit tests pass (Vitest v3.2.7).
 - `npm.cmd run build`: `tsc -b && vite build` thành công.
 
 ## API 接口文档
@@ -33,4 +33,4 @@ Khắc phục triệt để các chi tiết hình học và kỹ thuật nhỏ t
 
 ## 剩余风险
 
-Chờ nghiệm thu trực quan 4 góc nhìn cuối trên trình duyệt trước khi commit/push.
+Chờ kiểm chứng di chuyển 2D thực tế trên trình duyệt headless và kiểm tra ảnh chụp màn hình trước khi commit/push.
