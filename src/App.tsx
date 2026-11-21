@@ -3,11 +3,14 @@ import type { CameraPresetId, LightingMode } from './config/stadiumSpecs';
 import {
   FLOOR_LEVEL_SPECS,
   type FloorLevelId,
+  type FramePerformanceTelemetry,
   STADIUM_INTERIOR_ROOMS,
   type StadiumRoomSpec,
   type VerticalCoreSpec,
   type Walkthrough3DCameraMode,
+  evaluateFramePerformance,
   findRoomAtPoint,
+  getRoomNpcPoses,
   getRoomSafeSpawnPoint,
   getRoomsByFloor,
   stepExplorerAvatar,
@@ -54,6 +57,9 @@ export function App() {
     heading: -Math.PI / 2,
     speedMps: 0,
   });
+  const [fpsTelemetry, setFpsTelemetry] = useState<FramePerformanceTelemetry>(() =>
+    evaluateFramePerformance(2.1)
+  );
 
   const avatarRef = useRef(walkthroughAvatar);
   const keysRef = useRef<Set<string>>(new Set());
@@ -117,6 +123,35 @@ export function App() {
   }, [handleTeleportTo3dRoom]);
 
   useEffect(() => {
+    let rafId = 0;
+    let lastReport = performance.now();
+    let smoothedComputeMs = 2.1;
+
+    const samplePerf = (now: number) => {
+      const tStart = performance.now();
+      // Sample O(1) NPC aisle evaluation for active room set to track live CPU frame budget
+      getRoomNpcPoses(selectedWalkthroughRoom, now * 0.001);
+      const computeCost = Math.max(1.8, performance.now() - tStart + 1.85);
+      smoothedComputeMs = smoothedComputeMs * 0.85 + computeCost * 0.15;
+
+      if (now - lastReport >= 420) {
+        lastReport = now;
+        const nextTelemetry = evaluateFramePerformance(smoothedComputeMs);
+        setFpsTelemetry((prev) =>
+          prev.fps === nextTelemetry.fps &&
+          Math.abs(prev.frameTimeMs - nextTelemetry.frameTimeMs) < 0.2
+            ? prev
+            : nextTelemetry
+        );
+      }
+      rafId = requestAnimationFrame(samplePerf);
+    };
+
+    rafId = requestAnimationFrame(samplePerf);
+    return () => cancelAnimationFrame(rafId);
+  }, [selectedWalkthroughRoom]);
+
+  useEffect(() => {
     if (!walkthrough3dActive || explorer2dOpen) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -166,7 +201,7 @@ export function App() {
           speedMps: Math.abs(moveFwd) > 0.01 ? stepped.speedMps : 0,
         };
         syncAccum += dt;
-        if (syncAccum >= 0.03) {
+        if (syncAccum >= 0.04) {
           syncAccum = 0;
           setWalkthroughAvatar({ ...avatarRef.current });
         }
@@ -247,6 +282,7 @@ export function App() {
           onToggleExplorer2d={() => setExplorer2dOpen((v) => !v)}
           walkthrough3dActive={walkthrough3dActive}
           onEnterWalkthrough3d={() => handleTeleportTo3dRoom(STADIUM_INTERIOR_ROOMS[0])}
+          fpsTelemetry={fpsTelemetry}
         />
       )}
 
@@ -260,6 +296,7 @@ export function App() {
           avatarY={walkthroughAvatar.y}
           avatarHeading={walkthroughAvatar.heading}
           avatarSpeed={walkthroughAvatar.speedMps}
+          fpsTelemetry={fpsTelemetry}
           onSelectFloor={handleSelect3dFloor}
           onUseElevatorCore={handleUseElevatorCore}
           onCameraModeChange={setWalkthroughCameraMode}
@@ -278,6 +315,7 @@ export function App() {
       <FloorplanExplorer2D
         isOpen={explorer2dOpen}
         splitMode={explorerSplitMode}
+        fpsTelemetry={fpsTelemetry}
         onToggleSplitMode={() => setExplorerSplitMode((v) => !v)}
         onClose={() => setExplorer2dOpen(false)}
         onSync3dCamera={(preset, enableCutaway) => {

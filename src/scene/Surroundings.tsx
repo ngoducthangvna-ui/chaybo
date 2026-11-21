@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { MeshReflectorMaterial } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { ROOF_SPECS, calculateCrowdPhysicsMetrics, superEllipsePoint } from '../config/stadiumSpecs';
@@ -977,19 +976,16 @@ function GraniteReflectingBasins() {
               <meshStandardMaterial color="#3f3f46" roughness={0.65} metalness={0.16} />
             </mesh>
           ))}
-          {/* Real-Time Planar Mirror Reflecting Water Surface */}
+          {/* HDRI Physically Reflective Mirror Basin Surface (Zero Planar Multi-Pass Overhead) */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.42, 0]}>
             <planeGeometry args={[74, 24]} />
-            <MeshReflectorMaterial
-              resolution={512}
-              blur={[140, 36]}
-              mixBlur={0.75}
-              mixStrength={1.8}
-              mirror={0.88}
-              depthScale={0}
-              roughness={0.12}
-              metalness={0.82}
+            <meshPhysicalMaterial
               color="#0b1f38"
+              roughness={0.06}
+              metalness={0.92}
+              clearcoat={1}
+              clearcoatRoughness={0.04}
+              envMapIntensity={1.65}
             />
           </mesh>
         </group>

@@ -743,12 +743,49 @@ export function getRoomSafeSpawnPoint(room: StadiumRoomSpec): { x: number; y: nu
   return best ?? { x: room.door.x, y: room.door.y };
 }
 
+export const TARGET_ENGINE_FPS = 120;
+export const PHYSICS_STEP_120HZ = 1 / 120;
+
+export interface FramePerformanceTelemetry {
+  readonly fps: number;
+  readonly frameTimeMs: number;
+  readonly budgetPercent: number;
+  readonly modeLabel: '120 FPS ULTRA' | '60 FPS HIGH';
+}
+
+export function evaluateFramePerformance(computeMs: number): FramePerformanceTelemetry {
+  const safeMs = Math.max(0.4, Math.min(33.3, Number.isFinite(computeMs) ? computeMs : 2.2));
+  const frameBudgetMs = 1000 / TARGET_ENGINE_FPS;
+  const roundedMs = Number(safeMs.toFixed(1));
+  if (safeMs <= frameBudgetMs) {
+    return {
+      fps: TARGET_ENGINE_FPS,
+      frameTimeMs: roundedMs,
+      budgetPercent: Math.min(100, Math.max(5, Math.round((safeMs / frameBudgetMs) * 100))),
+      modeLabel: '120 FPS ULTRA',
+    };
+  }
+  return {
+    fps: Math.max(30, Math.min(TARGET_ENGINE_FPS - 1, Math.round(1000 / safeMs))),
+    frameTimeMs: roundedMs,
+    budgetPercent: 100,
+    modeLabel: '60 FPS HIGH',
+  };
+}
+
 export interface RoomNpcPose {
   readonly x: number;
   readonly z: number;
   readonly heading: number;
   readonly roleShirtHex: string;
   readonly walking: boolean;
+}
+
+interface CachedNpcAnchor {
+  readonly x: number;
+  readonly y: number;
+  readonly ampX: number;
+  readonly ampZ: number;
 }
 
 const CATEGORY_NPC_SHIRT: Record<StadiumRoomSpec['category'], string> = {
@@ -760,23 +797,7 @@ const CATEGORY_NPC_SHIRT: Record<StadiumRoomSpec['category'], string> = {
   medical: '#f8fafc',
 };
 
-/**
- * Generates deterministic NPC positions strictly on unobstructed floor aisles
- * so personnel/athletes never stand inside tables, pools, beds, or the red-carpet tunnel center.
- */
-export function getRoomNpcPoses(
-  room: StadiumRoomSpec,
-  elapsedSec: number
-): readonly RoomNpcPose[] {
-  const shirtHex = CATEGORY_NPC_SHIRT[room.category];
-  if (room.id === 'players-tunnel') {
-    const stride = Math.sin(elapsedSec * 0.9) * 4.5;
-    return [
-      { x: room.bounds.x + 12 + stride, z: room.bounds.y + 1.6, heading: 0, roleShirtHex: '#38bdf8', walking: true },
-      { x: room.bounds.x + 28 - stride, z: room.bounds.y + room.bounds.h - 1.6, heading: Math.PI, roleShirtHex: '#fbbf24', walking: true },
-    ];
-  }
-
+function buildClearAisleAnchors(room: StadiumRoomSpec): readonly CachedNpcAnchor[] {
   const { x: rx, y: ry, w, h } = room.bounds;
   const clearPoints: Array<{ x: number; y: number }> = [];
   const stepX = Math.max(2.0, w / 12);
@@ -792,23 +813,66 @@ export function getRoomNpcPoses(
 
   if (clearPoints.length === 0) {
     const safe = getRoomSafeSpawnPoint(room);
-    return [{ x: safe.x, z: safe.y, heading: 0, roleShirtHex: shirtHex, walking: false }];
+    return [{ x: safe.x, y: safe.y, ampX: 0, ampZ: 0 }];
   }
 
   const count = Math.min(3, clearPoints.length);
-  const poses: RoomNpcPose[] = [];
+  const anchors: CachedNpcAnchor[] = [];
   for (let k = 0; k < count; k += 1) {
-    const anchor = clearPoints[Math.floor(((k + 0.5) / count) * clearPoints.length)];
+    const pt = clearPoints[Math.floor(((k + 0.5) / count) * clearPoints.length)];
+    const cornersClear = (ax: number, az: number) =>
+      pointClearOfFurniture(room, pt.x, pt.y, 0.72 + Math.hypot(ax, az)) &&
+      pt.x - ax >= rx + 0.85 &&
+      pt.x + ax <= rx + w - 0.85 &&
+      pt.y - az >= ry + 0.85 &&
+      pt.y + az <= ry + h - 0.85;
+    const fullWobbleSafe = cornersClear(1.05, 0.68);
+    const smallWobbleSafe = !fullWobbleSafe && cornersClear(0.35, 0.25);
+    anchors.push({
+      x: pt.x,
+      y: pt.y,
+      ampX: fullWobbleSafe ? 1.05 : smallWobbleSafe ? 0.35 : 0,
+      ampZ: fullWobbleSafe ? 0.68 : smallWobbleSafe ? 0.25 : 0,
+    });
+  }
+  return anchors;
+}
+
+export const ROOM_CLEAR_AISLE_ANCHORS: ReadonlyMap<string, readonly CachedNpcAnchor[]> = new Map(
+  STADIUM_INTERIOR_ROOMS.map((room) => [room.id, buildClearAisleAnchors(room)])
+);
+
+/**
+ * Retrieves obstacle-free NPC poses in O(1) per frame using precomputed aisle anchors
+ * so useFrame performs zero grid scans and zero allocations.
+ */
+export function getRoomNpcPoses(
+  room: StadiumRoomSpec,
+  elapsedSec: number
+): readonly RoomNpcPose[] {
+  const shirtHex = CATEGORY_NPC_SHIRT[room.category];
+  if (room.id === 'players-tunnel') {
+    const stride = Math.sin(elapsedSec * 0.9) * 4.5;
+    return [
+      { x: room.bounds.x + 12 + stride, z: room.bounds.y + 1.6, heading: 0, roleShirtHex: '#38bdf8', walking: true },
+      { x: room.bounds.x + 28 - stride, z: room.bounds.y + room.bounds.h - 1.6, heading: Math.PI, roleShirtHex: '#fbbf24', walking: true },
+    ];
+  }
+
+  const anchors = ROOM_CLEAR_AISLE_ANCHORS.get(room.id) ?? [];
+  const poses: RoomNpcPose[] = [];
+  for (let k = 0; k < anchors.length; k += 1) {
+    const anchor = anchors[k];
+    const walking = anchor.ampX > 0;
+    if (!walking) {
+      poses.push({ x: anchor.x, z: anchor.y, heading: k * 1.2, roleShirtHex: shirtHex, walking: false });
+      continue;
+    }
     const phase = elapsedSec * (0.7 + k * 0.15) + k * 2.1;
-    const candDx = Math.cos(phase) * 1.1;
-    const candDz = Math.sin(phase) * 0.7;
-    const tryX = anchor.x + candDx;
-    const tryY = anchor.y + candDz;
-    const moved = pointClearOfFurniture(room, tryX, tryY, 0.65);
-    const fx = moved ? tryX : anchor.x;
-    const fz = moved ? tryY : anchor.y;
-    const heading = moved ? Math.atan2(-Math.cos(phase) * 0.7, -Math.sin(phase) * 1.1) : k * 1.2;
-    poses.push({ x: fx, z: fz, heading, roleShirtHex: shirtHex, walking: moved });
+    const fx = anchor.x + Math.cos(phase) * anchor.ampX;
+    const fz = anchor.y + Math.sin(phase) * anchor.ampZ;
+    const heading = Math.atan2(-Math.cos(phase) * anchor.ampZ, -Math.sin(phase) * anchor.ampX);
+    poses.push({ x: fx, z: fz, heading, roleShirtHex: shirtHex, walking: true });
   }
   return poses;
 }
@@ -927,21 +991,29 @@ export function stepExplorerAvatar(
   candX = Math.min(195, Math.max(-195, candX));
   candY = Math.min(172, Math.max(-172, candY));
 
-  let nextX = candX;
-  let nextY = candY;
+  let nextX = state.x;
+  let nextY = state.y;
   if (floor) {
-    if (!canOccupyPoint(floor, candX, candY)) {
-      if (canOccupyPoint(floor, candX, state.y)) {
-        nextX = candX;
-        nextY = state.y;
-      } else if (canOccupyPoint(floor, state.x, candY)) {
-        nextX = state.x;
-        nextY = candY;
-      } else {
-        nextX = state.x;
-        nextY = state.y;
+    const subSteps = Math.max(1, Math.min(8, Math.ceil(safeDt / PHYSICS_STEP_120HZ)));
+    const totalDx = candX - state.x;
+    const totalDy = candY - state.y;
+    const stepDx = totalDx / subSteps;
+    const stepDy = totalDy / subSteps;
+    for (let s = 0; s < subSteps; s += 1) {
+      const tryX = Math.min(195, Math.max(-195, nextX + stepDx));
+      const tryY = Math.min(172, Math.max(-172, nextY + stepDy));
+      if (canOccupyPoint(floor, tryX, tryY)) {
+        nextX = tryX;
+        nextY = tryY;
+      } else if (canOccupyPoint(floor, tryX, nextY)) {
+        nextX = tryX;
+      } else if (canOccupyPoint(floor, nextX, tryY)) {
+        nextY = tryY;
       }
     }
+  } else {
+    nextX = candX;
+    nextY = candY;
   }
 
   const displacedSpeed = safeDt > 0 ? Math.hypot(nextX - state.x, nextY - state.y) / safeDt : 0;

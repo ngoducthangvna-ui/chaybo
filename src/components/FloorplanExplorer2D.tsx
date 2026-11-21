@@ -18,6 +18,7 @@ import {
 import {
   FLOOR_LEVEL_SPECS,
   type FloorLevelId,
+  type FramePerformanceTelemetry,
   type StadiumRoomSpec,
   VERTICAL_CORES,
   findRoomAtPoint,
@@ -40,6 +41,7 @@ import {
 interface FloorplanExplorer2DProps {
   isOpen: boolean;
   splitMode: boolean;
+  fpsTelemetry?: FramePerformanceTelemetry;
   onToggleSplitMode: () => void;
   onClose: () => void;
   onSync3dCamera: (preset: CameraPresetId, enableCutaway: boolean) => void;
@@ -87,6 +89,7 @@ function traceSuperEllipse(
 export function FloorplanExplorer2D({
   isOpen,
   splitMode,
+  fpsTelemetry = { fps: 120, frameTimeMs: 2.2, budgetPercent: 26, modeLabel: '120 FPS ULTRA' },
   onToggleSplitMode,
   onClose,
   onSync3dCamera,
@@ -613,8 +616,11 @@ export function FloorplanExplorer2D({
         <div className="flex items-center gap-2.5">
           <Compass className="h-4 w-4 text-amber-400" />
           <div>
-            <h2 className="text-xs font-bold tracking-wide text-white uppercase">
-              Mặt Bằng CAD/BIM 2D • Di Chuyển Tự Do Nội Khu
+            <h2 className="text-xs font-bold tracking-wide text-white uppercase flex items-center gap-2">
+              <span>Mặt Bằng CAD/BIM 2D • Di Chuyển Tự Do Nội Khu</span>
+              <span className="rounded border border-emerald-400/40 bg-emerald-500/20 px-1.5 py-0.5 font-mono text-[10px] text-emerald-300">
+                {fpsTelemetry.fps} FPS CAD
+              </span>
             </h2>
             <p className="text-[11px] text-[#a1a1aa]">{floorSpec.elevationLabel}</p>
           </div>

@@ -26,6 +26,22 @@ interface BowlStandsProps {
   walkthroughCameraMode?: Walkthrough3DCameraMode;
 }
 
+const SUPER_ELLIPSE_LUT_SIZE = 1024;
+const SUPER_ELLIPSE_TWO_PI = Math.PI * 2;
+const SUPER_ELLIPSE_LUT_X = new Float32Array(SUPER_ELLIPSE_LUT_SIZE);
+const SUPER_ELLIPSE_LUT_Z = new Float32Array(SUPER_ELLIPSE_LUT_SIZE);
+for (let i = 0; i < SUPER_ELLIPSE_LUT_SIZE; i += 1) {
+  const [ux, uz] = superEllipsePoint((i / SUPER_ELLIPSE_LUT_SIZE) * SUPER_ELLIPSE_TWO_PI, 1, 1);
+  SUPER_ELLIPSE_LUT_X[i] = ux;
+  SUPER_ELLIPSE_LUT_Z[i] = uz;
+}
+
+function fastSuperEllipsePoint(angle: number, rx: number, rz: number): [number, number] {
+  const norm = ((angle % SUPER_ELLIPSE_TWO_PI) + SUPER_ELLIPSE_TWO_PI) % SUPER_ELLIPSE_TWO_PI;
+  const idx = Math.floor((norm / SUPER_ELLIPSE_TWO_PI) * SUPER_ELLIPSE_LUT_SIZE) & (SUPER_ELLIPSE_LUT_SIZE - 1);
+  return [SUPER_ELLIPSE_LUT_X[idx] * rx, SUPER_ELLIPSE_LUT_Z[idx] * rz];
+}
+
 /**
  * Generates realistic precast-concrete, champagne-gold VIP, and ruby stadium seating PBR maps.
  */
@@ -1050,7 +1066,9 @@ function LiveSeatedSpectatorCrowd({
     for (let i = 0; i < spectators.length; i += 1) {
       const s = spectators[i];
       const wave = Math.max(0, Math.sin(s.angle * 2 - t * 3.1));
-      const dy = Math.pow(wave, 4) * 0.52 + (Math.sin(t * 7.2 + s.seed * 6.283) + 1) * 0.08;
+      const w2 = wave * wave;
+      const w4 = w2 * w2;
+      const dy = w4 * 0.52 + (Math.sin(t * 7.2 + s.seed * 6.283) + 1) * 0.08;
       const matYIdx = i * 16 + 13;
       torsoArr[matYIdx] = s.baseY + 0.36 + dy;
       headArr[matYIdx] = s.baseY + 0.9 + dy;
@@ -1188,14 +1206,14 @@ function LiveConcoursePedestrians({
         if (angle < startAngle + 0.02 || angle > endAngle - 0.02) {
           angle = startAngle + ((angle + i) % (arcSpan - 0.06)) + 0.03;
         }
-        [x, z] = superEllipsePoint(angle, a.rx, a.rz);
+        [x, z] = fastSuperEllipsePoint(angle, a.rx, a.rz);
         heading = -angle + (a.dir > 0 ? 0 : Math.PI);
       } else {
         const angle = a.baseAngle;
         if (angle < startAngle + 0.02 || angle > endAngle - 0.02) {
           continue;
         }
-        const [cx, cz] = superEllipsePoint(angle, a.rx, a.rz);
+        const [cx, cz] = fastSuperEllipsePoint(angle, a.rx, a.rz);
         const tangentAngle = -angle + Math.PI / 2;
         const progress = ((a.phase + (t * stairSpeed) / 35) % 1 + 1) % 1;
         const yRamp = THREE.MathUtils.lerp(0.5, 52.8, a.dir > 0 ? progress : 1 - progress);

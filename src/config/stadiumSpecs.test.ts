@@ -2,8 +2,11 @@ import {
   FLOOR_CORRIDORS,
   FLOOR_ELEVATION_Y,
   FLOOR_LEVEL_SPECS,
+  ROOM_CLEAR_AISLE_ANCHORS,
   STADIUM_INTERIOR_ROOMS,
+  TARGET_ENGINE_FPS,
   VERTICAL_CORES,
+  evaluateFramePerformance,
   findNearestVerticalCore,
   findRoomAtPoint,
   getCorridorsByFloor,
@@ -257,14 +260,15 @@ describe('stadiumSpecs', () => {
     );
     expect(outTunnel.x).toBeGreaterThan(-58);
 
-    // Banquet table inside L2-01 (-22..0, 92..99.5) blocks walking into tabletop from foyer (z = 100.3)
+    // Banquet table inside L2-01 (-22..0, 92..99.5, radius 0.42 => stop boundary y=99.92) blocks piercing tabletop
     const hitTable = stepExplorerAvatar(
       { x: -12, y: 100.3 },
       { dx: 0, dy: -1 },
       0.1,
       'L2'
     );
-    expect(hitTable.y).toBe(100.3);
+    expect(hitTable.y).toBeGreaterThanOrEqual(99.92);
+    expect(hitTable.y).toBeLessThan(100.3);
   });
 
   it('places NPCs and safe spawns strictly on unobstructed aisles across all 16 rooms', () => {
@@ -289,5 +293,19 @@ describe('stadiumSpecs', () => {
         }
       }
     }
+  });
+
+  it('targets 120 FPS engine telemetry budgets and caches O(1) aisle anchors for all 16 rooms', () => {
+    expect(TARGET_ENGINE_FPS).toBe(120);
+    const ultra = evaluateFramePerformance(2.4);
+    expect(ultra.fps).toBe(120);
+    expect(ultra.modeLabel).toBe('120 FPS ULTRA');
+    expect(ultra.budgetPercent).toBeLessThanOrEqual(35);
+
+    const heavier = evaluateFramePerformance(12.5);
+    expect(heavier.fps).toBeLessThan(120);
+    expect(heavier.modeLabel).toBe('60 FPS HIGH');
+
+    expect(ROOM_CLEAR_AISLE_ANCHORS.size).toBe(STADIUM_INTERIOR_ROOMS.length);
   });
 });

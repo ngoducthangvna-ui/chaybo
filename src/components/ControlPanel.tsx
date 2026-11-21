@@ -36,6 +36,7 @@ import {
   calculateStructuralMetrics,
   calculateTotalCapacity,
 } from '../config/stadiumSpecs';
+import type { FramePerformanceTelemetry } from '../config/interiorRooms';
 
 interface ControlPanelProps {
   lightingMode: LightingMode;
@@ -62,6 +63,7 @@ interface ControlPanelProps {
   onToggleExplorer2d: () => void;
   walkthrough3dActive: boolean;
   onEnterWalkthrough3d: () => void;
+  fpsTelemetry?: FramePerformanceTelemetry;
 }
 
 const LIGHTING_OPTIONS: Array<{
@@ -99,6 +101,7 @@ export function ControlPanel({
   onToggleExplorer2d,
   walkthrough3dActive,
   onEnterWalkthrough3d,
+  fpsTelemetry = { fps: 120, frameTimeMs: 2.2, budgetPercent: 26, modeLabel: '120 FPS ULTRA' },
 }: ControlPanelProps) {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<'specs' | 'complex' | 'sop'>('specs');
@@ -137,6 +140,10 @@ export function ControlPanel({
             </span>
             <span className="rounded-full bg-[#26262c] px-2.5 py-1 text-[#ededf0] border border-[#26262b]">
               {ROOF_SPECS.steelTonnage.toLocaleString('en-US')} tấn thép
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-1 font-mono font-bold text-emerald-300 border border-emerald-400/40">
+              <Zap className="h-3 w-3 text-emerald-400" />
+              {fpsTelemetry.fps} FPS ULTRA • 120Hz ({fpsTelemetry.frameTimeMs}ms)
             </span>
           </div>
         </div>

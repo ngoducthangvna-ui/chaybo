@@ -294,9 +294,10 @@ export function StadiumScene({
     <SceneErrorBoundary>
       <Canvas
         shadows
-        dpr={[1, 2]}
+        dpr={[1, 1.5]}
         gl={{
           antialias: true,
+          powerPreference: 'high-performance',
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: isNight ? 1.12 : 0.98,
         }}
@@ -342,8 +343,8 @@ export function StadiumScene({
           color={lighting.sunColor}
           intensity={lighting.sunIntensity}
           castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
+          shadow-mapSize-width={1536}
+          shadow-mapSize-height={1536}
           shadow-camera-near={10}
           shadow-camera-far={1100}
           shadow-camera-left={-420}

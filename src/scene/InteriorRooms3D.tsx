@@ -905,13 +905,13 @@ export function InteriorRooms3D({
 
   return (
     <group name="interior-3d-furnished-rooms">
-      {STADIUM_INTERIOR_ROOMS.map((room) => (
+      {floorRooms.map((room) => (
         <RoomPerimeter3D
           key={room.id}
           room={room}
-          isActiveFloor={room.floor === activeFloor}
+          isActiveFloor
           isFocusedRoom={room.id === activeRoomId}
-          doorOpen={room.floor === activeFloor && isDoorwayOpen(room, avatarX, avatarY)}
+          doorOpen={isDoorwayOpen(room, avatarX, avatarY)}
           cameraMode={cameraMode}
         />
       ))}

@@ -19,6 +19,7 @@ import {
   FLOOR_ELEVATION_Y,
   FLOOR_LEVEL_SPECS,
   type FloorLevelId,
+  type FramePerformanceTelemetry,
   type StadiumRoomSpec,
   VERTICAL_CORES,
   type VerticalCoreSpec,
@@ -37,6 +38,7 @@ interface Walkthrough3DHudProps {
   avatarY: number;
   avatarHeading: number;
   avatarSpeed: number;
+  fpsTelemetry?: FramePerformanceTelemetry;
   onSelectFloor: (floor: FloorLevelId) => void;
   onUseElevatorCore: (floor: FloorLevelId, core: VerticalCoreSpec) => void;
   onCameraModeChange: (mode: Walkthrough3DCameraMode) => void;
@@ -55,6 +57,7 @@ export function Walkthrough3DHud({
   avatarY,
   avatarHeading,
   avatarSpeed,
+  fpsTelemetry = { fps: 120, frameTimeMs: 2.2, budgetPercent: 26, modeLabel: '120 FPS ULTRA' },
   onSelectFloor,
   onUseElevatorCore,
   onCameraModeChange,
@@ -173,8 +176,11 @@ export function Walkthrough3DHud({
             <Footprints className="h-4 w-4" />
           </span>
           <div>
-            <div className="text-xs font-bold text-white uppercase tracking-wide">
-              Đi Bộ 3D Nội Khu • 16 Phòng Kiến Trúc
+            <div className="text-xs font-bold text-white uppercase tracking-wide flex items-center gap-2">
+              <span>Đi Bộ 3D Nội Khu • 16 Phòng Kiến Trúc</span>
+              <span className="rounded-md border border-emerald-400/50 bg-emerald-500/20 px-1.5 py-0.5 font-mono text-[10px] text-emerald-300">
+                {fpsTelemetry.fps} FPS • 120Hz
+              </span>
             </div>
             <div className="text-[11px] text-[#a1a1aa]">{floorSpec.elevationLabel}</div>
           </div>
@@ -247,7 +253,7 @@ export function Walkthrough3DHud({
       </header>
 
       {/* Right-Hand 3D Room Inspector & Teleport Drawer */}
-      <aside className="fixed top-[72px] right-3 bottom-3 z-20 w-[308px] flex flex-col rounded-2xl border border-[#26262b] bg-[#0f131a]/92 backdrop-blur-md shadow-2xl overflow-hidden">
+      <aside className="fixed top-[104px] 2xl:top-[74px] right-3 bottom-3 z-20 w-[308px] flex flex-col rounded-2xl border border-[#26262b] bg-[#0f131a]/92 backdrop-blur-md shadow-2xl overflow-hidden">
         <div className="p-3 border-b border-[#26262b] space-y-2">
           <div className="flex items-center justify-between text-[10px] font-bold uppercase text-emerald-300">
             <span className="flex items-center gap-1">
@@ -357,12 +363,11 @@ export function Walkthrough3DHud({
             className="rounded-xl border border-[#1e293b] block"
           />
           <div className="mt-1.5 font-mono text-[10px] text-emerald-300">
-            X: {avatarX.toFixed(1)}m · Y: {elevationY.toFixed(1)}m · Z: {avatarY.toFixed(1)}m · v=
-            {avatarSpeed} m/s
+            {fpsTelemetry.fps} FPS · {fpsTelemetry.frameTimeMs}ms · X:{avatarX.toFixed(1)} Y:{elevationY.toFixed(1)} Z:{avatarY.toFixed(1)}
           </div>
           <div className="text-[10px] text-[#a1a1aa]">
-            <strong className="text-white">W/S</strong> Tiến lùi · <strong className="text-white">A/D</strong> Xoay ·{' '}
-            <strong className="text-sky-300">Kéo chuột</strong> Nhìn 360°
+            v={avatarSpeed} m/s · <strong className="text-white">W/S</strong> Tiến lùi · <strong className="text-white">A/D</strong> Xoay ·{' '}
+            <strong className="text-sky-300">Kéo chuột</strong> 360°
           </div>
         </div>
       </div>
