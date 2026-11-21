@@ -1,6 +1,298 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { PITCH_SPECS } from '../config/stadiumSpecs';
+import { PITCH_SPECS, evaluateBallProjectile } from '../config/stadiumSpecs';
+
+interface PitchProps {
+  liveMatchActive?: boolean;
+}
+
+interface PassSegment {
+  readonly from: readonly [number, number, number];
+  readonly to: readonly [number, number, number];
+  readonly duration: number;
+  readonly peak: number;
+}
+
+const MATCH_SEQUENCE: readonly PassSegment[] = [
+  { from: [0, 0.38, 0], to: [-18, 0.38, 8], duration: 1.5, peak: 0.45 },
+  { from: [-18, 0.38, 8], to: [-8, 0.38, -22], duration: 2.1, peak: 4.8 },
+  { from: [-8, 0.38, -22], to: [14, 0.38, -16], duration: 1.6, peak: 0.55 },
+  { from: [14, 0.38, -16], to: [30, 0.38, 22], duration: 2.3, peak: 6.4 },
+  { from: [30, 0.38, 22], to: [43, 0.38, 12], duration: 1.4, peak: 0.45 },
+  { from: [43, 0.38, 12], to: [39, 0.38, -2], duration: 1.7, peak: 3.9 },
+  { from: [39, 0.38, -2], to: [51.6, 1.4, 1.2], duration: 1.05, peak: 1.85 },
+  { from: [49.5, 0.38, 0], to: [16, 0.38, 6], duration: 2.2, peak: 5.8 },
+  { from: [16, 0.38, 6], to: [-12, 0.38, 18], duration: 1.8, peak: 0.65 },
+  { from: [-12, 0.38, 18], to: [-32, 0.38, -18], duration: 2.2, peak: 5.4 },
+  { from: [-32, 0.38, -18], to: [-42, 0.38, -6], duration: 1.4, peak: 0.45 },
+  { from: [-42, 0.38, -6], to: [-51.5, 1.2, -1.0], duration: 1.05, peak: 1.75 },
+  { from: [-49.5, 0.38, 0], to: [0, 0.38, 0], duration: 1.8, peak: 4.2 },
+];
+
+const TOTAL_SEQ_DURATION = MATCH_SEQUENCE.reduce((s, seg) => s + seg.duration, 0);
+
+interface PitchActorSpec {
+  readonly basePos: [number, number];
+  readonly role: 'home' | 'away' | 'gk-home' | 'gk-away' | 'ref';
+  readonly phaseOffset: number;
+  readonly shiftFactor: number;
+}
+
+const PITCH_ACTORS: readonly PitchActorSpec[] = [
+  // Vietnam Home Goalkeeper + 10 Outfield Players (Crimson Red #e11d48)
+  { basePos: [-49.5, 0], role: 'gk-home', phaseOffset: 0.2, shiftFactor: 0.04 },
+  { basePos: [-32, -18], role: 'home', phaseOffset: 1.1, shiftFactor: 0.48 },
+  { basePos: [-34, -6], role: 'home', phaseOffset: 2.3, shiftFactor: 0.42 },
+  { basePos: [-34, 6], role: 'home', phaseOffset: 3.1, shiftFactor: 0.42 },
+  { basePos: [-32, 18], role: 'home', phaseOffset: 0.7, shiftFactor: 0.48 },
+  { basePos: [-12, -12], role: 'home', phaseOffset: 1.9, shiftFactor: 0.65 },
+  { basePos: [-14, 0], role: 'home', phaseOffset: 4.2, shiftFactor: 0.62 },
+  { basePos: [-12, 12], role: 'home', phaseOffset: 2.8, shiftFactor: 0.65 },
+  { basePos: [14, -20], role: 'home', phaseOffset: 5.1, shiftFactor: 0.72 },
+  { basePos: [18, 0], role: 'home', phaseOffset: 3.7, shiftFactor: 0.76 },
+  { basePos: [14, 20], role: 'home', phaseOffset: 0.9, shiftFactor: 0.72 },
+
+  // Visiting Team Goalkeeper + 10 Outfield Players (Crisp White #f8fafc)
+  { basePos: [49.5, 0], role: 'gk-away', phaseOffset: 1.4, shiftFactor: 0.04 },
+  { basePos: [32, -19], role: 'away', phaseOffset: 2.5, shiftFactor: 0.48 },
+  { basePos: [35, -7], role: 'away', phaseOffset: 3.9, shiftFactor: 0.42 },
+  { basePos: [35, 7], role: 'away', phaseOffset: 1.7, shiftFactor: 0.42 },
+  { basePos: [32, 19], role: 'away', phaseOffset: 4.8, shiftFactor: 0.48 },
+  { basePos: [10, -10], role: 'away', phaseOffset: 2.1, shiftFactor: 0.64 },
+  { basePos: [10, 10], role: 'away', phaseOffset: 0.5, shiftFactor: 0.64 },
+  { basePos: [-4, -18], role: 'away', phaseOffset: 3.3, shiftFactor: 0.7 },
+  { basePos: [-6, 0], role: 'away', phaseOffset: 5.5, shiftFactor: 0.68 },
+  { basePos: [-4, 18], role: 'away', phaseOffset: 4.1, shiftFactor: 0.7 },
+  { basePos: [-22, 0], role: 'away', phaseOffset: 1.3, shiftFactor: 0.74 },
+
+  // 3 Match Referees (High-Vis Amber-Gold #facc15)
+  { basePos: [0, -8], role: 'ref', phaseOffset: 2.2, shiftFactor: 0.52 },
+  { basePos: [-18, -35.2], role: 'ref', phaseOffset: 0.8, shiftFactor: 0.45 },
+  { basePos: [18, 35.2], role: 'ref', phaseOffset: 3.6, shiftFactor: 0.45 },
+];
+
+function getActorShirtColor(role: PitchActorSpec['role']): string {
+  if (role === 'home') return '#e11d48';
+  if (role === 'away') return '#f8fafc';
+  if (role === 'gk-home') return '#10b981';
+  if (role === 'gk-away') return '#0ea5e9';
+  return '#facc15';
+}
+
+/**
+ * Simulates 22 footballers, 3 referees, and a 3D ball governed by gravity/bounce trajectories.
+ */
+function LiveMatchSimulation({ active }: { active: boolean }) {
+  const torsoRef = useRef<THREE.InstancedMesh | null>(null);
+  const headRef = useRef<THREE.InstancedMesh | null>(null);
+  const leftLegRef = useRef<THREE.InstancedMesh | null>(null);
+  const rightLegRef = useRef<THREE.InstancedMesh | null>(null);
+  const shadowRef = useRef<THREE.InstancedMesh | null>(null);
+  const ballRef = useRef<THREE.Mesh | null>(null);
+  const ballShadowRef = useRef<THREE.Mesh | null>(null);
+
+  const actorPositions = useMemo(
+    () => PITCH_ACTORS.map((a) => new THREE.Vector3(a.basePos[0], 0.08, a.basePos[1])),
+    []
+  );
+  const simTimeRef = useRef(0);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const targetVec = useMemo(() => new THREE.Vector3(), []);
+
+  useEffect(() => {
+    const color = new THREE.Color();
+    PITCH_ACTORS.forEach((actor, idx) => {
+      color.set(getActorShirtColor(actor.role));
+      torsoRef.current?.setColorAt(idx, color);
+      if (roleIsSkin(actor.role)) {
+        headRef.current?.setColorAt(idx, color.set('#fdba74'));
+      }
+      leftLegRef.current?.setColorAt(
+        idx,
+        color.set(actor.role === 'home' ? '#9f1239' : actor.role === 'away' ? '#1e293b' : '#18181b')
+      );
+      rightLegRef.current?.setColorAt(
+        idx,
+        color.set(actor.role === 'home' ? '#9f1239' : actor.role === 'away' ? '#1e293b' : '#18181b')
+      );
+    });
+    if (torsoRef.current?.instanceColor) torsoRef.current.instanceColor.needsUpdate = true;
+    if (headRef.current?.instanceColor) headRef.current.instanceColor.needsUpdate = true;
+    if (leftLegRef.current?.instanceColor) leftLegRef.current.instanceColor.needsUpdate = true;
+    if (rightLegRef.current?.instanceColor) rightLegRef.current.instanceColor.needsUpdate = true;
+  }, []);
+
+  useFrame((_, delta) => {
+    const dt = Math.min(0.05, delta);
+    if (active) {
+      simTimeRef.current = (simTimeRef.current + dt) % TOTAL_SEQ_DURATION;
+    }
+    const tSeq = simTimeRef.current;
+
+    let acc = 0;
+    let activeSeg = MATCH_SEQUENCE[0];
+    let localT = 0;
+    for (const seg of MATCH_SEQUENCE) {
+      if (tSeq <= acc + seg.duration) {
+        activeSeg = seg;
+        localT = tSeq - acc;
+        break;
+      }
+      acc += seg.duration;
+    }
+
+    const ballState = evaluateBallProjectile(
+      localT,
+      activeSeg.from,
+      activeSeg.to,
+      activeSeg.duration,
+      activeSeg.peak
+    );
+    const [bx, by, bz] = ballState.position;
+
+    if (ballRef.current) {
+      ballRef.current.position.set(bx, by, bz);
+      if (active) {
+        ballRef.current.rotation.x += dt * 9;
+        ballRef.current.rotation.z += dt * 7;
+      }
+    }
+    if (ballShadowRef.current) {
+      ballShadowRef.current.position.set(bx, 0.11, bz);
+      const scale = Math.max(0.45, 1.0 - (by - 0.38) * 0.08);
+      ballShadowRef.current.scale.set(scale, scale, 1);
+    }
+
+    const globalTime = active ? performance.now() * 0.001 : 0;
+
+    PITCH_ACTORS.forEach((actor, idx) => {
+      if (actor.role === 'gk-home' || actor.role === 'gk-away') {
+        const clampedZ = THREE.MathUtils.clamp(bz * 0.28, -4.1, 4.1);
+        targetVec.set(actor.basePos[0], 0.08, clampedZ);
+      } else if (actor.role === 'ref') {
+        const isAssistant = idx >= PITCH_ACTORS.length - 2;
+        if (isAssistant) {
+          targetVec.set(THREE.MathUtils.clamp(bx * 0.72, -46, 46), 0.08, actor.basePos[1]);
+        } else {
+          targetVec.set(
+            THREE.MathUtils.clamp(bx * 0.65 - 6, -40, 40),
+            0.08,
+            THREE.MathUtils.clamp(bz * 0.55 - 8, -28, 28)
+          );
+        }
+      } else {
+        const weaveX = Math.sin(globalTime * 0.85 + actor.phaseOffset) * 5.2;
+        const weaveZ = Math.cos(globalTime * 1.15 + actor.phaseOffset * 1.4) * 4.4;
+        targetVec.set(
+          THREE.MathUtils.clamp(actor.basePos[0] + bx * actor.shiftFactor * 0.65 + weaveX, -48, 48),
+          0.08,
+          THREE.MathUtils.clamp(actor.basePos[1] + bz * actor.shiftFactor * 0.45 + weaveZ, -31, 31)
+        );
+      }
+
+      const pos = actorPositions[idx];
+      const dx = targetVec.x - pos.x;
+      const dz = targetVec.z - pos.z;
+      const dist = Math.hypot(dx, dz);
+      const speed = active ? Math.min(7.8, dist * 1.9) : 0;
+      if (dist > 0.05 && active) {
+        const moveStep = Math.min(dist, speed * dt);
+        pos.x += (dx / dist) * moveStep;
+        pos.z += (dz / dist) * moveStep;
+      }
+
+      const heading = dist > 0.15 ? Math.atan2(dx, dz) : Math.atan2(bx - pos.x, bz - pos.z);
+      const stridePhase = globalTime * (3.2 + speed * 1.1) + actor.phaseOffset;
+      const legSwing = active ? Math.sin(stridePhase) * Math.min(0.65, speed * 0.14) : 0;
+      const bob = active ? Math.abs(Math.sin(stridePhase)) * Math.min(0.14, speed * 0.025) : 0;
+
+      // Ground contact shadow
+      dummy.position.set(pos.x, 0.1, pos.z);
+      dummy.rotation.set(-Math.PI / 2, 0, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      shadowRef.current?.setMatrixAt(idx, dummy.matrix);
+
+      // Torso
+      dummy.position.set(pos.x, pos.y + 1.12 + bob, pos.z);
+      dummy.rotation.set(0, heading, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      torsoRef.current?.setMatrixAt(idx, dummy.matrix);
+
+      // Head
+      dummy.position.set(pos.x, pos.y + 1.72 + bob, pos.z);
+      dummy.rotation.set(0, heading, 0);
+      dummy.updateMatrix();
+      headRef.current?.setMatrixAt(idx, dummy.matrix);
+
+      const cosH = Math.cos(heading);
+      const sinH = Math.sin(heading);
+
+      // Left Leg
+      dummy.position.set(pos.x + cosH * 0.14, pos.y + 0.42 + bob * 0.5, pos.z - sinH * 0.14);
+      dummy.rotation.set(0, heading, 0);
+      dummy.rotateX(legSwing);
+      dummy.updateMatrix();
+      leftLegRef.current?.setMatrixAt(idx, dummy.matrix);
+
+      // Right Leg
+      dummy.position.set(pos.x - cosH * 0.14, pos.y + 0.42 + bob * 0.5, pos.z + sinH * 0.14);
+      dummy.rotation.set(0, heading, 0);
+      dummy.rotateX(-legSwing);
+      dummy.updateMatrix();
+      rightLegRef.current?.setMatrixAt(idx, dummy.matrix);
+    });
+
+    if (torsoRef.current) torsoRef.current.instanceMatrix.needsUpdate = true;
+    if (headRef.current) headRef.current.instanceMatrix.needsUpdate = true;
+    if (leftLegRef.current) leftLegRef.current.instanceMatrix.needsUpdate = true;
+    if (rightLegRef.current) rightLegRef.current.instanceMatrix.needsUpdate = true;
+    if (shadowRef.current) shadowRef.current.instanceMatrix.needsUpdate = true;
+  });
+
+  const actorCount = PITCH_ACTORS.length;
+
+  return (
+    <group name="live-match-physics-simulation">
+      <instancedMesh ref={shadowRef} args={[undefined, undefined, actorCount]}>
+        <circleGeometry args={[0.48, 12]} />
+        <meshBasicMaterial color="#090d16" transparent opacity={0.45} />
+      </instancedMesh>
+      <instancedMesh ref={torsoRef} args={[undefined, undefined, actorCount]} castShadow>
+        <boxGeometry args={[0.56, 0.78, 0.32]} />
+        <meshStandardMaterial roughness={0.62} />
+      </instancedMesh>
+      <instancedMesh ref={headRef} args={[undefined, undefined, actorCount]} castShadow>
+        <sphereGeometry args={[0.21, 10, 10]} />
+        <meshStandardMaterial roughness={0.58} />
+      </instancedMesh>
+      <instancedMesh ref={leftLegRef} args={[undefined, undefined, actorCount]} castShadow>
+        <boxGeometry args={[0.17, 0.76, 0.19]} />
+        <meshStandardMaterial roughness={0.7} />
+      </instancedMesh>
+      <instancedMesh ref={rightLegRef} args={[undefined, undefined, actorCount]} castShadow>
+        <boxGeometry args={[0.17, 0.76, 0.19]} />
+        <meshStandardMaterial roughness={0.7} />
+      </instancedMesh>
+
+      {/* Match Football & Projected Turf Shadow */}
+      <mesh ref={ballRef} position={[0, 0.38, 0]} castShadow>
+        <sphereGeometry args={[0.38, 16, 16]} />
+        <meshStandardMaterial color="#f8fafc" emissive="#fef08a" emissiveIntensity={0.22} roughness={0.35} />
+      </mesh>
+      <mesh ref={ballShadowRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.11, 0]}>
+        <circleGeometry args={[0.55, 16]} />
+        <meshBasicMaterial color="#020617" transparent opacity={0.55} />
+      </mesh>
+    </group>
+  );
+}
+
+function roleIsSkin(_role: PitchActorSpec['role']): boolean {
+  return true;
+}
 
 /**
  * Generates high-resolution FIFA grass pitch albedo & velvety turf bumpMap textures.
@@ -196,7 +488,7 @@ function PitchLedPerimeter() {
   );
 }
 
-export function Pitch() {
+export function Pitch({ liveMatchActive = true }: PitchProps) {
   const pitchPbr = useMemo(() => createPitchPbrTextures(), []);
 
   return (
@@ -230,6 +522,7 @@ export function Pitch() {
       <CornerFlags />
       <TeamDugouts />
       <PitchLedPerimeter />
+      <LiveMatchSimulation active={liveMatchActive} />
     </group>
   );
 }

@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { MeshReflectorMaterial } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { ROOF_SPECS, superEllipsePoint } from '../config/stadiumSpecs';
+import { ROOF_SPECS, calculateCrowdPhysicsMetrics, superEllipsePoint } from '../config/stadiumSpecs';
 
 interface SurroundingsProps {
   halfCutaway: boolean;
   isNight: boolean;
   bimFrameMode: boolean;
+  occupancyPercent: number;
+  liveSimActive?: boolean;
 }
 
 function createTravertineArcadeTexture(isNight: boolean): THREE.CanvasTexture {
@@ -515,12 +518,46 @@ function OpenDeckParkingGarage({ position }: { position: [number, number, number
  * - Zone 4 (West): Ribbed Long-Span Arch Arena (15K) & Slanted-Glass Aquatics Center
  * - Zone 5 (North): FIFA Training Pitch + 2 Open-Deck 5-Story Parking Garages
  */
-function RealServiceComplexes({ isNight }: { isNight: boolean }) {
+function RealServiceComplexes({
+  isNight,
+  liveSimActive,
+}: {
+  isNight: boolean;
+  liveSimActive: boolean;
+}) {
   const trainingPitchTex = useMemo(() => createTrainingPitchTexture(), []);
+  const trainGroupRef = useRef<THREE.Group | null>(null);
+
+  useFrame(({ clock }) => {
+    const train = trainGroupRef.current;
+    if (!train || !liveSimActive) return;
+    // 26s dual-track cycle: Eastbound arrive -> 4s dwell at x=0 -> depart -> Westbound arrive -> 4s dwell -> depart
+    const cycle = 26;
+    const t = clock.getElapsedTime() % cycle;
+    const half = cycle / 2;
+    const isEastbound = t < half;
+    const localT = isEastbound ? t : t - half;
+    const trackZ = isEastbound ? 296.2 : 299.8;
+    const dir = isEastbound ? 1 : -1;
+
+    let x = 0;
+    if (localT < 4.5) {
+      const u = localT / 4.5;
+      const easeOut = 1 - Math.pow(1 - u, 3);
+      x = -205 * dir + 205 * dir * easeOut;
+    } else if (localT < 8.5) {
+      x = 0;
+    } else {
+      const u = (localT - 8.5) / 4.5;
+      const easeIn = u * u * u;
+      x = 205 * dir * easeIn;
+    }
+    train.position.set(x, 15.8, trackZ);
+  });
 
   return (
     <group name="real-world-service-complexes">
-      {/* ZONE 2 (SOUTH): Steel-Truss Metro Station + Elevated Viaduct + Metro Trains + Aligned Skywalk */}
+      {/* ZONE 2 (SOUTH): Steel-Truss Metro Station + Elevated Viaduct + Moving Metro Trains + Aligned Skywalk */}
       <group name="zone-2-metro-hub">
         {/* Elevated Honed Concrete Rail Viaduct */}
         <mesh position={[0, 13.5, 298]} castShadow receiveShadow>
@@ -534,25 +571,27 @@ function RealServiceComplexes({ isNight }: { isNight: boolean }) {
           </mesh>
         ))}
 
-        {/* Sleek Dark-Graphite & Champagne Metro Trainset stopped at platform */}
-        {[-34, -17, 0, 17, 34].map((cx) => (
-          <group key={cx} position={[cx, 15.8, 298]}>
-            <mesh castShadow>
-              <boxGeometry args={[15.5, 3.2, 3.2]} />
-              <meshPhysicalMaterial color="#27272a" metalness={0.85} roughness={0.18} />
-            </mesh>
-            <mesh position={[0, 0.2, 0]}>
-              <boxGeometry args={[15.6, 0.65, 3.26]} />
-              <meshStandardMaterial
-                color="#c5a059"
-                emissive="#fbbf24"
-                emissiveIntensity={isNight ? 0.5 : 0.08}
-                metalness={0.85}
-                roughness={0.2}
-              />
-            </mesh>
-          </group>
-        ))}
+        {/* Sleek Dark-Graphite & Champagne Metro Trainset moving smoothly along dual-track viaduct */}
+        <group ref={trainGroupRef} position={[0, 15.8, 296.2]}>
+          {[-34, -17, 0, 17, 34].map((cx) => (
+            <group key={cx} position={[cx, 0, 0]}>
+              <mesh castShadow>
+                <boxGeometry args={[15.5, 3.2, 3.2]} />
+                <meshPhysicalMaterial color="#27272a" metalness={0.85} roughness={0.18} />
+              </mesh>
+              <mesh position={[0, 0.2, 0]}>
+                <boxGeometry args={[15.6, 0.65, 3.26]} />
+                <meshStandardMaterial
+                  color="#c5a059"
+                  emissive="#fbbf24"
+                  emissiveIntensity={isNight ? 0.5 : 0.08}
+                  metalness={0.85}
+                  roughness={0.2}
+                />
+              </mesh>
+            </group>
+          ))}
+        </group>
 
         {/* Open-Span Obsidian Glass & Bronze Canopy Metro Station (z=274) */}
         <mesh position={[0, 5.2, 274]} castShadow receiveShadow>
@@ -931,7 +970,201 @@ function GraniteReflectingBasins() {
   );
 }
 
-export function Surroundings({ halfCutaway, isNight, bimFrameMode }: SurroundingsProps) {
+/**
+ * 1,500 Animated Exterior Pedestrians circulating along the 4 Boulevards,
+ * South Metro Glass Skywalk, 5 Grand Travertine Stairways, and Elevated Podium + 36 Portals
+ * governed by Weidmann horizontal/stair speed formulas.
+ */
+function LiveExteriorPedestrianFlows({
+  startAngle,
+  endAngle,
+  occupancyPercent,
+  liveSimActive,
+}: {
+  startAngle: number;
+  endAngle: number;
+  occupancyPercent: number;
+  liveSimActive: boolean;
+}) {
+  const torsoRef = useRef<THREE.InstancedMesh | null>(null);
+  const headRef = useRef<THREE.InstancedMesh | null>(null);
+
+  const crowdMetrics = useMemo(
+    () => calculateCrowdPhysicsMetrics(occupancyPercent, liveSimActive),
+    [occupancyPercent, liveSimActive]
+  );
+
+  const pedestrians = useMemo(() => {
+    const count = Math.round(280 + (occupancyPercent / 100) * 1220);
+    const list: Array<{
+      pathType: 'stair' | 'skywalk' | 'podium' | 'boulevard';
+      subIndex: number;
+      laneOffset: number;
+      phase: number;
+      dir: 1 | -1;
+      shirtHex: string;
+    }> = [];
+    const palette = ['#e11d48', '#fbbf24', '#f8fafc', '#38bdf8', '#10b981', '#e2e8f0'];
+
+    for (let i = 0; i < count; i += 1) {
+      const hash = Math.abs(Math.sin(i * 53.17 + 19.7));
+      const rMod = i % 10;
+      const pathType: 'stair' | 'skywalk' | 'podium' | 'boulevard' =
+        rMod < 2 ? 'stair' : rMod < 4 ? 'skywalk' : rMod < 7 ? 'podium' : 'boulevard';
+      list.push({
+        pathType,
+        subIndex: i,
+        laneOffset: hash - 0.5,
+        phase: (i * 0.6180339887) % 1,
+        dir: i % 2 === 0 ? 1 : -1,
+        shirtHex: palette[i % palette.length],
+      });
+    }
+    return list;
+  }, [occupancyPercent]);
+
+  useEffect(() => {
+    if (!torsoRef.current) return;
+    const color = new THREE.Color();
+    pedestrians.forEach((p, idx) => {
+      torsoRef.current!.setColorAt(idx, color.set(p.shirtHex));
+    });
+    if (torsoRef.current.instanceColor) {
+      torsoRef.current.instanceColor.needsUpdate = true;
+    }
+  }, [pedestrians]);
+
+  const stairEndpoints = useMemo(() => {
+    const entries: Array<{ angle: number; width: number }> = [
+      { angle: 0, width: 22 },
+      { angle: Math.PI, width: 22 },
+      { angle: Math.PI * 1.5, width: 22 },
+      { angle: Math.PI * 0.42, width: 13 },
+      { angle: Math.PI * 0.58, width: 13 },
+    ];
+    return entries.map((e) => {
+      const [topX, topZ] = superEllipsePoint(e.angle, 196, 170);
+      const [botX, botZ] = superEllipsePoint(e.angle, 224, 198);
+      return { ...e, topX, topZ, botX, botZ };
+    });
+  }, []);
+
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const arcSpan = Math.max(0.1, endAngle - startAngle);
+
+  useFrame(({ clock }) => {
+    const torso = torsoRef.current;
+    const head = headRef.current;
+    if (!torso || !head) return;
+
+    const t = liveSimActive ? clock.getElapsedTime() : 0;
+    const walkV = crowdMetrics.walkingSpeedMps * 4.5;
+    const stairV = crowdMetrics.stairSpeedMps * 4.5;
+    let visible = 0;
+
+    for (let i = 0; i < pedestrians.length; i += 1) {
+      const p = pedestrians[i];
+      let x = 0;
+      let y = 0.05;
+      let z = 0;
+      let heading = 0;
+
+      if (p.pathType === 'stair') {
+        const s = stairEndpoints[p.subIndex % stairEndpoints.length];
+        if (s.angle < startAngle - 0.05 || s.angle > endAngle + 0.05) {
+          continue;
+        }
+        const prog = ((p.phase + (t * stairV * p.dir) / 30) % 1 + 1) % 1;
+        const dx = s.topX - s.botX;
+        const dz = s.topZ - s.botZ;
+        const len = Math.hypot(dx, dz) || 1;
+        const nx = -dz / len;
+        const nz = dx / len;
+        x = THREE.MathUtils.lerp(s.botX, s.topX, prog) + nx * p.laneOffset * s.width;
+        z = THREE.MathUtils.lerp(s.botZ, s.topZ, prog) + nz * p.laneOffset * s.width;
+        y = THREE.MathUtils.lerp(0.75, 11.2, prog);
+        heading = Math.atan2(dx * p.dir, dz * p.dir);
+      } else if (p.pathType === 'skywalk') {
+        const prog = ((p.phase + (t * walkV * p.dir) / 88) % 1 + 1) % 1;
+        z = THREE.MathUtils.lerp(170, 258, prog);
+        x = p.laneOffset * 10.5;
+        y = 11.08;
+        heading = p.dir > 0 ? 0 : Math.PI;
+      } else if (p.pathType === 'podium') {
+        const ringT = Math.abs(p.laneOffset) * 2;
+        const rx = THREE.MathUtils.lerp(170, 192, ringT);
+        const rz = THREE.MathUtils.lerp(144, 166, ringT);
+        let angle = ((p.phase * Math.PI * 2 + (t * walkV * p.dir) / rx) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+        if (angle < startAngle + 0.02 || angle > endAngle - 0.02) {
+          angle = startAngle + ((angle + i * 0.13) % (arcSpan - 0.06)) + 0.03;
+        }
+        [x, z] = superEllipsePoint(angle, rx, rz);
+        y = 10.55;
+        heading = -angle + (p.dir > 0 ? 0 : Math.PI);
+      } else {
+        const axis = p.subIndex % 4;
+        const prog = ((p.phase + (t * walkV * p.dir) / 145) % 1 + 1) % 1;
+        if (axis === 0) {
+          x = THREE.MathUtils.lerp(222, 365, prog);
+          z = p.laneOffset * 34;
+          heading = p.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+        } else if (axis === 1) {
+          x = THREE.MathUtils.lerp(-222, -365, prog);
+          z = p.laneOffset * 34;
+          heading = p.dir > 0 ? -Math.PI / 2 : Math.PI / 2;
+        } else if (axis === 2) {
+          z = THREE.MathUtils.lerp(220, 355, prog);
+          x = p.laneOffset * 34;
+          heading = p.dir > 0 ? 0 : Math.PI;
+        } else {
+          z = THREE.MathUtils.lerp(-220, -355, prog);
+          x = p.laneOffset * 34;
+          heading = p.dir > 0 ? Math.PI : 0;
+        }
+        y = 0.05;
+      }
+
+      const bob = liveSimActive ? Math.abs(Math.sin(t * 7.8 + p.phase * 12)) * 0.09 : 0;
+      dummy.rotation.set(0, heading, 0);
+      dummy.scale.set(1, 1, 1);
+
+      dummy.position.set(x, y + 0.72 + bob, z);
+      dummy.updateMatrix();
+      torso.setMatrixAt(visible, dummy.matrix);
+
+      dummy.position.set(x, y + 1.48 + bob, z);
+      dummy.updateMatrix();
+      head.setMatrixAt(visible, dummy.matrix);
+      visible += 1;
+    }
+
+    torso.count = visible;
+    head.count = visible;
+    torso.instanceMatrix.needsUpdate = true;
+    head.instanceMatrix.needsUpdate = true;
+  });
+
+  return (
+    <group name="live-exterior-pedestrian-flows">
+      <instancedMesh ref={torsoRef} args={[undefined, undefined, 1600]}>
+        <boxGeometry args={[0.5, 0.96, 0.3]} />
+        <meshStandardMaterial roughness={0.62} />
+      </instancedMesh>
+      <instancedMesh ref={headRef} args={[undefined, undefined, 1600]}>
+        <sphereGeometry args={[0.2, 6, 6]} />
+        <meshStandardMaterial color="#f5d0a9" roughness={0.58} />
+      </instancedMesh>
+    </group>
+  );
+}
+
+export function Surroundings({
+  halfCutaway,
+  isNight,
+  bimFrameMode,
+  occupancyPercent,
+  liveSimActive = true,
+}: SurroundingsProps) {
   const startAngle = halfCutaway ? Math.PI * 0.52 : 0;
   const endAngle = halfCutaway ? Math.PI * 1.98 : Math.PI * 2;
   const groundPbr = useMemo(() => createMasterplanGroundPbrTextures(), []);
@@ -977,7 +1210,14 @@ export function Surroundings({ halfCutaway, isNight, bimFrameMode }: Surrounding
 
       <GraniteReflectingBasins />
 
-      <RealServiceComplexes isNight={isNight} />
+      <RealServiceComplexes isNight={isNight} liveSimActive={liveSimActive} />
+
+      <LiveExteriorPedestrianFlows
+        startAngle={startAngle}
+        endAngle={endAngle}
+        occupancyPercent={occupancyPercent}
+        liveSimActive={liveSimActive}
+      />
 
       <NaturalParkLandscaping isNight={isNight} />
     </group>

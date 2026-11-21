@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Activity,
   Box,
   Building2,
   Camera,
@@ -28,6 +29,7 @@ import {
   PITCH_SPECS,
   ROOF_SPECS,
   STADIUM_TIERS,
+  calculateCrowdPhysicsMetrics,
   calculateEvacuationMetrics,
   calculateStructuralMetrics,
   calculateTotalCapacity,
@@ -52,6 +54,8 @@ interface ControlPanelProps {
   onRoofOpenChange: (value: number) => void;
   showEvacPaths: boolean;
   onToggleEvacPaths: () => void;
+  liveSimActive: boolean;
+  onToggleLiveSim: () => void;
 }
 
 const LIGHTING_OPTIONS: Array<{
@@ -83,12 +87,15 @@ export function ControlPanel({
   onRoofOpenChange,
   showEvacPaths,
   onToggleEvacPaths,
+  liveSimActive,
+  onToggleLiveSim,
 }: ControlPanelProps) {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<'specs' | 'complex' | 'sop'>('specs');
 
   const totalCapacity = calculateTotalCapacity();
   const evac = calculateEvacuationMetrics(occupancyPercent);
+  const crowdMetrics = calculateCrowdPhysicsMetrics(occupancyPercent, liveSimActive);
   const structural = calculateStructuralMetrics(
     occupancyPercent,
     roofOpenPercent,
@@ -276,6 +283,40 @@ export function ControlPanel({
                   </button>
                 </div>
 
+                <div className="rounded-xl border border-emerald-500/25 bg-emerald-950/20 p-2.5 space-y-1.5 text-[11px]">
+                  <div className="flex items-center justify-between font-semibold text-emerald-300 uppercase text-[10px]">
+                    <span className="flex items-center gap-1">
+                      <Activity className="h-3 w-3" />
+                      Động lực học Đám đông & Trận đấu
+                    </span>
+                    <span className="font-mono">{crowdMetrics.fruinLosGrade}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[#d4d4d8]">
+                    <div>
+                      Đi bộ lưu thông:{' '}
+                      <strong className="font-mono text-white">
+                        {crowdMetrics.activePedestrians.toLocaleString('en-US')}
+                      </strong>
+                    </div>
+                    <div>
+                      Weidmann:{' '}
+                      <strong className="font-mono text-white">{crowdMetrics.walkingSpeedMps} m/s</strong>
+                    </div>
+                    <div>
+                      Cầu thang:{' '}
+                      <strong className="font-mono text-white">{crowdMetrics.stairSpeedMps} m/s</strong>
+                    </div>
+                    <div>
+                      Mật độ:{' '}
+                      <strong className="font-mono text-white">{crowdMetrics.concourseDensityPerM2} p/m²</strong>
+                    </div>
+                  </div>
+                  <div className="text-[10px] text-[#a1a1aa] border-t border-[#26262b] pt-1">
+                    ISO 10137: {Math.round(crowdMetrics.staticLiveLoadKn / 9.81).toLocaleString('en-US')} tấn ×{' '}
+                    {crowdMetrics.dynamicLoadFactor} · fₙ={crowdMetrics.naturalFreqHz} Hz (&gt;5.0 Hz)
+                  </div>
+                </div>
+
                 <div className="space-y-1">
                   <div className="text-[10px] font-semibold text-[#a1a1aa] uppercase">
                     4 Tầng khán đài (Gối trên Grid A–E & {PITCH_SPECS.length}×{PITCH_SPECS.width}m)
@@ -440,6 +481,20 @@ export function ControlPanel({
           >
             <Scissors className="h-3.5 w-3.5" />
             Mặt cắt 90°
+          </button>
+
+          <button
+            type="button"
+            onClick={onToggleLiveSim}
+            aria-pressed={liveSimActive}
+            className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition border ${
+              liveSimActive
+                ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-300'
+                : 'border-[#26262b] bg-[#0a0a0b] text-[#a1a1aa] hover:text-white'
+            }`}
+          >
+            <Activity className="h-3.5 w-3.5" />
+            Mô phỏng Trận đấu & Dòng người
           </button>
 
           <button

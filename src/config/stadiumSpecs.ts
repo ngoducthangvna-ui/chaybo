@@ -70,6 +70,23 @@ export interface StructuralMetrics {
   readonly powerConsumptionMw: number;
 }
 
+export interface CrowdPhysicsMetrics {
+  readonly seatedSpectators: number;
+  readonly activePedestrians: number;
+  readonly concourseDensityPerM2: number;
+  readonly walkingSpeedMps: number;
+  readonly stairSpeedMps: number;
+  readonly staticLiveLoadKn: number;
+  readonly dynamicLoadFactor: number;
+  readonly naturalFreqHz: number;
+  readonly fruinLosGrade: 'LOS A' | 'LOS B' | 'LOS C' | 'LOS D';
+}
+
+export interface BallPhysicsState {
+  readonly position: readonly [number, number, number];
+  readonly speedKmh: number;
+}
+
 export interface LoopForgeSopNode {
   readonly id: string;
   readonly title: string;
@@ -238,8 +255,8 @@ export const CAMERA_PRESETS: readonly CameraPreset[] = [
   {
     id: 'vip',
     label: 'Khán đài VIP',
-    position: [0, 26, 94],
-    target: [0, 4, 0],
+    position: [0, 22.8, 72],
+    target: [0, 1.5, -4],
   },
   {
     id: 'sky',
@@ -430,6 +447,95 @@ export function calculateStructuralMetrics(
     steelTonnage: ROOF_SPECS.steelTonnage,
     crowdDecibels: Math.min(122, crowdDecibels),
     powerConsumptionMw,
+  };
+}
+
+/**
+ * Computes real-time Weidmann pedestrian kinematics, Fruin SFPE level of service,
+ * and ISO 10137 dynamic structural live-load amplification for full-match crowd flow.
+ */
+export function calculateCrowdPhysicsMetrics(
+  occupancyPercent: number,
+  liveSimActive: boolean
+): CrowdPhysicsMetrics {
+  const clamped = Math.min(100, Math.max(0, occupancyPercent));
+  const seatedSpectators = Math.round((calculateTotalCapacity() * clamped) / 100);
+  const activePedestrians = liveSimActive
+    ? Math.round(4_200 + (clamped / 100) * 14_300)
+    : 0;
+
+  const concourseDensityPerM2 = Number((0.35 + (clamped / 100) * 1.25).toFixed(2));
+  const jamDensity = 5.4;
+  const rawWeidmann =
+    1.34 * (1 - Math.exp(-1.913 * (1 / concourseDensityPerM2 - 1 / jamDensity)));
+  const walkingSpeedMps = Number(Math.min(1.34, Math.max(0.45, rawWeidmann)).toFixed(2));
+  const stairSpeedMps = Number((walkingSpeedMps * 0.62).toFixed(2));
+  const staticLiveLoadKn = Math.round((seatedSpectators + activePedestrians) * 0.78);
+  const dynamicLoadFactor = liveSimActive ? 1.34 : 1.0;
+
+  let fruinLosGrade: CrowdPhysicsMetrics['fruinLosGrade'] = 'LOS A';
+  if (concourseDensityPerM2 >= 1.15) {
+    fruinLosGrade = 'LOS D';
+  } else if (concourseDensityPerM2 >= 0.72) {
+    fruinLosGrade = 'LOS C';
+  } else if (concourseDensityPerM2 >= 0.43) {
+    fruinLosGrade = 'LOS B';
+  }
+
+  return {
+    seatedSpectators,
+    activePedestrians,
+    concourseDensityPerM2,
+    walkingSpeedMps,
+    stairSpeedMps,
+    staticLiveLoadKn,
+    dynamicLoadFactor,
+    naturalFreqHz: 5.8,
+    fruinLosGrade,
+  };
+}
+
+/**
+ * Evaluates a 3D football projectile trajectory under gravity and turf restitution bounce (e = 0.62).
+ */
+export function evaluateBallProjectile(
+  t: number,
+  p0: readonly [number, number, number],
+  p1: readonly [number, number, number],
+  flightDuration: number,
+  peakHeight: number
+): BallPhysicsState {
+  if (flightDuration <= 0) {
+    return { position: [p1[0], p1[1], p1[2]], speedKmh: 0 };
+  }
+
+  const u = Math.min(1, Math.max(0, t / flightDuration));
+  const x = p0[0] + (p1[0] - p0[0]) * u;
+  const z = p0[2] + (p1[2] - p0[2]) * u;
+  const baseLineY = p0[1] + (p1[1] - p0[1]) * u;
+
+  let y = baseLineY;
+  let dyDt = (p1[1] - p0[1]) / flightDuration;
+
+  if (u <= 0.85) {
+    const subU = u / 0.85;
+    const subDur = flightDuration * 0.85;
+    y = baseLineY + 4 * peakHeight * subU * (1 - subU);
+    dyDt += (4 * peakHeight * (1 - 2 * subU)) / subDur;
+  } else if (peakHeight > 0.35) {
+    const bounceU = (u - 0.85) / 0.15;
+    const bounceAmp = peakHeight * 0.62 * 0.25;
+    y = baseLineY + Math.abs(Math.sin(bounceU * Math.PI)) * bounceAmp;
+    dyDt += (bounceAmp * Math.PI * Math.cos(bounceU * Math.PI)) / (flightDuration * 0.15);
+  }
+
+  const vx = (p1[0] - p0[0]) / flightDuration;
+  const vz = (p1[2] - p0[2]) / flightDuration;
+  const speedMps = Math.hypot(vx, dyDt, vz);
+
+  return {
+    position: [x, y, z],
+    speedKmh: Number((speedMps * 3.6).toFixed(1)),
   };
 }
 

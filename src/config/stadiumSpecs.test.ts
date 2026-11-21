@@ -8,9 +8,11 @@ import {
   ROOF_SPECS,
   STADIUM_TIERS,
   STRUCTURAL_GRID_LINES,
+  calculateCrowdPhysicsMetrics,
   calculateEvacuationMetrics,
   calculateStructuralMetrics,
   calculateTotalCapacity,
+  evaluateBallProjectile,
   getCameraPreset,
   getLightingConfig,
   getUndulatingRimHeight,
@@ -101,5 +103,41 @@ describe('stadiumSpecs', () => {
     expect(getLightingConfig('day').floodlightIntensity).toBe(0);
     expect(getLightingConfig('night').floodlightIntensity).toBeGreaterThan(0);
     expect(Object.keys(LIGHTING_CONFIGS)).toEqual(['day', 'sunset', 'night']);
+  });
+
+  it('calculates Weidmann pedestrian velocity, Fruin LOS, and ISO 10137 dynamic crowd loads at 100% capacity', () => {
+    const idle = calculateCrowdPhysicsMetrics(100, false);
+    expect(idle.seatedSpectators).toBe(200_000);
+    expect(idle.activePedestrians).toBe(0);
+    expect(idle.dynamicLoadFactor).toBe(1.0);
+
+    const liveFull = calculateCrowdPhysicsMetrics(100, true);
+    expect(liveFull.seatedSpectators).toBe(200_000);
+    expect(liveFull.activePedestrians).toBe(18_500);
+    expect(liveFull.dynamicLoadFactor).toBe(1.34);
+    expect(liveFull.naturalFreqHz).toBeGreaterThan(5.0);
+    expect(liveFull.staticLiveLoadKn).toBeGreaterThan(150_000);
+    expect(liveFull.stairSpeedMps).toBeCloseTo(liveFull.walkingSpeedMps * 0.62, 1);
+  });
+
+  it('enforces physical monotonic decrease of walking speed as crowd density increases', () => {
+    const low = calculateCrowdPhysicsMetrics(10, true);
+    const mid = calculateCrowdPhysicsMetrics(55, true);
+    const full = calculateCrowdPhysicsMetrics(100, true);
+    expect(low.walkingSpeedMps).toBeGreaterThan(mid.walkingSpeedMps);
+    expect(mid.walkingSpeedMps).toBeGreaterThan(full.walkingSpeedMps);
+  });
+
+  it('evaluates 3D ball projectile trajectory with positive apex height and realistic km/h velocity', () => {
+    const start: [number, number, number] = [-20, 0.38, 12];
+    const target: [number, number, number] = [32, 0.38, -8];
+    const apex = evaluateBallProjectile(0.85, start, target, 2.0, 5.2);
+    expect(apex.position[1]).toBeGreaterThan(5.0);
+    expect(apex.speedKmh).toBeGreaterThan(40);
+    expect(apex.speedKmh).toBeLessThan(150);
+
+    const end = evaluateBallProjectile(2.0, start, target, 2.0, 5.2);
+    expect(end.position[0]).toBeCloseTo(32, 3);
+    expect(end.position[2]).toBeCloseTo(-8, 3);
   });
 });

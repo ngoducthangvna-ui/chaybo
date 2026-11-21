@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Line } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
   ROOF_SPECS,
   STADIUM_TIERS,
   STRUCTURAL_GRID_LINES,
   type TierSpec,
+  calculateCrowdPhysicsMetrics,
   superEllipsePoint,
 } from '../config/stadiumSpecs';
 
@@ -15,6 +17,7 @@ interface BowlStandsProps {
   bimFrameMode: boolean;
   occupancyPercent: number;
   showEvacPaths: boolean;
+  liveSimActive?: boolean;
 }
 
 /**
@@ -775,12 +778,401 @@ function EvacuationFlowPaths({
   );
 }
 
+/**
+ * 16 Multi-Story Helical/Switchback Pedestrian Ramp & Escalator Cores linking Ground (+0.2m),
+ * Podium (+10.5m), and Concourses 1..3 (+17.8m, +32.8m, +52.8m) between Grid D and Grid E.
+ */
+function VerticalCirculationCores({
+  startAngle,
+  endAngle,
+}: {
+  startAngle: number;
+  endAngle: number;
+}) {
+  const rampFlightsRef = useRef<THREE.InstancedMesh | null>(null);
+  const coreColumnsRef = useRef<THREE.InstancedMesh | null>(null);
+
+  const { flights, columns } = useMemo(() => {
+    const flightList: Array<{ pos: [number, number, number]; rotY: number; pitch: number; len: number }> = [];
+    const colList: Array<[number, number, number]> = [];
+    const coreCount = 16;
+    const levels = [0.2, 10.5, 17.8, 32.8, 52.8];
+
+    for (let i = 0; i < coreCount; i += 1) {
+      const a = (i / coreCount) * Math.PI * 2;
+      if (a < startAngle - 0.03 || a > endAngle + 0.03) {
+        continue;
+      }
+      const [cx, cz] = superEllipsePoint(a, 155, 129);
+      const tangentAngle = -a + Math.PI / 2;
+
+      for (const offset of [-4.2, 4.2]) {
+        colList.push([cx + Math.cos(tangentAngle) * offset, 26.5, cz - Math.sin(tangentAngle) * offset]);
+      }
+
+      for (let l = 0; l < levels.length - 1; l += 1) {
+        const y0 = levels[l];
+        const y1 = levels[l + 1];
+        const rise = y1 - y0;
+        const run = 16.5;
+        const hyp = Math.hypot(run, rise);
+        const dirSign = l % 2 === 0 ? 1 : -1;
+        const pitch = Math.atan2(rise, run) * dirSign;
+        flightList.push({
+          pos: [cx, (y0 + y1) / 2, cz],
+          rotY: tangentAngle,
+          pitch,
+          len: hyp,
+        });
+      }
+    }
+    return { flights: flightList, columns: colList };
+  }, [startAngle, endAngle]);
+
+  useEffect(() => {
+    const dummy = new THREE.Object3D();
+    if (rampFlightsRef.current) {
+      flights.forEach((f, idx) => {
+        dummy.position.set(...f.pos);
+        dummy.rotation.set(0, f.rotY, 0);
+        dummy.rotateX(f.pitch);
+        dummy.scale.set(1, 1, f.len);
+        dummy.updateMatrix();
+        rampFlightsRef.current!.setMatrixAt(idx, dummy.matrix);
+      });
+      rampFlightsRef.current.count = flights.length;
+      rampFlightsRef.current.instanceMatrix.needsUpdate = true;
+    }
+    if (coreColumnsRef.current) {
+      columns.forEach((pos, idx) => {
+        dummy.position.set(...pos);
+        dummy.rotation.set(0, 0, 0);
+        dummy.scale.set(1, 1, 1);
+        dummy.updateMatrix();
+        coreColumnsRef.current!.setMatrixAt(idx, dummy.matrix);
+      });
+      coreColumnsRef.current.count = columns.length;
+      coreColumnsRef.current.instanceMatrix.needsUpdate = true;
+    }
+  }, [flights, columns]);
+
+  return (
+    <group name="vertical-circulation-ramp-cores">
+      <instancedMesh ref={rampFlightsRef} args={[undefined, undefined, 96]} castShadow receiveShadow>
+        <boxGeometry args={[5.4, 0.55, 1]} />
+        <meshStandardMaterial color="#c8c2b8" roughness={0.72} />
+      </instancedMesh>
+      <instancedMesh ref={coreColumnsRef} args={[undefined, undefined, 64]} castShadow>
+        <boxGeometry args={[0.95, 53.0, 0.95]} />
+        <meshStandardMaterial color="#c5a059" metalness={0.82} roughness={0.28} />
+      </instancedMesh>
+    </group>
+  );
+}
+
+interface SeatSpectatorRecord {
+  x: number;
+  baseY: number;
+  z: number;
+  angle: number;
+  seed: number;
+  shirtHex: string;
+}
+
+/**
+ * 5,600 Instanced 3D Spectators occupying all 4 tiers in direct proportion to occupancyPercent,
+ * performing travelling Mexican wave and cheering motion via direct instanceMatrix Y writes (60 FPS).
+ */
+function LiveSeatedSpectatorCrowd({
+  startAngle,
+  endAngle,
+  occupancyPercent,
+  liveSimActive,
+}: {
+  startAngle: number;
+  endAngle: number;
+  occupancyPercent: number;
+  liveSimActive: boolean;
+}) {
+  const torsoRef = useRef<THREE.InstancedMesh | null>(null);
+  const headRef = useRef<THREE.InstancedMesh | null>(null);
+
+  const spectators = useMemo(() => {
+    const list: SeatSpectatorRecord[] = [];
+    const perTierCounts = [1820, 1260, 1540, 980];
+    const fillRatio = Math.min(1, Math.max(0, occupancyPercent / 100));
+
+    STADIUM_TIERS.forEach((tier, tIdx) => {
+      const targetCount = perTierCounts[tIdx];
+      const radialRows = tIdx === 0 ? 14 : tIdx === 1 ? 11 : tIdx === 2 ? 14 : 10;
+      const angularCols = Math.ceil(targetCount / radialRows);
+
+      for (let r = 0; r < radialRows; r += 1) {
+        const rowT = (r + 0.5) / radialRows;
+        const rx = THREE.MathUtils.lerp(tier.innerRadiusX, tier.outerRadiusX, rowT);
+        const rz = THREE.MathUtils.lerp(tier.innerRadiusZ, tier.outerRadiusZ, rowT);
+        const baseY = THREE.MathUtils.lerp(tier.baseElevation, tier.topElevation, rowT) + 0.52;
+
+        for (let c = 0; c < angularCols; c += 1) {
+          const angle = ((c + (r % 2) * 0.5) / angularCols) * Math.PI * 2;
+          if (angle < startAngle + 0.02 || angle > endAngle - 0.02) {
+            continue;
+          }
+          const hash = Math.abs(Math.sin(tIdx * 31.7 + r * 78.233 + c * 17.13));
+          if (hash >= fillRatio) {
+            continue;
+          }
+          const [x, z] = superEllipsePoint(angle, rx, rz);
+          const shirtHex = hash < 0.7 ? '#e11d48' : hash < 0.88 ? '#fbbf24' : '#f8fafc';
+          list.push({ x, baseY, z, angle, seed: hash, shirtHex });
+        }
+      }
+    });
+    return list;
+  }, [startAngle, endAngle, occupancyPercent]);
+
+  useEffect(() => {
+    const torso = torsoRef.current;
+    const head = headRef.current;
+    if (!torso || !head) {
+      return;
+    }
+    const dummy = new THREE.Object3D();
+    const color = new THREE.Color();
+
+    spectators.forEach((s, idx) => {
+      const rotY = Math.atan2(-s.x, -s.z);
+      dummy.rotation.set(0, rotY, 0);
+      dummy.scale.set(1, 1, 1);
+
+      dummy.position.set(s.x, s.baseY + 0.36, s.z);
+      dummy.updateMatrix();
+      torso.setMatrixAt(idx, dummy.matrix);
+      torso.setColorAt(idx, color.set(s.shirtHex));
+
+      dummy.position.set(s.x, s.baseY + 0.9, s.z);
+      dummy.updateMatrix();
+      head.setMatrixAt(idx, dummy.matrix);
+    });
+
+    torso.count = spectators.length;
+    head.count = spectators.length;
+    torso.instanceMatrix.needsUpdate = true;
+    head.instanceMatrix.needsUpdate = true;
+    if (torso.instanceColor) {
+      torso.instanceColor.needsUpdate = true;
+    }
+  }, [spectators]);
+
+  useFrame(({ clock }) => {
+    if (!liveSimActive || !torsoRef.current || !headRef.current || spectators.length === 0) {
+      return;
+    }
+    const t = clock.getElapsedTime();
+    const torsoArr = torsoRef.current.instanceMatrix.array as Float32Array;
+    const headArr = headRef.current.instanceMatrix.array as Float32Array;
+
+    for (let i = 0; i < spectators.length; i += 1) {
+      const s = spectators[i];
+      const wave = Math.max(0, Math.sin(s.angle * 2 - t * 3.1));
+      const dy = Math.pow(wave, 4) * 0.52 + (Math.sin(t * 7.2 + s.seed * 6.283) + 1) * 0.08;
+      const matYIdx = i * 16 + 13;
+      torsoArr[matYIdx] = s.baseY + 0.36 + dy;
+      headArr[matYIdx] = s.baseY + 0.9 + dy;
+    }
+
+    torsoRef.current.instanceMatrix.needsUpdate = true;
+    headRef.current.instanceMatrix.needsUpdate = true;
+  });
+
+  return (
+    <group name="live-seated-200k-crowd">
+      <instancedMesh ref={torsoRef} args={[undefined, undefined, 6000]}>
+        <boxGeometry args={[0.52, 0.68, 0.36]} />
+        <meshStandardMaterial roughness={0.68} />
+      </instancedMesh>
+      <instancedMesh ref={headRef} args={[undefined, undefined, 6000]}>
+        <sphereGeometry args={[0.2, 6, 6]} />
+        <meshStandardMaterial color="#f5d0a9" roughness={0.62} />
+      </instancedMesh>
+    </group>
+  );
+}
+
+/**
+ * 900 Walking Concourse & Ramp Pedestrians circulating at Weidmann velocities
+ * along Concourses 1..3 (+17.8m, +32.8m, +52.8m) and Vertical Ramp Cores.
+ */
+function LiveConcoursePedestrians({
+  startAngle,
+  endAngle,
+  occupancyPercent,
+  liveSimActive,
+}: {
+  startAngle: number;
+  endAngle: number;
+  occupancyPercent: number;
+  liveSimActive: boolean;
+}) {
+  const torsoRef = useRef<THREE.InstancedMesh | null>(null);
+  const headRef = useRef<THREE.InstancedMesh | null>(null);
+
+  const crowdMetrics = useMemo(
+    () => calculateCrowdPhysicsMetrics(occupancyPercent, liveSimActive),
+    [occupancyPercent, liveSimActive]
+  );
+
+  const agents = useMemo(() => {
+    const list: Array<{
+      mode: 'concourse' | 'ramp';
+      rx: number;
+      rz: number;
+      y: number;
+      baseAngle: number;
+      dir: 1 | -1;
+      phase: number;
+      shirtHex: string;
+    }> = [];
+    const levels = [
+      { y: 17.85, rx: 132, rz: 108 },
+      { y: 32.85, rx: 144, rz: 118 },
+      { y: 52.85, rx: 156, rz: 130 },
+    ];
+    const palette = ['#e11d48', '#fbbf24', '#38bdf8', '#f8fafc', '#10b981'];
+    const totalAgents = Math.round(180 + (occupancyPercent / 100) * 720);
+
+    for (let i = 0; i < totalAgents; i += 1) {
+      const hash = Math.abs(Math.sin(i * 41.73 + 9.13));
+      const shirtHex = palette[i % palette.length];
+      if (i % 5 === 0) {
+        const coreIdx = i % 16;
+        const coreAngle = (coreIdx / 16) * Math.PI * 2;
+        list.push({
+          mode: 'ramp',
+          rx: 155,
+          rz: 129,
+          y: 0.2,
+          baseAngle: coreAngle,
+          dir: i % 2 === 0 ? 1 : -1,
+          phase: hash,
+          shirtHex,
+        });
+      } else {
+        const lvl = levels[i % levels.length];
+        const radialOffset = (hash - 0.5) * 14;
+        list.push({
+          mode: 'concourse',
+          rx: lvl.rx + radialOffset,
+          rz: lvl.rz + radialOffset * 0.85,
+          y: lvl.y,
+          baseAngle: (i / totalAgents) * Math.PI * 2,
+          dir: i % 2 === 0 ? 1 : -1,
+          phase: hash,
+          shirtHex,
+        });
+      }
+    }
+    return list;
+  }, [occupancyPercent]);
+
+  useEffect(() => {
+    if (!torsoRef.current) return;
+    const color = new THREE.Color();
+    agents.forEach((a, idx) => {
+      torsoRef.current!.setColorAt(idx, color.set(a.shirtHex));
+    });
+    if (torsoRef.current.instanceColor) {
+      torsoRef.current.instanceColor.needsUpdate = true;
+    }
+  }, [agents]);
+
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const arcSpan = Math.max(0.1, endAngle - startAngle);
+
+  useFrame(({ clock }) => {
+    const torso = torsoRef.current;
+    const head = headRef.current;
+    if (!torso || !head) return;
+
+    const t = liveSimActive ? clock.getElapsedTime() : 0;
+    const speedMps = crowdMetrics.walkingSpeedMps;
+    const stairSpeed = crowdMetrics.stairSpeedMps;
+
+    let visibleCount = 0;
+    for (let i = 0; i < agents.length; i += 1) {
+      const a = agents[i];
+      let x = 0;
+      let y = a.y;
+      let z = 0;
+      let heading = 0;
+
+      if (a.mode === 'concourse') {
+        const angularVel = (speedMps / a.rx) * a.dir;
+        let angle = (a.baseAngle + t * angularVel) % (Math.PI * 2);
+        if (angle < 0) angle += Math.PI * 2;
+        if (angle < startAngle + 0.02 || angle > endAngle - 0.02) {
+          angle = startAngle + ((angle + i) % (arcSpan - 0.06)) + 0.03;
+        }
+        [x, z] = superEllipsePoint(angle, a.rx, a.rz);
+        heading = -angle + (a.dir > 0 ? 0 : Math.PI);
+      } else {
+        const angle = a.baseAngle;
+        if (angle < startAngle + 0.02 || angle > endAngle - 0.02) {
+          continue;
+        }
+        const [cx, cz] = superEllipsePoint(angle, a.rx, a.rz);
+        const tangentAngle = -angle + Math.PI / 2;
+        const progress = ((a.phase + (t * stairSpeed) / 35) % 1 + 1) % 1;
+        const yRamp = THREE.MathUtils.lerp(0.5, 52.8, a.dir > 0 ? progress : 1 - progress);
+        const localAlong = Math.sin(progress * Math.PI * 4) * 7.2;
+        x = cx + Math.cos(tangentAngle) * localAlong;
+        z = cz - Math.sin(tangentAngle) * localAlong;
+        y = yRamp;
+        heading = tangentAngle + (Math.cos(progress * Math.PI * 4) >= 0 ? 0 : Math.PI);
+      }
+
+      const strideBob = liveSimActive ? Math.abs(Math.sin(t * 7.5 + a.phase * 10)) * 0.09 : 0;
+      dummy.rotation.set(0, heading, 0);
+      dummy.scale.set(1, 1, 1);
+
+      dummy.position.set(x, y + 0.72 + strideBob, z);
+      dummy.updateMatrix();
+      torso.setMatrixAt(visibleCount, dummy.matrix);
+
+      dummy.position.set(x, y + 1.46 + strideBob, z);
+      dummy.updateMatrix();
+      head.setMatrixAt(visibleCount, dummy.matrix);
+
+      visibleCount += 1;
+    }
+
+    torso.count = visibleCount;
+    head.count = visibleCount;
+    torso.instanceMatrix.needsUpdate = true;
+    head.instanceMatrix.needsUpdate = true;
+  });
+
+  return (
+    <group name="live-concourse-pedestrians">
+      <instancedMesh ref={torsoRef} args={[undefined, undefined, 950]}>
+        <boxGeometry args={[0.48, 0.95, 0.28]} />
+        <meshStandardMaterial roughness={0.65} />
+      </instancedMesh>
+      <instancedMesh ref={headRef} args={[undefined, undefined, 950]}>
+        <sphereGeometry args={[0.19, 6, 6]} />
+        <meshStandardMaterial color="#f5d0a9" roughness={0.58} />
+      </instancedMesh>
+    </group>
+  );
+}
+
 export function BowlStands({
   ledGlowIntensity,
   halfCutaway,
   bimFrameMode,
   occupancyPercent,
   showEvacPaths,
+  liveSimActive = true,
 }: BowlStandsProps) {
   const startAngle = halfCutaway ? Math.PI * 0.52 : 0;
   const endAngle = halfCutaway ? Math.PI * 1.98 : Math.PI * 2;
@@ -875,6 +1267,26 @@ export function BowlStands({
   return (
     <group name="stadium-bowl-200k">
       <RCFrameBents startAngle={startAngle} endAngle={endAngle} />
+
+      <VerticalCirculationCores startAngle={startAngle} endAngle={endAngle} />
+
+      {!bimFrameMode && occupancyPercent > 0 && (
+        <LiveSeatedSpectatorCrowd
+          startAngle={startAngle}
+          endAngle={endAngle}
+          occupancyPercent={occupancyPercent}
+          liveSimActive={liveSimActive}
+        />
+      )}
+
+      {liveSimActive && (
+        <LiveConcoursePedestrians
+          startAngle={startAngle}
+          endAngle={endAngle}
+          occupancyPercent={occupancyPercent}
+          liveSimActive={liveSimActive}
+        />
+      )}
 
       {/* Solid Sub-Bowl Foundation Slab closing ground floor under Tier 1 */}
       <mesh geometry={foundationSlabGeo} receiveShadow>

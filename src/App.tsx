@@ -10,9 +10,10 @@ export function App() {
   const [halfCutaway, setHalfCutaway] = useState(false);
   const [bimFrameMode, setBimFrameMode] = useState(false);
   const [autoRotate, setAutoRotate] = useState(false);
-  const [occupancyPercent, setOccupancyPercent] = useState(85);
+  const [occupancyPercent, setOccupancyPercent] = useState(100);
   const [roofOpenPercent, setRoofOpenPercent] = useState(75);
   const [showEvacPaths, setShowEvacPaths] = useState(false);
+  const [liveSimActive, setLiveSimActive] = useState(true);
 
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-slate-950">
@@ -33,6 +34,7 @@ export function App() {
           occupancyPercent={occupancyPercent}
           roofOpenPercent={roofOpenPercent}
           showEvacPaths={showEvacPaths}
+          liveSimActive={liveSimActive}
         />
       </Suspense>
 
@@ -55,6 +57,8 @@ export function App() {
         onRoofOpenChange={setRoofOpenPercent}
         showEvacPaths={showEvacPaths}
         onToggleEvacPaths={() => setShowEvacPaths((v) => !v)}
+        liveSimActive={liveSimActive}
+        onToggleLiveSim={() => setLiveSimActive((v) => !v)}
       />
     </main>
   );

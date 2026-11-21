@@ -24,6 +24,7 @@ interface StadiumSceneProps {
   occupancyPercent: number;
   roofOpenPercent: number;
   showEvacPaths: boolean;
+  liveSimActive: boolean;
 }
 
 interface ErrorBoundaryState {
@@ -227,6 +228,7 @@ export function StadiumScene({
   occupancyPercent,
   roofOpenPercent,
   showEvacPaths,
+  liveSimActive,
 }: StadiumSceneProps) {
   const lighting = getLightingConfig(lightingMode);
   const showSightline = cameraPreset === 'sky' || cameraPreset === 'vip';
@@ -322,14 +324,21 @@ export function StadiumScene({
           </>
         )}
 
-        <Surroundings halfCutaway={halfCutaway} isNight={isNight} bimFrameMode={bimFrameMode} />
-        <Pitch />
+        <Surroundings
+          halfCutaway={halfCutaway}
+          isNight={isNight}
+          bimFrameMode={bimFrameMode}
+          occupancyPercent={occupancyPercent}
+          liveSimActive={liveSimActive}
+        />
+        <Pitch liveMatchActive={liveSimActive} />
         <BowlStands
           ledGlowIntensity={lighting.ledGlowIntensity}
           halfCutaway={halfCutaway}
           bimFrameMode={bimFrameMode}
           occupancyPercent={occupancyPercent}
           showEvacPaths={showEvacPaths}
+          liveSimActive={liveSimActive}
         />
         <RoofStructure
           xrayRoof={xrayRoof}
