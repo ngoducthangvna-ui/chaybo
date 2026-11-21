@@ -11,6 +11,7 @@ import {
   calculateTotalCapacity,
   getCameraPreset,
   getLightingConfig,
+  superEllipsePoint,
 } from './stadiumSpecs';
 
 describe('stadiumSpecs', () => {
@@ -27,6 +28,16 @@ describe('stadiumSpecs', () => {
       expect(curr.innerRadiusX).toBeGreaterThan(prev.innerRadiusX);
       expect(curr.outerRadiusX).toBeGreaterThan(prev.outerRadiusX);
     }
+  });
+
+  it('computes accurate super-ellipse boundary points at cardinal angles', () => {
+    const [x0, z0] = superEllipsePoint(0, 100, 80);
+    expect(x0).toBeCloseTo(100, 4);
+    expect(Math.abs(z0)).toBeLessThan(1e-6);
+
+    const [x90, z90] = superEllipsePoint(Math.PI / 2, 100, 80);
+    expect(Math.abs(x90)).toBeLessThan(1e-6);
+    expect(z90).toBeCloseTo(80, 4);
   });
 
   it('uses FIFA regulation pitch dimensions (105m x 68m)', () => {

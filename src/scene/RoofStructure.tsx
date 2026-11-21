@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { ROOF_SPECS } from '../config/stadiumSpecs';
+import { ROOF_SPECS, superEllipsePoint } from '../config/stadiumSpecs';
 
 interface RoofStructureProps {
   xrayRoof: boolean;
@@ -13,12 +13,129 @@ interface RoofStructureProps {
 }
 
 /**
- * Generates the translucent PTFE roof canopy mesh from outer eave to central oculus.
+ * Generates an architectural glazed curtain-wall & concourse gallery texture
+ * wrapped behind the exterior golden-bronze diagrid exoskeleton.
  */
-function createRoofCanopyGeometry(arcSpan: number, segments = 96): THREE.BufferGeometry {
+function createCurtainWallTexture(isNight: boolean): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 2048;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  // Deep architectural tinted glass background
+  ctx.fillStyle = isNight ? '#090d16' : '#1e293b';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // 4 horizontal concourse gallery bands glowing softly behind glass
+  const floorBands = [
+    { y: 380, h: 105, glow: 'rgba(251, 191, 36, 0.42)' },
+    { y: 265, h: 95, glow: 'rgba(245, 158, 11, 0.36)' },
+    { y: 150, h: 95, glow: 'rgba(56, 189, 248, 0.25)' },
+    { y: 40, h: 90, glow: 'rgba(251, 191, 36, 0.22)' },
+  ];
+
+  for (const band of floorBands) {
+    const grad = ctx.createLinearGradient(0, band.y, 0, band.y + band.h);
+    grad.addColorStop(0, isNight ? 'rgba(15, 23, 42, 0.85)' : 'rgba(51, 65, 85, 0.7)');
+    grad.addColorStop(0.55, band.glow);
+    grad.addColorStop(1, '#0f172a');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, band.y, canvas.width, band.h);
+
+    // Concrete floor slab edge line
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(0, band.y + band.h - 10, canvas.width, 10);
+  }
+
+  // Fine vertical aluminum curtain-wall mullions
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.72)';
+  for (let x = 0; x < canvas.width; x += 16) {
+    ctx.fillRect(x, 0, 3, canvas.height);
+  }
+
+  // 4 Grand Entrance Arch Portals at 0°, 90°, 180°, 270°
+  const portalCenters = [0, 512, 1024, 1536, 2048];
+  for (const px of portalCenters) {
+    ctx.fillStyle = 'rgba(245, 158, 11, 0.5)';
+    ctx.fillRect(px - 68, 300, 136, 212);
+    ctx.fillStyle = '#020617';
+    ctx.fillRect(px - 56, 314, 112, 198);
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.8)';
+    ctx.fillRect(px - 68, 294, 136, 8);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.anisotropy = 8;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+/**
+ * Generates the outer curved architectural facade curtain wall along super-ellipse contours.
+ */
+function createCurtainWallGeometry(
+  startAngle: number,
+  endAngle: number,
+  segments = 108
+): THREE.BufferGeometry {
+  const rings = 6;
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+  const arcSpan = endAngle - startAngle;
+
+  for (let r = 0; r <= rings; r += 1) {
+    const vt = r / rings;
+    const y = THREE.MathUtils.lerp(3.2, ROOF_SPECS.eaveHeight, vt);
+    // Subtle sculptural outward waist curve characteristic of iconic stadium bowls
+    const bulge = Math.sin(vt * Math.PI) * 5.0;
+    const rx = 165 + bulge;
+    const rz = 139 + bulge;
+
+    for (let i = 0; i <= segments; i += 1) {
+      const ut = i / segments;
+      const angle = startAngle + ut * arcSpan;
+      const [x, z] = superEllipsePoint(angle, rx, rz);
+      positions.push(x, y, z);
+      uvs.push(angle / (Math.PI * 2), vt);
+    }
+  }
+
+  const stride = segments + 1;
+  for (let r = 0; r < rings; r += 1) {
+    for (let i = 0; i < segments; i += 1) {
+      const a = r * stride + i;
+      const b = a + 1;
+      const c = (r + 1) * stride + i;
+      const d = c + 1;
+      indices.push(a, c, b, b, c, d);
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+/**
+ * Generates the translucent PTFE roof canopy mesh from outer compression ring to inner tension ring.
+ */
+function createRoofCanopyGeometry(
+  startAngle: number,
+  endAngle: number,
+  segments = 108
+): THREE.BufferGeometry {
   const rings = 10;
   const positions: number[] = [];
   const indices: number[] = [];
+  const arcSpan = endAngle - startAngle;
 
   for (let r = 0; r <= rings; r += 1) {
     const t = r / rings;
@@ -26,11 +143,12 @@ function createRoofCanopyGeometry(arcSpan: number, segments = 96): THREE.BufferG
     const rz = THREE.MathUtils.lerp(ROOF_SPECS.outerRadiusZ, ROOF_SPECS.oculusRadiusZ, t);
 
     for (let i = 0; i <= segments; i += 1) {
-      const angle = (i / segments) * arcSpan;
-      const wave = Math.sin(angle * 12) * 1.8 * (1 - t);
+      const angle = startAngle + (i / segments) * arcSpan;
+      const [x, z] = superEllipsePoint(angle, rx, rz);
+      const wave = Math.sin(angle * 24) * 0.9 * (1 - t);
       const arch = Math.sin(t * Math.PI * 0.78) * (ROOF_SPECS.peakHeight - ROOF_SPECS.eaveHeight);
       const y = ROOF_SPECS.eaveHeight + arch + wave;
-      positions.push(Math.cos(angle) * rx, y, Math.sin(angle) * rz);
+      positions.push(x, y, z);
     }
   }
 
@@ -53,8 +171,121 @@ function createRoofCanopyGeometry(arcSpan: number, segments = 96): THREE.BufferG
 }
 
 /**
- * Generates one curved elliptical half-dome shell matching the oculus opening,
- * staying completely tucked beneath the main roof canopy when retracted.
+ * Creates a smooth horizontal structural ring tube along a super-ellipse contour.
+ */
+function createSuperEllipseRingTube(
+  radiusX: number,
+  radiusZ: number,
+  elevation: number,
+  tubeRadius: number,
+  startAngle: number,
+  endAngle: number,
+  segments = 108
+): THREE.TubeGeometry {
+  const pts: THREE.Vector3[] = [];
+  const isClosed = endAngle - startAngle >= Math.PI * 1.99;
+  const arcSpan = endAngle - startAngle;
+
+  for (let i = 0; i <= segments; i += 1) {
+    const angle = startAngle + (i / segments) * arcSpan;
+    const [x, z] = superEllipsePoint(angle, radiusX, radiusZ);
+    pts.push(new THREE.Vector3(x, elevation, z));
+  }
+  const curve = new THREE.CatmullRomCurve3(pts, isClosed);
+  return new THREE.TubeGeometry(curve, segments, tubeRadius, 8, isClosed);
+}
+
+/**
+ * Generates curved Golden-Bronze exoskeleton diagrid ribs spiraling from the granite plinth
+ * at y=3.2m up to the outer compression ring at y=68m, plus radial roof space-truss chords.
+ */
+function createArchitecturalRibs(startAngle: number, endAngle: number) {
+  const roofRibs: THREE.TubeGeometry[] = [];
+  const diagCw: THREE.TubeGeometry[] = [];
+  const diagCcw: THREE.TubeGeometry[] = [];
+  const count = ROOF_SPECS.ribCount;
+
+  for (let i = 0; i < count; i += 1) {
+    const angle = (i / count) * Math.PI * 2;
+    if (angle < startAngle - 0.02 || angle > endAngle + 0.02) {
+      continue;
+    }
+
+    // Main exterior rib + roof cantilever truss
+    const [xBase, zBase] = superEllipsePoint(angle, ROOF_SPECS.outerRadiusX + 1, ROOF_SPECS.outerRadiusZ + 1);
+    const [xMid, zMid] = superEllipsePoint(angle, ROOF_SPECS.outerRadiusX + 6, ROOF_SPECS.outerRadiusZ + 6);
+    const [xEave, zEave] = superEllipsePoint(angle, ROOF_SPECS.outerRadiusX, ROOF_SPECS.outerRadiusZ);
+    const [xPeak, zPeak] = superEllipsePoint(
+      angle,
+      (ROOF_SPECS.outerRadiusX + ROOF_SPECS.oculusRadiusX) * 0.52,
+      (ROOF_SPECS.outerRadiusZ + ROOF_SPECS.oculusRadiusZ) * 0.52
+    );
+    const [xOculus, zOculus] = superEllipsePoint(angle, ROOF_SPECS.oculusRadiusX, ROOF_SPECS.oculusRadiusZ);
+
+    const mainCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(xBase, 3.0, zBase),
+      new THREE.Vector3(xMid, 36.0, zMid),
+      new THREE.Vector3(xEave, ROOF_SPECS.eaveHeight, zEave),
+      new THREE.Vector3(xPeak, ROOF_SPECS.peakHeight, zPeak),
+      new THREE.Vector3(xOculus, 74.0, zOculus),
+    ]);
+    roofRibs.push(new THREE.TubeGeometry(mainCurve, 26, 0.72, 6, false));
+
+    // Crisscrossing Dong Son golden-bronze diagrid lattice on the exterior facade
+    const shift = ((Math.PI * 2) / count) * 2.0;
+    const angleCw = angle + shift;
+    const angleCcw = angle - shift;
+
+    if (angleCw >= startAngle - 0.05 && angleCw <= endAngle + 0.05) {
+      const [xTop1, zTop1] = superEllipsePoint(angleCw, ROOF_SPECS.outerRadiusX, ROOF_SPECS.outerRadiusZ);
+      const [xWaist1, zWaist1] = superEllipsePoint(
+        (angle + angleCw) / 2,
+        ROOF_SPECS.outerRadiusX + 6.2,
+        ROOF_SPECS.outerRadiusZ + 6.2
+      );
+      diagCw.push(
+        new THREE.TubeGeometry(
+          new THREE.CatmullRomCurve3([
+            new THREE.Vector3(xBase, 3.0, zBase),
+            new THREE.Vector3(xWaist1, 36.0, zWaist1),
+            new THREE.Vector3(xTop1, ROOF_SPECS.eaveHeight, zTop1),
+          ]),
+          10,
+          0.42,
+          5,
+          false
+        )
+      );
+    }
+
+    if (angleCcw >= startAngle - 0.05 && angleCcw <= endAngle + 0.05) {
+      const [xTop2, zTop2] = superEllipsePoint(angleCcw, ROOF_SPECS.outerRadiusX, ROOF_SPECS.outerRadiusZ);
+      const [xWaist2, zWaist2] = superEllipsePoint(
+        (angle + angleCcw) / 2,
+        ROOF_SPECS.outerRadiusX + 6.2,
+        ROOF_SPECS.outerRadiusZ + 6.2
+      );
+      diagCcw.push(
+        new THREE.TubeGeometry(
+          new THREE.CatmullRomCurve3([
+            new THREE.Vector3(xBase, 3.0, zBase),
+            new THREE.Vector3(xWaist2, 36.0, zWaist2),
+            new THREE.Vector3(xTop2, ROOF_SPECS.eaveHeight, zTop2),
+          ]),
+          10,
+          0.42,
+          5,
+          false
+        )
+      );
+    }
+  }
+
+  return { roofRibs, diagCw, diagCcw };
+}
+
+/**
+ * Generates curved elliptical half-dome shells for the retractable Oculus roof.
  */
 function createOculusDomeHalfGeometry(side: -1 | 1): THREE.BufferGeometry {
   const rings = 8;
@@ -67,10 +298,15 @@ function createOculusDomeHalfGeometry(side: -1 | 1): THREE.BufferGeometry {
     for (let i = 0; i <= segs; i += 1) {
       const it = i / segs;
       const angle = -Math.PI / 2 + it * Math.PI;
-      const x = Math.cos(angle) * ROOF_SPECS.oculusRadiusX * rt * side;
-      const z = Math.sin(angle) * ROOF_SPECS.oculusRadiusZ * rt;
+      const [sx, sz] = superEllipsePoint(
+        angle,
+        ROOF_SPECS.oculusRadiusX * rt,
+        ROOF_SPECS.oculusRadiusZ * rt
+      );
+      const x = Math.abs(sx) * side;
+      const z = sz;
       const domeArch = Math.cos((rt * Math.PI) / 2) * 6.5;
-      const y = 74.2 + domeArch;
+      const y = 73.5 + domeArch;
       positions.push(x, y, z);
     }
   }
@@ -93,112 +329,6 @@ function createOculusDomeHalfGeometry(side: -1 | 1): THREE.BufferGeometry {
   return geometry;
 }
 
-function createRoofRibGeometries(arcSpan: number): THREE.TubeGeometry[] {
-  const ribs: THREE.TubeGeometry[] = [];
-  for (let i = 0; i < ROOF_SPECS.ribCount; i += 1) {
-    const angle = (i / ROOF_SPECS.ribCount) * Math.PI * 2;
-    if (angle > arcSpan + 0.05) {
-      continue;
-    }
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-
-    const points = [
-      new THREE.Vector3(cos * (ROOF_SPECS.outerRadiusX + 4), 0, sin * (ROOF_SPECS.outerRadiusZ + 4)),
-      new THREE.Vector3(cos * (ROOF_SPECS.outerRadiusX + 8), 38, sin * (ROOF_SPECS.outerRadiusZ + 8)),
-      new THREE.Vector3(cos * ROOF_SPECS.outerRadiusX, ROOF_SPECS.eaveHeight, sin * ROOF_SPECS.outerRadiusZ),
-      new THREE.Vector3(
-        cos * ((ROOF_SPECS.outerRadiusX + ROOF_SPECS.oculusRadiusX) * 0.52),
-        ROOF_SPECS.peakHeight + 1.2,
-        sin * ((ROOF_SPECS.outerRadiusZ + ROOF_SPECS.oculusRadiusZ) * 0.52)
-      ),
-      new THREE.Vector3(cos * ROOF_SPECS.oculusRadiusX, 75, sin * ROOF_SPECS.oculusRadiusZ),
-    ];
-
-    const curve = new THREE.CatmullRomCurve3(points);
-    ribs.push(new THREE.TubeGeometry(curve, 28, 0.95, 8, false));
-  }
-  return ribs;
-}
-
-function createDiagridGeometries(arcSpan: number): THREE.TubeGeometry[] {
-  const struts: THREE.TubeGeometry[] = [];
-  const count = 24;
-  for (let i = 0; i < count; i += 1) {
-    const a1 = (i / count) * Math.PI * 2;
-    const a2 = ((i + 1) / count) * Math.PI * 2;
-    if (a1 > arcSpan || a2 > arcSpan + 0.1) {
-      continue;
-    }
-    const p1 = new THREE.Vector3(
-      Math.cos(a1) * (ROOF_SPECS.outerRadiusX + 4),
-      0,
-      Math.sin(a1) * (ROOF_SPECS.outerRadiusZ + 4)
-    );
-    const p2 = new THREE.Vector3(
-      Math.cos(a2) * ROOF_SPECS.outerRadiusX,
-      ROOF_SPECS.eaveHeight,
-      Math.sin(a2) * ROOF_SPECS.outerRadiusZ
-    );
-    struts.push(new THREE.TubeGeometry(new THREE.LineCurve3(p1, p2), 4, 0.55, 6, false));
-  }
-  return struts;
-}
-
-function createOculusRingGeometry(arcSpan: number, segments = 96): THREE.TubeGeometry {
-  const pts: THREE.Vector3[] = [];
-  const isClosed = arcSpan >= Math.PI * 1.99;
-  const steps = isClosed ? segments : Math.max(12, Math.round((arcSpan / (Math.PI * 2)) * segments));
-
-  for (let i = 0; i <= steps; i += 1) {
-    const angle = (i / steps) * arcSpan;
-    pts.push(
-      new THREE.Vector3(
-        Math.cos(angle) * ROOF_SPECS.oculusRadiusX,
-        75,
-        Math.sin(angle) * ROOF_SPECS.oculusRadiusZ
-      )
-    );
-  }
-  const curve = new THREE.CatmullRomCurve3(pts, isClosed);
-  return new THREE.TubeGeometry(curve, steps, 1.15, 8, isClosed);
-}
-
-/**
- * Concrete pier footings anchoring every steel rib & diagrid strut firmly to the ground.
- */
-function ButtressFoundations({ arcSpan }: { arcSpan: number }) {
-  const footings = useMemo(() => {
-    const items: Array<{ pos: [number, number, number]; rotY: number }> = [];
-    for (let i = 0; i < ROOF_SPECS.ribCount; i += 1) {
-      const angle = (i / ROOF_SPECS.ribCount) * Math.PI * 2;
-      if (angle > arcSpan + 0.05) {
-        continue;
-      }
-      items.push({
-        pos: [
-          Math.cos(angle) * (ROOF_SPECS.outerRadiusX + 4),
-          1.8,
-          Math.sin(angle) * (ROOF_SPECS.outerRadiusZ + 4),
-        ],
-        rotY: -angle,
-      });
-    }
-    return items;
-  }, [arcSpan]);
-
-  return (
-    <group name="roof-buttress-foundations">
-      {footings.map((f, idx) => (
-        <mesh key={idx} position={f.pos} rotation={[0, f.rotY, 0]} castShadow receiveShadow>
-          <boxGeometry args={[6.5, 4.2, 4.5]} />
-          <meshStandardMaterial color="#334155" roughness={0.85} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
 function RetractableOculusPanels({
   roofOpenPercent,
   xrayRoof,
@@ -208,16 +338,14 @@ function RetractableOculusPanels({
 }) {
   const leftDomeGeo = useMemo(() => createOculusDomeHalfGeometry(-1), []);
   const rightDomeGeo = useMemo(() => createOculusDomeHalfGeometry(1), []);
-  // Max 44m retract keeps both curved dome halves tucked strictly underneath the main roof canopy
   const slideOffset = (roofOpenPercent / 100) * 44;
 
   return (
     <group name="retractable-oculus-dome">
-      {/* Guide Track Beams supporting the retractable halves beneath the canopy */}
       {[-44, 44].map((zTrack) => (
-        <mesh key={zTrack} position={[0, 74.2, zTrack]}>
-          <boxGeometry args={[216, 0.9, 1.1]} />
-          <meshStandardMaterial color="#94a3b8" metalness={0.8} roughness={0.25} />
+        <mesh key={zTrack} position={[0, 73.5, zTrack]}>
+          <boxGeometry args={[214, 0.85, 1.0]} />
+          <meshStandardMaterial color="#cbd5e1" metalness={0.8} roughness={0.25} />
         </mesh>
       ))}
 
@@ -304,8 +432,11 @@ function CeremonyFireworks() {
       const delay = seeds[i * 4 + 3];
 
       const cycle = (t + delay) % 2.8;
-      const originX = Math.cos(baseAngle) * (ROOF_SPECS.oculusRadiusX + 12);
-      const originZ = Math.sin(baseAngle) * (ROOF_SPECS.oculusRadiusZ + 12);
+      const [originX, originZ] = superEllipsePoint(
+        baseAngle,
+        ROOF_SPECS.oculusRadiusX + 12,
+        ROOF_SPECS.oculusRadiusZ + 12
+      );
       const originY = 82;
 
       if (cycle < 0.9) {
@@ -343,84 +474,158 @@ export function RoofStructure({
   roofOpenPercent,
   ceremonyMode,
 }: RoofStructureProps) {
-  const arcSpan = halfCutaway ? Math.PI * 1.15 : Math.PI * 2;
-  const canopyGeo = useMemo(() => createRoofCanopyGeometry(arcSpan), [arcSpan]);
-  const ribGeos = useMemo(() => createRoofRibGeometries(arcSpan), [arcSpan]);
-  const diagridGeos = useMemo(() => createDiagridGeometries(arcSpan), [arcSpan]);
-  const oculusGeo = useMemo(() => createOculusRingGeometry(arcSpan), [arcSpan]);
+  const startAngle = halfCutaway ? Math.PI * 0.52 : 0;
+  const endAngle = halfCutaway ? Math.PI * 1.98 : Math.PI * 2;
+  const isNight = floodlightIntensity > 0.5;
+
+  const curtainTex = useMemo(() => createCurtainWallTexture(isNight), [isNight]);
+  const curtainGeo = useMemo(() => createCurtainWallGeometry(startAngle, endAngle), [startAngle, endAngle]);
+  const canopyGeo = useMemo(() => createRoofCanopyGeometry(startAngle, endAngle), [startAngle, endAngle]);
+
+  const { roofRibs, diagCw, diagCcw } = useMemo(
+    () => createArchitecturalRibs(startAngle, endAngle),
+    [startAngle, endAngle]
+  );
+
+  const compressionRingGeo = useMemo(
+    () =>
+      createSuperEllipseRingTube(
+        ROOF_SPECS.outerRadiusX,
+        ROOF_SPECS.outerRadiusZ,
+        ROOF_SPECS.eaveHeight,
+        1.15,
+        startAngle,
+        endAngle
+      ),
+    [startAngle, endAngle]
+  );
+
+  const waistCrownRingGeo = useMemo(
+    () =>
+      createSuperEllipseRingTube(
+        ROOF_SPECS.outerRadiusX + 6.2,
+        ROOF_SPECS.outerRadiusZ + 6.2,
+        36.0,
+        0.75,
+        startAngle,
+        endAngle
+      ),
+    [startAngle, endAngle]
+  );
+
+  const tensionRingGeo = useMemo(
+    () =>
+      createSuperEllipseRingTube(
+        ROOF_SPECS.oculusRadiusX,
+        ROOF_SPECS.oculusRadiusZ,
+        74.0,
+        1.1,
+        startAngle,
+        endAngle
+      ),
+    [startAngle, endAngle]
+  );
 
   const floodlightPositions = useMemo(() => {
     const items: Array<{ pos: [number, number, number]; angle: number }> = [];
     const count = 16;
     for (let i = 0; i < count; i += 1) {
       const angle = (i / count) * Math.PI * 2;
-      if (angle > arcSpan) {
+      if (angle < startAngle - 0.02 || angle > endAngle + 0.02) {
         continue;
       }
-      items.push({
-        pos: [
-          Math.cos(angle) * (ROOF_SPECS.oculusRadiusX + 3),
-          73.5,
-          Math.sin(angle) * (ROOF_SPECS.oculusRadiusZ + 3),
-        ],
+      const [x, z] = superEllipsePoint(
         angle,
-      });
+        ROOF_SPECS.oculusRadiusX + 2.5,
+        ROOF_SPECS.oculusRadiusZ + 2.5
+      );
+      items.push({ pos: [x, 72.5, z], angle });
     }
     return items;
-  }, [arcSpan]);
+  }, [startAngle, endAngle]);
 
   return (
-    <group name="dong-son-roof">
-      <ButtressFoundations arcSpan={arcSpan} />
+    <group name="dong-son-architecture">
+      {/* Glazed Exterior Concourse Curtain Wall enclosing the stadium bowl */}
+      <mesh geometry={curtainGeo} receiveShadow>
+        <meshStandardMaterial
+          map={curtainTex}
+          emissive="#ffffff"
+          emissiveMap={curtainTex}
+          emissiveIntensity={isNight ? 0.85 : 0.25}
+          metalness={0.6}
+          roughness={0.25}
+          transparent={xrayRoof}
+          opacity={xrayRoof ? 0.3 : 1}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
 
-      {/* Translucent PTFE roof canopy */}
+      {/* Translucent PTFE Roof Canopy */}
       <mesh geometry={canopyGeo} castShadow={!xrayRoof} receiveShadow>
         <meshPhysicalMaterial
-          color={xrayRoof ? '#38bdf8' : '#f1f5f9'}
+          color={xrayRoof ? '#38bdf8' : '#f8fafc'}
           transparent
-          opacity={xrayRoof ? 0.16 : 0.84}
+          opacity={xrayRoof ? 0.16 : 0.86}
           wireframe={xrayRoof}
-          roughness={0.35}
+          roughness={0.32}
           metalness={0.08}
           side={THREE.DoubleSide}
         />
       </mesh>
 
-      {/* Curved Retractable Inner Oculus Dome tucked beneath canopy */}
+      {/* Curved Retractable Inner Oculus Dome */}
       {!halfCutaway && (
         <RetractableOculusPanels roofOpenPercent={roofOpenPercent} xrayRoof={xrayRoof} />
       )}
 
-      {/* 24 Sweeping Dong Son Structural Ribs anchored to foundations */}
-      {ribGeos.map((geo, idx) => (
-        <mesh key={idx} geometry={geo} castShadow>
+      {/* 48 Primary Structural Steel & Golden-Bronze Cantilever Ribs */}
+      {roofRibs.map((geo, idx) => (
+        <mesh key={`rib-${idx}`} geometry={geo} castShadow>
           <meshStandardMaterial
             color={idx % 2 === 0 ? '#e2e8f0' : '#f59e0b'}
-            metalness={0.72}
-            roughness={0.28}
+            metalness={0.8}
+            roughness={0.24}
           />
         </mesh>
       ))}
 
-      {/* Outer Diagrid Exoskeleton Facade anchored at y=0 */}
-      {diagridGeos.map((geo, idx) => (
-        <mesh key={`diag-${idx}`} geometry={geo}>
+      {/* Golden-Bronze Dong Son Diagrid Exoskeleton Shell */}
+      {diagCw.map((geo, idx) => (
+        <mesh key={`cw-${idx}`} geometry={geo}>
           <meshStandardMaterial
-            color="#cbd5e1"
+            color="#d97706"
             emissive={facadeGlowColor}
-            emissiveIntensity={floodlightIntensity > 0 ? 0.35 : 0.05}
-            metalness={0.75}
-            roughness={0.25}
+            emissiveIntensity={isNight ? 0.28 : 0.04}
+            metalness={0.85}
+            roughness={0.22}
+          />
+        </mesh>
+      ))}
+      {diagCcw.map((geo, idx) => (
+        <mesh key={`ccw-${idx}`} geometry={geo}>
+          <meshStandardMaterial
+            color="#f59e0b"
+            emissive={facadeGlowColor}
+            emissiveIntensity={isNight ? 0.28 : 0.04}
+            metalness={0.85}
+            roughness={0.22}
           />
         </mesh>
       ))}
 
-      {/* Central Oculus Tension Ring */}
-      <mesh geometry={oculusGeo} castShadow>
-        <meshStandardMaterial color="#f59e0b" metalness={0.8} roughness={0.22} />
+      {/* Outer Compression Ring, Waist Crown Ring & Inner Tension Ring */}
+      <mesh geometry={compressionRingGeo}>
+        <meshStandardMaterial color="#f59e0b" metalness={0.85} roughness={0.22} />
+      </mesh>
+      <mesh geometry={waistCrownRingGeo}>
+        <meshStandardMaterial color="#e2e8f0" metalness={0.85} roughness={0.22} />
+      </mesh>
+      <mesh geometry={tensionRingGeo} castShadow>
+        <meshStandardMaterial color="#f59e0b" metalness={0.85} roughness={0.22} />
       </mesh>
 
-      {/* Stadium Floodlights & Night Volumetric Beams */}
+      {/* Stadium Floodlights & Volumetric Cones */}
       {floodlightPositions.map(({ pos, angle }, idx) => (
         <group key={idx} position={pos} rotation={[0, -angle, 0]}>
           <mesh>
@@ -446,7 +651,6 @@ export function RoofStructure({
         </group>
       ))}
 
-      {/* Opening Ceremony Fireworks */}
       {ceremonyMode && <CeremonyFireworks />}
     </group>
   );

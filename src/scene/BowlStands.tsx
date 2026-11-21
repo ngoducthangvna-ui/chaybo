@@ -2,7 +2,12 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Line } from '@react-three/drei';
 import * as THREE from 'three';
-import { STADIUM_TIERS, type TierSpec } from '../config/stadiumSpecs';
+import {
+  ROOF_SPECS,
+  STADIUM_TIERS,
+  type TierSpec,
+  superEllipsePoint,
+} from '../config/stadiumSpecs';
 
 interface BowlStandsProps {
   ledGlowIntensity: number;
@@ -13,51 +18,247 @@ interface BowlStandsProps {
 }
 
 /**
- * Creates a solid, closed cross-section elliptical bowl-tier geometry including
- * the stepped seating deck, vertical outer back wall, and horizontal underslab.
+ * Generates a high-resolution procedural seating & vomitory texture for 1 sector
+ * (tiled 36 times around the stadium bowl), showing individual seat rows, concrete
+ * radial staircases with yellow safety nosing, and shadowed vomitory tunnel portals.
  */
-function createTierGeometry(
-  tier: TierSpec,
-  arcSpan: number,
-  segments = 96
-): THREE.BufferGeometry {
-  const steps = Math.min(10, Math.max(6, Math.floor(tier.rows / 3)));
-  const slabDrop = 1.6;
-  const profile: Array<[number, number]> = [];
-
-  // 1. Sloped seating deck (inner bottom -> outer top)
-  for (let s = 0; s <= steps; s += 1) {
-    const t = s / steps;
-    profile.push([t, THREE.MathUtils.lerp(tier.baseElevation, tier.topElevation, t)]);
+function createSeatingBowlTexture(occupancyPercent: number): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 1024;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return new THREE.CanvasTexture(canvas);
   }
-  // 2. Outer back structural wall down to concourse soffit
-  profile.push([1.0, tier.baseElevation - slabDrop]);
-  // 3. Horizontal concourse underslab back to inner edge
-  profile.push([0.0, tier.baseElevation - slabDrop]);
-  // 4. Close front fascia back to inner start
-  profile.push([0.0, tier.baseElevation]);
+
+  // Concrete riser/tread base
+  ctx.fillStyle = '#27272a';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const rowCount = 32;
+  const seatCols = 24;
+  const rowH = canvas.height / rowCount;
+  const colW = canvas.width / seatCols;
+  const fillThreshold = occupancyPercent / 100;
+
+  for (let r = 0; r < rowCount; r += 1) {
+    const y = r * rowH;
+    // Concrete step shadow line
+    ctx.fillStyle = '#18181b';
+    ctx.fillRect(0, y, canvas.width, 4);
+
+    for (let c = 0; c < seatCols; c += 1) {
+      const x = c * colW;
+      // Left & right edges form the concrete radial vomitory staircase
+      if (c === 0 || c === seatCols - 1) {
+        ctx.fillStyle = '#52525b';
+        ctx.fillRect(x, y + 4, colW, rowH - 4);
+        // Yellow safety step edge
+        ctx.fillStyle = '#eab308';
+        ctx.fillRect(x + 2, y + 4, colW - 4, 3);
+        continue;
+      }
+
+      // Mid-tier vomitory portal opening (rows 13-17, center 4 cols)
+      if (r >= 13 && r <= 17 && c >= 10 && c <= 13) {
+        ctx.fillStyle = '#09090b';
+        ctx.fillRect(x, y, colW, rowH);
+        if (r === 13) {
+          ctx.fillStyle = '#71717a';
+          ctx.fillRect(x, y, colW, 5);
+        }
+        continue;
+      }
+
+      // Empty seat base (crimson / gold accent bands)
+      const isGoldBand = r === 0 || r === rowCount - 1 || (r >= 19 && r <= 20);
+      ctx.fillStyle = isGoldBand ? '#b45309' : r % 2 === 0 ? '#991b1b' : '#b91c1c';
+      ctx.fillRect(x + 2, y + 6, colW - 4, rowH - 8);
+
+      // Deterministic seated spectator dot based on occupancyPercent
+      const hash = Math.abs(Math.sin(r * 78.233 + c * 37.719));
+      if (hash < fillThreshold) {
+        ctx.fillStyle =
+          hash < fillThreshold * 0.22
+            ? '#fbbf24'
+            : hash < fillThreshold * 0.68
+              ? '#ef4444'
+              : '#f8fafc';
+        ctx.fillRect(x + 4, y + 8, colW - 8, rowH - 12);
+      }
+    }
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.repeat.set(36, 1);
+  texture.anisotropy = 8;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function createHaloLedTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 2048;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#090d16';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(0, 0, canvas.width, 14);
+    ctx.fillRect(0, canvas.height - 14, canvas.width, 14);
+
+    // Repeat graphic 4 times around the 360° halo board
+    for (let k = 0; k < 4; k += 1) {
+      const cx = k * 512 + 256;
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 28px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('VIETNAM NATIONAL STADIUM • 200,000 SEATS', cx, 66);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 74px monospace';
+      ctx.fillText('VIE  3 : 0  ALL', cx, 152);
+
+      ctx.fillStyle = '#ef4444';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillText('★ DONG SON ARENA • LIVE MATCH 88:42 ★', cx, 206);
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.anisotropy = 8;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function createRibbonTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#7f1d1d';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 30px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(
+      'VIETNAM 200K STADIUM  ★  FIFA WORLD STANDARD  ★  C-VALUE 95MM  ★',
+      canvas.width / 2,
+      43
+    );
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.repeat.set(12, 1);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * Generates an extruded, stepped stadium seating tier using super-ellipse contours.
+ * Includes physical stair treads & risers, mapped with clean UVs for seating texture.
+ */
+function createSteppedTierGeometry(
+  tier: TierSpec,
+  startAngle: number,
+  endAngle: number,
+  segments = 108
+): THREE.BufferGeometry {
+  const stepCount = 12;
+  const profile: Array<[number, number, number]> = []; // [t, y, v]
+
+  for (let s = 0; s < stepCount; s += 1) {
+    const t0 = s / stepCount;
+    const t1 = (s + 1) / stepCount;
+    const y0 = THREE.MathUtils.lerp(tier.baseElevation, tier.topElevation, t0);
+    const y1 = THREE.MathUtils.lerp(tier.baseElevation, tier.topElevation, t1);
+    // Horizontal tread
+    profile.push([t0, y0, t0]);
+    profile.push([t1, y0, t1]);
+    // Vertical riser
+    profile.push([t1, y1, t1]);
+  }
+  // Outer structural back wall & horizontal concourse underslab
+  const slabDrop = 1.6;
+  profile.push([1.0, tier.baseElevation - slabDrop, 1.0]);
+  profile.push([0.0, tier.baseElevation - slabDrop, 0.0]);
+  profile.push([0.0, tier.baseElevation, 0.0]);
 
   const positions: number[] = [];
+  const uvs: number[] = [];
   const indices: number[] = [];
 
-  for (const [t, y] of profile) {
+  const arcSpan = endAngle - startAngle;
+  for (const [t, y, v] of profile) {
     const rx = THREE.MathUtils.lerp(tier.innerRadiusX, tier.outerRadiusX, t);
     const rz = THREE.MathUtils.lerp(tier.innerRadiusZ, tier.outerRadiusZ, t);
     for (let i = 0; i <= segments; i += 1) {
-      const angle = (i / segments) * arcSpan;
-      positions.push(Math.cos(angle) * rx, y, Math.sin(angle) * rz);
+      const uFrac = i / segments;
+      const angle = startAngle + uFrac * arcSpan;
+      const [x, z] = superEllipsePoint(angle, rx, rz);
+      positions.push(x, y, z);
+      uvs.push(uFrac * (arcSpan / (Math.PI * 2)), v);
     }
   }
 
-  const ringStride = segments + 1;
+  const stride = segments + 1;
   for (let p = 0; p < profile.length - 1; p += 1) {
     for (let i = 0; i < segments; i += 1) {
-      const a = p * ringStride + i;
+      const a = p * stride + i;
       const b = a + 1;
-      const c = (p + 1) * ringStride + i;
+      const c = (p + 1) * stride + i;
       const d = c + 1;
       indices.push(a, c, b, b, c, d);
     }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+/**
+ * Creates a continuous super-ellipse horizontal concourse floor deck slab.
+ */
+function createConcourseSlabGeometry(
+  innerRx: number,
+  innerRz: number,
+  outerRx: number,
+  outerRz: number,
+  elevation: number,
+  startAngle: number,
+  endAngle: number,
+  segments = 108
+): THREE.BufferGeometry {
+  const positions: number[] = [];
+  const indices: number[] = [];
+  const arcSpan = endAngle - startAngle;
+
+  for (let ring = 0; ring <= 1; ring += 1) {
+    const rx = ring === 0 ? innerRx : outerRx;
+    const rz = ring === 0 ? innerRz : outerRz;
+    for (let i = 0; i <= segments; i += 1) {
+      const angle = startAngle + (i / segments) * arcSpan;
+      const [x, z] = superEllipsePoint(angle, rx, rz);
+      positions.push(x, elevation, z);
+    }
+  }
+
+  const stride = segments + 1;
+  for (let i = 0; i < segments; i += 1) {
+    const a = i;
+    const b = i + 1;
+    const c = stride + i;
+    const d = c + 1;
+    indices.push(a, c, b, b, c, d);
   }
 
   const geometry = new THREE.BufferGeometry();
@@ -67,21 +268,29 @@ function createTierGeometry(
   return geometry;
 }
 
-function createEllipticalRibbonGeometry(
+/**
+ * Creates a vertical super-ellipse band (LED ribbon board, VIP skybox glass, or Halo video board).
+ */
+function createSuperEllipseBandGeometry(
   radiusX: number,
   radiusZ: number,
   height: number,
-  arcSpan: number,
-  segments = 96
+  startAngle: number,
+  endAngle: number,
+  segments = 108
 ): THREE.BufferGeometry {
   const positions: number[] = [];
+  const uvs: number[] = [];
   const indices: number[] = [];
+  const arcSpan = endAngle - startAngle;
 
   for (let i = 0; i <= segments; i += 1) {
-    const angle = (i / segments) * arcSpan;
-    const x = Math.cos(angle) * radiusX;
-    const z = Math.sin(angle) * radiusZ;
+    const uFrac = i / segments;
+    const angle = startAngle + uFrac * arcSpan;
+    const [x, z] = superEllipsePoint(angle, radiusX, radiusZ);
     positions.push(x, 0, z, x, height, z);
+    const u = uFrac * (arcSpan / (Math.PI * 2));
+    uvs.push(u, 0, u, 1);
   }
 
   for (let i = 0; i < segments; i += 1) {
@@ -94,50 +303,25 @@ function createEllipticalRibbonGeometry(
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   return geometry;
 }
 
-function createJumbotronTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  canvas.width = 1024;
-  canvas.height = 320;
-  const ctx = canvas.getContext('2d');
-  if (ctx) {
-    ctx.fillStyle = '#090d16';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 8;
-    ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
-
-    ctx.fillStyle = '#f59e0b';
-    ctx.font = 'bold 42px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('VIETNAM NATIONAL STADIUM • 200,000', canvas.width / 2, 86);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 92px monospace';
-    ctx.fillText('VIE  3  :  0  ALL', canvas.width / 2, 205);
-
-    ctx.fillStyle = '#ef4444';
-    ctx.font = 'bold 30px sans-serif';
-    ctx.fillText('LIVE MATCH • 88:42', canvas.width / 2, 275);
-  }
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
-}
-
 /**
- * Renders 36 radial reinforced-concrete structural bents (vertical piers from ground y=0
- * and sloped raker beams) physically supporting Tiers 2, 3, and 4 down to the podium foundation.
+ * Renders 36 radial reinforced-concrete structural bents (vertical columns & raker beams)
+ * physically supporting the 4 tiers down to ground y=0.
  */
-function StructuralSupportBents({ arcSpan }: { arcSpan: number }) {
+function StructuralSupportBents({
+  startAngle,
+  endAngle,
+}: {
+  startAngle: number;
+  endAngle: number;
+}) {
   const columnsRef = useRef<THREE.InstancedMesh | null>(null);
   const rakersRef = useRef<THREE.InstancedMesh | null>(null);
-
   const bentCount = 36;
 
   const { columns, rakers } = useMemo(() => {
@@ -147,27 +331,26 @@ function StructuralSupportBents({ arcSpan }: { arcSpan: number }) {
       quat: THREE.Quaternion;
       length: number;
     }> = [];
-
     const up = new THREE.Vector3(0, 1, 0);
 
     for (let i = 0; i < bentCount; i += 1) {
       const angle = (i / bentCount) * Math.PI * 2;
-      if (angle > arcSpan + 0.02) {
+      if (angle < startAngle - 0.02 || angle > endAngle + 0.02) {
         continue;
       }
-      const cos = Math.cos(angle);
-      const sin = Math.sin(angle);
 
-      // Ring 1 pier supporting Tier 2 base (y = 0 -> 18.0)
-      colList.push({ pos: [cos * 102, 9.0, sin * 82], height: 18.0, radius: 1.1 });
-      // Ring 2 pier supporting Tier 3 base (y = 0 -> 32.5)
-      colList.push({ pos: [cos * 124, 16.25, sin * 102], height: 32.5, radius: 1.25 });
-      // Ring 3 pier supporting Tier 4 & roof perimeter (y = 0 -> 56.0)
-      colList.push({ pos: [cos * 150, 28.0, sin * 126], height: 56.0, radius: 1.4 });
+      const [x1, z1] = superEllipsePoint(angle, 98, 76);
+      const [x2, z2] = superEllipsePoint(angle, 124, 102);
+      const [x3, z3] = superEllipsePoint(angle, 152, 128);
+      const [x0, z0] = superEllipsePoint(angle, 75, 55);
+      const [x4, z4] = superEllipsePoint(angle, 160, 134);
 
-      // Sloped raker beam connecting inner podium (y=1.2) up to Tier 4 soffit (y=56.0)
-      const start = new THREE.Vector3(cos * 78, 1.2, sin * 60);
-      const end = new THREE.Vector3(cos * 156, 58.0, sin * 132);
+      colList.push({ pos: [x1, 9.0, z1], height: 18.0, radius: 1.05 });
+      colList.push({ pos: [x2, 16.5, z2], height: 33.0, radius: 1.2 });
+      colList.push({ pos: [x3, 28.5, z3], height: 57.0, radius: 1.35 });
+
+      const start = new THREE.Vector3(x0, 1.5, z0);
+      const end = new THREE.Vector3(x4, 59.0, z4);
       const mid = start.clone().add(end).multiplyScalar(0.5);
       const dir = end.clone().sub(start);
       const length = dir.length();
@@ -176,7 +359,7 @@ function StructuralSupportBents({ arcSpan }: { arcSpan: number }) {
     }
 
     return { columns: colList, rakers: rakerList };
-  }, [arcSpan]);
+  }, [startAngle, endAngle]);
 
   useEffect(() => {
     const colMesh = columnsRef.current;
@@ -212,249 +395,117 @@ function StructuralSupportBents({ arcSpan }: { arcSpan: number }) {
     <group name="structural-support-bents">
       <instancedMesh ref={columnsRef} args={[undefined, undefined, bentCount * 3]} castShadow receiveShadow>
         <cylinderGeometry args={[1, 1.15, 1, 8]} />
-        <meshStandardMaterial color="#475569" roughness={0.85} metalness={0.15} />
+        <meshStandardMaterial color="#64748b" roughness={0.85} metalness={0.15} />
       </instancedMesh>
       <instancedMesh ref={rakersRef} args={[undefined, undefined, bentCount]} castShadow receiveShadow>
-        <boxGeometry args={[1.6, 1, 1.8]} />
-        <meshStandardMaterial color="#64748b" roughness={0.8} metalness={0.2} />
+        <boxGeometry args={[1.5, 1, 1.8]} />
+        <meshStandardMaterial color="#94a3b8" roughness={0.78} metalness={0.22} />
       </instancedMesh>
     </group>
   );
 }
 
 /**
- * Suspended Jumbotron scoreboard anchored by twin steel hanger trusses to the overhead roof ring.
+ * 360° Halo LED Video Board hung cleanly via 24 steel suspension struts from the Inner Tension Ring.
  */
-function JumbotronRig({
-  positionX,
-  rotationY,
-  texture,
+function HaloLedRing({
+  startAngle,
+  endAngle,
   ledGlowIntensity,
 }: {
-  positionX: number;
-  rotationY: number;
-  texture: THREE.CanvasTexture;
+  startAngle: number;
+  endAngle: number;
   ledGlowIntensity: number;
 }) {
+  const haloTex = useMemo(() => createHaloLedTexture(), []);
+  const boardGeo = useMemo(
+    () =>
+      createSuperEllipseBandGeometry(
+        ROOF_SPECS.oculusRadiusX + 2,
+        ROOF_SPECS.oculusRadiusZ + 2,
+        5.5,
+        startAngle,
+        endAngle,
+        96
+      ),
+    [startAngle, endAngle]
+  );
+
+  const hangers = useMemo(() => {
+    const list: Array<[number, number, number]> = [];
+    const count = 24;
+    for (let i = 0; i < count; i += 1) {
+      const angle = (i / count) * Math.PI * 2;
+      if (angle < startAngle - 0.02 || angle > endAngle + 0.02) {
+        continue;
+      }
+      const [x, z] = superEllipsePoint(
+        angle,
+        ROOF_SPECS.oculusRadiusX + 2,
+        ROOF_SPECS.oculusRadiusZ + 2
+      );
+      list.push([x, 71.5, z]);
+    }
+    return list;
+  }, [startAngle, endAngle]);
+
   return (
-    <group position={[positionX, 58, 0]} rotation={[0, rotationY, 0]}>
-      {/* Main Display Face */}
-      <mesh>
-        <planeGeometry args={[34, 10.5]} />
+    <group name="halo-360-video-board">
+      <mesh geometry={boardGeo} position={[0, 64.5, 0]}>
         <meshStandardMaterial
-          map={texture}
+          map={haloTex}
           emissive="#ffffff"
-          emissiveMap={texture}
-          emissiveIntensity={0.85 + ledGlowIntensity * 0.25}
+          emissiveMap={haloTex}
+          emissiveIntensity={0.8 + ledGlowIntensity * 0.25}
+          side={THREE.DoubleSide}
         />
       </mesh>
-      {/* Structural Steel Backing Housing */}
-      <mesh position={[0, 0, -0.7]}>
-        <boxGeometry args={[34.8, 11.2, 1.2]} />
-        <meshStandardMaterial color="#1e293b" metalness={0.7} roughness={0.35} />
-      </mesh>
-      {/* Twin Vertical Steel Hangers anchored straight into the roof truss at y=75..78 */}
-      {[-11, 11].map((hx) => (
-        <mesh key={hx} position={[hx, 11.5, -0.5]}>
-          <cylinderGeometry args={[0.35, 0.35, 15, 8]} />
-          <meshStandardMaterial color="#94a3b8" metalness={0.8} roughness={0.25} />
+      {hangers.map((pos, idx) => (
+        <mesh key={idx} position={pos}>
+          <cylinderGeometry args={[0.25, 0.25, 5.5, 6]} />
+          <meshStandardMaterial color="#cbd5e1" metalness={0.85} roughness={0.2} />
         </mesh>
       ))}
     </group>
   );
 }
 
-function CrowdInstances({
-  arcSpan,
-  occupancyPercent,
-  crowdWave,
-}: {
-  arcSpan: number;
-  occupancyPercent: number;
-  crowdWave: boolean;
-}) {
-  const meshRef = useRef<THREE.InstancedMesh | null>(null);
-  const dummy = useMemo(() => new THREE.Object3D(), []);
-
-  const transforms = useMemo(() => {
-    const list: Array<{
-      pos: [number, number, number];
-      rotY: number;
-      angle: number;
-      color: string;
-    }> = [];
-    const perTierCols = 72;
-    const rowsPerTier = 6;
-    const threshold = occupancyPercent / 100;
-
-    STADIUM_TIERS.forEach((tier, tIdx) => {
-      for (let r = 0; r < rowsPerTier; r += 1) {
-        const rt = (r + 0.5) / rowsPerTier;
-        const rx = THREE.MathUtils.lerp(tier.innerRadiusX + 1.5, tier.outerRadiusX - 1.5, rt);
-        const rz = THREE.MathUtils.lerp(tier.innerRadiusZ + 1.5, tier.outerRadiusZ - 1.5, rt);
-        const y = THREE.MathUtils.lerp(tier.baseElevation, tier.topElevation, rt) + 0.55;
-
-        for (let c = 0; c < perTierCols; c += 1) {
-          const angle = (c / perTierCols) * arcSpan;
-          const hash = Math.abs(Math.sin((tIdx + 1) * 12.9898 + r * 78.233 + c * 37.719));
-          if (hash > threshold) {
-            continue;
-          }
-          const color =
-            hash < threshold * 0.18 ? '#fbbf24' : hash < threshold * 0.72 ? '#ef4444' : '#f8fafc';
-          list.push({
-            pos: [Math.cos(angle) * rx, y, Math.sin(angle) * rz],
-            rotY: -angle,
-            angle,
-            color,
-          });
-        }
-      }
-    });
-    return list;
-  }, [arcSpan, occupancyPercent]);
-
-  useEffect(() => {
-    const mesh = meshRef.current;
-    if (!mesh) {
-      return;
-    }
-    const color = new THREE.Color();
-    transforms.forEach((item, i) => {
-      dummy.position.set(...item.pos);
-      dummy.rotation.set(0, item.rotY, 0);
-      dummy.scale.set(1, 1, 1);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-      mesh.setColorAt(i, color.set(item.color));
-    });
-    mesh.count = transforms.length;
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) {
-      mesh.instanceColor.needsUpdate = true;
-    }
-  }, [transforms, dummy]);
-
-  useFrame(({ clock }) => {
-    const mesh = meshRef.current;
-    if (!mesh || !crowdWave || transforms.length === 0) {
-      return;
-    }
-    const t = clock.getElapsedTime();
-    for (let i = 0; i < transforms.length; i += 1) {
-      const item = transforms[i];
-      const wave = Math.max(0, Math.sin(item.angle * 2 - t * 3.4));
-      const lift = wave * 0.75;
-      dummy.position.set(item.pos[0], item.pos[1] + lift, item.pos[2]);
-      dummy.rotation.set(0, item.rotY, 0);
-      dummy.scale.set(1, 1 + wave * 0.45, 1);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-    }
-    mesh.instanceMatrix.needsUpdate = true;
-  });
-
-  const maxInstances = STADIUM_TIERS.length * 72 * 6;
-
-  return (
-    <instancedMesh ref={meshRef} args={[undefined, undefined, maxInstances]}>
-      <boxGeometry args={[1.1, 0.85, 1.8]} />
-      <meshStandardMaterial roughness={0.6} metalness={0.05} />
-    </instancedMesh>
-  );
-}
-
 /**
- * Renders physically grounded evacuation paths descending along Tier 2 concourse decks,
- * crossing the Skybridges, and following the pedestrian ramps down to the plaza ground.
+ * Evacuation flow paths descending along the 4 Grand Arch Concourse Portals & Plinth stairs.
  */
-function EvacuationFlowPaths({ halfCutaway }: { halfCutaway: boolean }) {
-  const routes: Array<Array<[number, number, number]>> = useMemo(() => {
-    const list: Array<Array<[number, number, number]>> = [
-      // South (+Z) Skybridge & Ramp
-      [
-        [0, 19.2, 82],
-        [0, 19.0, 98],
-        [0, 19.0, 174],
-        [0, 1.2, 226],
-      ],
-      // East (+X) Skybridge & Ramp
-      [
-        [102, 19.2, 0],
-        [120, 19.0, 0],
-        [198, 19.0, 0],
-        [248, 1.2, 0],
-      ],
-      // West (-X) Skybridge & Ramp
-      [
-        [-102, 19.2, 0],
-        [-120, 19.0, 0],
-        [-198, 19.0, 0],
-        [-248, 1.2, 0],
-      ],
-    ];
-
-    if (!halfCutaway) {
-      // North (-Z) Skybridge & Ramp
+function EvacuationFlowPaths({
+  startAngle,
+  endAngle,
+}: {
+  startAngle: number;
+  endAngle: number;
+}) {
+  const routes = useMemo(() => {
+    const list: Array<Array<[number, number, number]>> = [];
+    const portalAngles = [0, Math.PI / 2, Math.PI, Math.PI * 1.5];
+    for (const a of portalAngles) {
+      if (a < startAngle - 0.05 || a > endAngle + 0.05) {
+        continue;
+      }
+      const [x1, z1] = superEllipsePoint(a, 96, 74);
+      const [x2, z2] = superEllipsePoint(a, 168, 142);
+      const [x3, z3] = superEllipsePoint(a, 206, 180);
+      const [x4, z4] = superEllipsePoint(a, 275, 250);
       list.push([
-        [0, 19.2, -82],
-        [0, 19.0, -98],
-        [0, 19.0, -174],
-        [0, 1.2, -226],
+        [x1, 19.2, z1],
+        [x2, 4.2, z2],
+        [x3, 1.2, z3],
+        [x4, 0.8, z4],
       ]);
     }
     return list;
-  }, [halfCutaway]);
+  }, [startAngle, endAngle]);
 
   return (
     <group name="evacuation-flow-paths">
       {routes.map((pts, idx) => (
         <Line key={idx} points={pts} color="#10b981" lineWidth={3.5} dashed dashSize={4} gapSize={2} />
       ))}
-    </group>
-  );
-}
-
-function TierMesh({
-  tier,
-  arcSpan,
-  ledGlowIntensity,
-}: {
-  tier: TierSpec;
-  arcSpan: number;
-  ledGlowIntensity: number;
-}) {
-  const bowlGeo = useMemo(() => createTierGeometry(tier, arcSpan), [tier, arcSpan]);
-  const ribbonGeo = useMemo(
-    () =>
-      createEllipticalRibbonGeometry(
-        tier.innerRadiusX - 0.3,
-        tier.innerRadiusZ - 0.3,
-        1.4,
-        arcSpan
-      ),
-    [tier.innerRadiusX, tier.innerRadiusZ, arcSpan]
-  );
-
-  return (
-    <group name={tier.id}>
-      <mesh geometry={bowlGeo} castShadow receiveShadow>
-        <meshStandardMaterial
-          color={tier.seatColor}
-          roughness={0.72}
-          metalness={0.08}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-      <mesh geometry={ribbonGeo} position={[0, tier.baseElevation - 1.5, 0]}>
-        <meshStandardMaterial
-          color={tier.accentColor}
-          emissive={tier.accentColor}
-          emissiveIntensity={ledGlowIntensity}
-          roughness={0.3}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
     </group>
   );
 }
@@ -466,63 +517,134 @@ export function BowlStands({
   crowdWave,
   showEvacPaths,
 }: BowlStandsProps) {
-  const arcSpan = halfCutaway ? Math.PI * 1.15 : Math.PI * 2;
-  const skyboxGeo = useMemo(
-    () => createEllipticalRibbonGeometry(118, 96, 3.2, arcSpan, 96),
-    [arcSpan]
+  const startAngle = halfCutaway ? Math.PI * 0.52 : 0;
+  const endAngle = halfCutaway ? Math.PI * 1.98 : Math.PI * 2;
+
+  const seatingTexture = useMemo(() => createSeatingBowlTexture(occupancyPercent), [occupancyPercent]);
+  const ribbonTexture = useMemo(() => createRibbonTexture(), []);
+
+  useFrame((_, delta) => {
+    if (crowdWave) {
+      ribbonTexture.offset.x = (ribbonTexture.offset.x + delta * 0.14) % 1;
+    }
+  });
+
+  const tierGeos = useMemo(
+    () => STADIUM_TIERS.map((tier) => createSteppedTierGeometry(tier, startAngle, endAngle)),
+    [startAngle, endAngle]
   );
-  const jumbotronTex = useMemo(() => createJumbotronTexture(), []);
+
+  const ribbonGeos = useMemo(
+    () =>
+      STADIUM_TIERS.map((tier) =>
+        createSuperEllipseBandGeometry(
+          tier.innerRadiusX - 0.25,
+          tier.innerRadiusZ - 0.25,
+          1.45,
+          startAngle,
+          endAngle
+        )
+      ),
+    [startAngle, endAngle]
+  );
+
+  const glassRails = useMemo(
+    () =>
+      STADIUM_TIERS.slice(1).map((tier) =>
+        createSuperEllipseBandGeometry(
+          tier.innerRadiusX - 0.15,
+          tier.innerRadiusZ - 0.15,
+          1.1,
+          startAngle,
+          endAngle
+        )
+      ),
+    [startAngle, endAngle]
+  );
+
+  const concourseSlabs = useMemo(
+    () => [
+      createConcourseSlabGeometry(96, 74, 165, 139, 17.5, startAngle, endAngle),
+      createConcourseSlabGeometry(115, 92, 165, 139, 32.5, startAngle, endAngle),
+      createConcourseSlabGeometry(138, 114, 165, 139, 53.0, startAngle, endAngle),
+    ],
+    [startAngle, endAngle]
+  );
+
+  const skyboxGeo = useMemo(
+    () => createSuperEllipseBandGeometry(117, 94, 3.2, startAngle, endAngle),
+    [startAngle, endAngle]
+  );
 
   return (
     <group name="stadium-bowl-200k">
-      <StructuralSupportBents arcSpan={arcSpan} />
+      <StructuralSupportBents startAngle={startAngle} endAngle={endAngle} />
 
-      {STADIUM_TIERS.map((tier) => (
-        <TierMesh
-          key={tier.id}
-          tier={tier}
-          arcSpan={arcSpan}
-          ledGlowIntensity={ledGlowIntensity}
-        />
+      {/* Horizontal Concourse Floor Decks connecting all tiers to the exterior curtain wall */}
+      {concourseSlabs.map((slabGeo, idx) => (
+        <mesh key={`slab-${idx}`} geometry={slabGeo} receiveShadow>
+          <meshStandardMaterial color="#334155" roughness={0.85} side={THREE.DoubleSide} />
+        </mesh>
       ))}
 
-      <CrowdInstances
-        arcSpan={arcSpan}
-        occupancyPercent={occupancyPercent}
-        crowdWave={crowdWave}
-      />
+      {/* 4 Stepped Super-Ellipse Seating Tiers with High-Res Seating & Vomitory Texture */}
+      {STADIUM_TIERS.map((tier, idx) => (
+        <group key={tier.id} name={tier.id}>
+          <mesh geometry={tierGeos[idx]} castShadow receiveShadow>
+            <meshStandardMaterial
+              map={seatingTexture}
+              roughness={0.68}
+              metalness={0.05}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+          <mesh geometry={ribbonGeos[idx]} position={[0, tier.baseElevation - 1.55, 0]}>
+            <meshStandardMaterial
+              map={ribbonTexture}
+              emissive="#ffffff"
+              emissiveMap={ribbonTexture}
+              emissiveIntensity={0.45 + ledGlowIntensity * 0.35}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        </group>
+      ))}
 
-      {showEvacPaths && <EvacuationFlowPaths halfCutaway={halfCutaway} />}
+      {/* Glass Safety Balustrades along Tier 2, 3, 4 edges */}
+      {STADIUM_TIERS.slice(1).map((tier, idx) => (
+        <mesh key={`rail-${tier.id}`} geometry={glassRails[idx]} position={[0, tier.baseElevation, 0]}>
+          <meshPhysicalMaterial
+            color="#bae6fd"
+            transparent
+            opacity={0.35}
+            metalness={0.5}
+            roughness={0.1}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ))}
 
-      {/* Glazed VIP / VVIP Skybox Concourse */}
-      <mesh geometry={skyboxGeo} position={[0, 30.2, 0]}>
-        <meshStandardMaterial
+      {/* Glazed VIP / VVIP Skybox Suites */}
+      <mesh geometry={skyboxGeo} position={[0, 31.2, 0]}>
+        <meshPhysicalMaterial
           color="#38bdf8"
-          emissive="#0ea5e9"
+          emissive="#0284c7"
           emissiveIntensity={ledGlowIntensity * 0.35}
           transparent
-          opacity={0.55}
-          metalness={0.8}
-          roughness={0.15}
+          opacity={0.52}
+          metalness={0.82}
+          roughness={0.14}
           side={THREE.DoubleSide}
         />
       </mesh>
 
-      {/* Physically Anchored Twin Jumbotrons hung from roof ring */}
-      <JumbotronRig
-        positionX={72}
-        rotationY={-Math.PI / 2}
-        texture={jumbotronTex}
+      <HaloLedRing
+        startAngle={startAngle}
+        endAngle={endAngle}
         ledGlowIntensity={ledGlowIntensity}
       />
-      {!halfCutaway && (
-        <JumbotronRig
-          positionX={-72}
-          rotationY={Math.PI / 2}
-          texture={jumbotronTex}
-          ledGlowIntensity={ledGlowIntensity}
-        />
-      )}
+
+      {showEvacPaths && <EvacuationFlowPaths startAngle={startAngle} endAngle={endAngle} />}
     </group>
   );
 }

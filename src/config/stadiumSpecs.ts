@@ -29,6 +29,7 @@ export interface LightingConfig {
   readonly mode: LightingMode;
   readonly label: string;
   readonly skyColor: string;
+  readonly horizonColor: string;
   readonly fogColor: string;
   readonly ambientIntensity: number;
   readonly sunPosition: readonly [number, number, number];
@@ -78,15 +79,16 @@ export const PITCH_SPECS = {
 } as const;
 
 export const ROOF_SPECS = {
-  outerRadiusX: 172,
-  outerRadiusZ: 146,
-  oculusRadiusX: 62,
-  oculusRadiusZ: 44,
+  outerRadiusX: 174,
+  outerRadiusZ: 148,
+  oculusRadiusX: 64,
+  oculusRadiusZ: 45,
   eaveHeight: 68,
-  peakHeight: 88,
-  ribCount: 24,
+  peakHeight: 87,
+  ribCount: 48,
   exitGates: 48,
   steelTonnage: 28_500,
+  superEllipsePower: 2.4,
 } as const;
 
 export const STADIUM_TIERS: readonly TierSpec[] = [
@@ -95,11 +97,11 @@ export const STADIUM_TIERS: readonly TierSpec[] = [
     name: 'Tầng 1 — Lower Bowl',
     seats: 65_000,
     rows: 34,
-    innerRadiusX: 74,
-    innerRadiusZ: 56,
-    outerRadiusX: 100,
-    outerRadiusZ: 80,
-    baseElevation: 1.8,
+    innerRadiusX: 72,
+    innerRadiusZ: 52,
+    outerRadiusX: 98,
+    outerRadiusZ: 76,
+    baseElevation: 2.2,
     topElevation: 16.5,
     seatColor: '#b91c1c',
     accentColor: '#f59e0b',
@@ -110,12 +112,12 @@ export const STADIUM_TIERS: readonly TierSpec[] = [
     name: 'Tầng 2 — VIP & Club',
     seats: 45_000,
     rows: 24,
-    innerRadiusX: 98,
-    innerRadiusZ: 78,
-    outerRadiusX: 120,
-    outerRadiusZ: 98,
-    baseElevation: 18.5,
-    topElevation: 31.0,
+    innerRadiusX: 96,
+    innerRadiusZ: 74,
+    outerRadiusX: 118,
+    outerRadiusZ: 95,
+    baseElevation: 19.0,
+    topElevation: 31.5,
     seatColor: '#991b1b',
     accentColor: '#fbbf24',
     slopeDeg: 28,
@@ -125,12 +127,12 @@ export const STADIUM_TIERS: readonly TierSpec[] = [
     name: 'Tầng 3 — Upper Bowl',
     seats: 55_000,
     rows: 32,
-    innerRadiusX: 117,
-    innerRadiusZ: 95,
-    outerRadiusX: 144,
-    outerRadiusZ: 120,
-    baseElevation: 33.0,
-    topElevation: 51.5,
+    innerRadiusX: 115,
+    innerRadiusZ: 92,
+    outerRadiusX: 142,
+    outerRadiusZ: 118,
+    baseElevation: 34.0,
+    topElevation: 52.0,
     seatColor: '#dc2626',
     accentColor: '#f8fafc',
     slopeDeg: 33,
@@ -140,12 +142,12 @@ export const STADIUM_TIERS: readonly TierSpec[] = [
     name: 'Tầng 4 — Sky Tier',
     seats: 35_000,
     rows: 22,
-    innerRadiusX: 140,
-    innerRadiusZ: 116,
-    outerRadiusX: 164,
-    outerRadiusZ: 138,
-    baseElevation: 53.5,
-    topElevation: 69.0,
+    innerRadiusX: 138,
+    innerRadiusZ: 114,
+    outerRadiusX: 162,
+    outerRadiusZ: 136,
+    baseElevation: 54.5,
+    topElevation: 69.5,
     seatColor: '#7f1d1d',
     accentColor: '#fbbf24',
     slopeDeg: 35,
@@ -156,31 +158,31 @@ export const CAMERA_PRESETS: readonly CameraPreset[] = [
   {
     id: 'overview',
     label: 'Toàn cảnh',
-    position: [245, 150, 235],
+    position: [248, 138, 238],
     target: [0, 22, 0],
   },
   {
     id: 'pitch',
     label: 'Mặt sân',
-    position: [0, 8, 52],
-    target: [0, 14, -22],
+    position: [0, 8, 50],
+    target: [0, 15, -26],
   },
   {
     id: 'vip',
     label: 'Khán đài VIP',
-    position: [0, 26, 98],
+    position: [0, 26, 94],
     target: [0, 4, 0],
   },
   {
     id: 'sky',
     label: 'Tầng 4 Sky',
-    position: [-142, 66, 0],
+    position: [-140, 66, 0],
     target: [0, 2, 0],
   },
   {
     id: 'roof',
     label: 'Mái vòm',
-    position: [160, 112, -150],
+    position: [168, 118, -158],
     target: [0, 56, 0],
   },
 ] as const;
@@ -189,26 +191,28 @@ export const LIGHTING_CONFIGS: Record<LightingMode, LightingConfig> = {
   day: {
     mode: 'day',
     label: 'Ban ngày',
-    skyColor: '#bae6fd',
+    skyColor: '#60a5fa',
+    horizonColor: '#dbeafe',
     fogColor: '#cbd5e1',
-    ambientIntensity: 0.78,
-    sunPosition: [180, 220, 140],
+    ambientIntensity: 0.72,
+    sunPosition: [210, 240, 160],
     sunColor: '#fffbeb',
-    sunIntensity: 2.15,
+    sunIntensity: 2.35,
     floodlightIntensity: 0,
-    ledGlowIntensity: 0.6,
-    facadeGlowColor: '#e2e8f0',
+    ledGlowIntensity: 0.65,
+    facadeGlowColor: '#f59e0b',
   },
   sunset: {
     mode: 'sunset',
     label: 'Hoàng hôn',
-    skyColor: '#451a03',
+    skyColor: '#1e1b4b',
+    horizonColor: '#fb923c',
     fogColor: '#7c2d12',
-    ambientIntensity: 0.52,
-    sunPosition: [-220, 52, 110],
+    ambientIntensity: 0.48,
+    sunPosition: [-240, 48, 120],
     sunColor: '#fb923c',
-    sunIntensity: 1.8,
-    floodlightIntensity: 1.35,
+    sunIntensity: 1.9,
+    floodlightIntensity: 1.4,
     ledGlowIntensity: 1.8,
     facadeGlowColor: '#f59e0b',
   },
@@ -216,14 +220,15 @@ export const LIGHTING_CONFIGS: Record<LightingMode, LightingConfig> = {
     mode: 'night',
     label: 'Đêm thi đấu',
     skyColor: '#020617',
+    horizonColor: '#0f172a',
     fogColor: '#0f172a',
     ambientIntensity: 0.34,
     sunPosition: [100, 180, -120],
     sunColor: '#64748b',
     sunIntensity: 0.45,
     floodlightIntensity: 3.6,
-    ledGlowIntensity: 2.8,
-    facadeGlowColor: '#ef4444',
+    ledGlowIntensity: 2.6,
+    facadeGlowColor: '#f59e0b',
   },
 };
 
@@ -280,6 +285,23 @@ export const LOOPFORGE_SOP_NODES: readonly LoopForgeSopNode[] = [
 ] as const;
 
 /**
+ * Computes a point along a rounded-rectangle super-ellipse (squircle) hugging the FIFA pitch.
+ */
+export function superEllipsePoint(
+  angle: number,
+  radiusX: number,
+  radiusZ: number,
+  power: number = ROOF_SPECS.superEllipsePower
+): [number, number] {
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const exp = 2 / power;
+  const x = Math.sign(cos) * Math.pow(Math.abs(cos), exp) * radiusX;
+  const z = Math.sign(sin) * Math.pow(Math.abs(sin), exp) * radiusZ;
+  return [x, z];
+}
+
+/**
  * Computes total seated capacity across all stadium tiers.
  */
 export function calculateTotalCapacity(tiers: readonly TierSpec[] = STADIUM_TIERS): number {
@@ -296,7 +318,6 @@ export function calculateEvacuationMetrics(occupancyPercent: number): Evacuation
   const clamped = Math.min(100, Math.max(0, occupancyPercent));
   const total = calculateTotalCapacity();
   const seatedCount = Math.round((total * clamped) / 100);
-  // 48 wide vomitory gates @ ~420 spectators/min total throughput
   const throughputPerMin = ROOF_SPECS.exitGates * 420;
   const estimatedEvacMinutes =
     seatedCount === 0 ? 0 : Number((seatedCount / throughputPerMin + 1.5).toFixed(1));
@@ -322,9 +343,7 @@ export function calculateStructuralMetrics(
   const occ = Math.min(100, Math.max(0, occupancyPercent));
   const open = Math.min(100, Math.max(0, roofOpenPercent));
 
-  // Scale crowd acoustics from 45.0 dB (empty bowl) to 118.5 dB (200k roaring spectators)
   const crowdDecibels = Number((45 + (occ / 100) * 73.5 + (ceremonyMode ? 2.5 : 0)).toFixed(1));
-
   const baseLightingMw = lightingMode === 'day' ? 1.8 : lightingMode === 'sunset' ? 4.6 : 7.4;
   const occupancyHvacMw = (occ / 100) * 3.2;
   const ceremonyMw = ceremonyMode ? 1.4 : 0;

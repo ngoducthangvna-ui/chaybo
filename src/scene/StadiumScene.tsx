@@ -1,4 +1,4 @@
-import { Component, type ReactNode, useEffect, useRef } from 'react';
+import { Component, type ReactNode, useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Line, OrbitControls, Stars } from '@react-three/drei';
 import * as THREE from 'three';
@@ -55,6 +55,50 @@ class SceneErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundar
   }
 }
 
+function SkyDome({ topColor, horizonColor }: { topColor: string; horizonColor: string }) {
+  const uniforms = useMemo(
+    () => ({
+      uTopColor: { value: new THREE.Color(topColor) },
+      uHorizonColor: { value: new THREE.Color(horizonColor) },
+    }),
+    []
+  );
+
+  useEffect(() => {
+    uniforms.uTopColor.value.set(topColor);
+    uniforms.uHorizonColor.value.set(horizonColor);
+  }, [topColor, horizonColor, uniforms]);
+
+  return (
+    <mesh scale={[-1, 1, 1]}>
+      <sphereGeometry args={[900, 32, 24]} />
+      <shaderMaterial
+        side={THREE.BackSide}
+        depthWrite={false}
+        uniforms={uniforms}
+        vertexShader={`
+          varying vec3 vWorldPosition;
+          void main() {
+            vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+            vWorldPosition = worldPosition.xyz;
+            gl_Position = projectionMatrix * viewMatrix * worldPosition;
+          }
+        `}
+        fragmentShader={`
+          uniform vec3 uTopColor;
+          uniform vec3 uHorizonColor;
+          varying vec3 vWorldPosition;
+          void main() {
+            float h = normalize(vWorldPosition).y;
+            float factor = pow(max(h, 0.0), 0.55);
+            gl_FragColor = vec4(mix(uHorizonColor, uTopColor, factor), 1.0);
+          }
+        `}
+      />
+    </mesh>
+  );
+}
+
 function CameraRig({
   presetId,
   autoRotate,
@@ -64,7 +108,7 @@ function CameraRig({
 }) {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const { camera } = useThree();
-  const desiredPos = useRef(new THREE.Vector3(245, 150, 235));
+  const desiredPos = useRef(new THREE.Vector3(248, 138, 238));
   const desiredTarget = useRef(new THREE.Vector3(0, 22, 0));
   const transitioning = useRef(false);
 
@@ -98,7 +142,7 @@ function CameraRig({
       autoRotate={autoRotate}
       autoRotateSpeed={0.45}
       minDistance={28}
-      maxDistance={460}
+      maxDistance={480}
       maxPolarAngle={Math.PI / 2 - 0.03}
       onStart={() => {
         transitioning.current = false;
@@ -121,24 +165,31 @@ export function StadiumScene({
 }: StadiumSceneProps) {
   const lighting = getLightingConfig(lightingMode);
   const showSightline = cameraPreset === 'sky' || cameraPreset === 'vip';
+  const isNight = lightingMode !== 'day';
 
   return (
     <SceneErrorBoundary>
       <Canvas
         shadows
         dpr={[1, 2]}
-        camera={{ position: [245, 150, 235], fov: 45, near: 1, far: 1500 }}
+        gl={{
+          antialias: true,
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 1.15,
+        }}
+        camera={{ position: [248, 138, 238], fov: 45, near: 1, far: 1800 }}
         className="h-full w-full"
       >
         <color attach="background" args={[lighting.skyColor]} />
-        <fog attach="fog" args={[lighting.fogColor, 280, 760]} />
+        <fog attach="fog" args={[lighting.fogColor, 360, 880]} />
+
+        <SkyDome topColor={lighting.skyColor} horizonColor={lighting.horizonColor} />
 
         {lightingMode === 'night' && (
-          <Stars radius={380} depth={80} count={2500} factor={4} saturation={0.2} fade />
+          <Stars radius={420} depth={80} count={2500} factor={4} saturation={0.2} fade />
         )}
 
-        {/* Realistic sky-to-ground hemisphere bounce so interior pitch and under-bowl bents stay naturally lit */}
-        <hemisphereLight args={[lighting.skyColor, '#334155', 0.85]} />
+        <hemisphereLight args={[lighting.skyColor, '#334155', 0.88]} />
         <ambientLight intensity={lighting.ambientIntensity} />
         <directionalLight
           position={[...lighting.sunPosition]}
@@ -148,11 +199,11 @@ export function StadiumScene({
           shadow-mapSize-width={2048}
           shadow-mapSize-height={2048}
           shadow-camera-near={10}
-          shadow-camera-far={650}
-          shadow-camera-left={-220}
-          shadow-camera-right={220}
-          shadow-camera-top={220}
-          shadow-camera-bottom={-220}
+          shadow-camera-far={700}
+          shadow-camera-left={-240}
+          shadow-camera-right={240}
+          shadow-camera-top={240}
+          shadow-camera-bottom={-240}
         />
 
         {lighting.floodlightIntensity > 0 && (
@@ -181,7 +232,7 @@ export function StadiumScene({
           </>
         )}
 
-        <Surroundings halfCutaway={halfCutaway} />
+        <Surroundings halfCutaway={halfCutaway} isNight={isNight} />
         <Pitch />
         <BowlStands
           ledGlowIntensity={lighting.ledGlowIntensity}
