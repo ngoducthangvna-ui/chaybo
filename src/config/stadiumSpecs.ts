@@ -1,6 +1,6 @@
 export type LightingMode = 'day' | 'sunset' | 'night';
 
-export type CameraPresetId = 'overview' | 'pitch' | 'vip' | 'sky' | 'roof';
+export type CameraPresetId = 'masterplan' | 'overview' | 'pitch' | 'vip' | 'sky' | 'roof';
 
 export interface TierSpec {
   readonly id: string;
@@ -24,6 +24,13 @@ export interface StructuralGridLine {
   readonly rz: number;
   readonly topElevation: number;
   readonly concourseElevation: number;
+}
+
+export interface MasterplanZoneSpec {
+  readonly id: string;
+  readonly name: string;
+  readonly location: string;
+  readonly spec: string;
 }
 
 export interface CameraPreset {
@@ -100,8 +107,14 @@ export const ROOF_SPECS = {
   trussBays: 10,
   trussRootDepth: 6.5,
   trussTipDepth: 2.7,
+  archSpanM: 390,
+  archPeakHeightM: 124,
+  pylonCount: 24,
+  pylonHeightM: 102,
+  helicalRampTowers: 8,
+  grandStaircases: 8,
   exitGates: 48,
-  steelTonnage: 28_500,
+  steelTonnage: 42_800,
   superEllipsePower: 2.4,
 } as const;
 
@@ -176,12 +189,51 @@ export const STADIUM_TIERS: readonly TierSpec[] = [
   },
 ] as const;
 
+export const MASTERPLAN_ZONES: readonly MasterplanZoneSpec[] = [
+  {
+    id: 'podium-mall',
+    name: '1. Khối Đế Thương Mại & F&B 2 Tầng',
+    location: 'Bao quanh chân SVĐ (+10.5m)',
+    spec: '36 Cổng soát vé • Quảng trường trên cao • VIP Lounge',
+  },
+  {
+    id: 'metro-hub',
+    name: '2. Nhà Ga Metro & Cầu Cạn Skywalk',
+    location: 'Phía Nam (z = +265m)',
+    spec: '2 Đường ray trên cao • Cầu vượt nối thẳng Sảnh Nam',
+  },
+  {
+    id: 'hotel-ibc',
+    name: '3. Khách Sạn 5★ & Trung Tâm Báo Chí IBC',
+    location: 'Phía Đông (x = +290m)',
+    spec: 'Tháp đôi 85m & 68m • Trung tâm Hội nghị 4 tầng',
+  },
+  {
+    id: 'indoor-aquatics',
+    name: '4. Nhà Thi Đấu 15K & Cung Dưới Nước',
+    location: 'Phía Tây (x = -290m)',
+    spec: '2 Tổ hợp mái vòm nhịp lớn đa năng',
+  },
+  {
+    id: 'training-parking',
+    name: '5. Sân Tập FIFA & 4 Nhà Xe Cao Tầng',
+    location: 'Phía Bắc (z = -280m)',
+    spec: 'Sân tập 105×68m + 4 nhà xe 5 tầng (12.000 chỗ)',
+  },
+] as const;
+
 export const CAMERA_PRESETS: readonly CameraPreset[] = [
   {
+    id: 'masterplan',
+    label: 'Quy hoạch',
+    position: [385, 225, 375],
+    target: [0, 15, 0],
+  },
+  {
     id: 'overview',
-    label: 'Toàn cảnh',
-    position: [248, 138, 238],
-    target: [0, 22, 0],
+    label: 'Toàn cảnh SVĐ',
+    position: [255, 145, 245],
+    target: [0, 26, 0],
   },
   {
     id: 'pitch',
@@ -203,9 +255,9 @@ export const CAMERA_PRESETS: readonly CameraPreset[] = [
   },
   {
     id: 'roof',
-    label: 'Mái vòm',
-    position: [168, 118, -158],
-    target: [0, 56, 0],
+    label: 'Vòm & Dây văng',
+    position: [195, 138, -185],
+    target: [0, 72, 0],
   },
 ] as const;
 
@@ -217,7 +269,7 @@ export const LIGHTING_CONFIGS: Record<LightingMode, LightingConfig> = {
     horizonColor: '#dbeafe',
     fogColor: '#cbd5e1',
     ambientIntensity: 0.72,
-    sunPosition: [210, 240, 160],
+    sunPosition: [240, 260, 180],
     sunColor: '#fffbeb',
     sunIntensity: 2.35,
     floodlightIntensity: 0,
@@ -231,7 +283,7 @@ export const LIGHTING_CONFIGS: Record<LightingMode, LightingConfig> = {
     horizonColor: '#fb923c',
     fogColor: '#7c2d12',
     ambientIntensity: 0.48,
-    sunPosition: [-240, 48, 120],
+    sunPosition: [-260, 52, 130],
     sunColor: '#fb923c',
     sunIntensity: 1.9,
     floodlightIntensity: 1.4,
@@ -258,35 +310,35 @@ export const LOOPFORGE_SOP_NODES: readonly LoopForgeSopNode[] = [
   {
     id: 'requirement',
     title: '1. Requirement',
-    role: 'Requirement Owner',
+    role: 'Investor & Masterplan Scope',
     status: 'passed',
     artifact: 'docs/REQUIREMENTS.md',
   },
   {
     id: 'clarify',
     title: '2. Clarify',
-    role: 'Clarify Agent',
+    role: 'Crowd Flow & Structural Loads',
     status: 'passed',
     artifact: 'artifacts/vietnam-200k-masterpiece/01-solo/solo-report.md',
   },
   {
     id: 'design',
     title: '3. Design',
-    role: 'Structural BIM Engineer',
+    role: 'Chief Structural & Urban Architect',
     status: 'passed',
     artifact: 'design.md',
   },
   {
     id: 'implement',
     title: '4. Implement',
-    role: 'RC & Steel Truss 3D Engineer',
+    role: 'BIM RC + Cable-Stayed Arch Engineer',
     status: 'passed',
     artifact: 'src/scene/*.tsx',
   },
   {
     id: 'review',
     title: '5. Review',
-    role: 'Code Reviewer',
+    role: 'Code & Structural Equilibrium Audit',
     status: 'passed',
     artifact: 'src/components/ControlPanel.tsx',
   },
@@ -300,7 +352,7 @@ export const LOOPFORGE_SOP_NODES: readonly LoopForgeSopNode[] = [
   {
     id: 'deliver',
     title: '7. Accept & Delivery',
-    role: 'Human Gate / Summary',
+    role: 'Investor Sign-off / Summary',
     status: 'active',
     artifact: 'artifacts/vietnam-200k-masterpiece/workflow-summary.md',
   },

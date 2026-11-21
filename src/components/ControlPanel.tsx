@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   Box,
+  Building2,
   Camera,
   CheckCircle2,
   ChevronDown,
@@ -23,6 +24,7 @@ import {
   type CameraPresetId,
   LOOPFORGE_SOP_NODES,
   type LightingMode,
+  MASTERPLAN_ZONES,
   PITCH_SPECS,
   ROOF_SPECS,
   STADIUM_TIERS,
@@ -83,7 +85,7 @@ export function ControlPanel({
   onToggleEvacPaths,
 }: ControlPanelProps) {
   const [drawerOpen, setDrawerOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState<'specs' | 'sop'>('specs');
+  const [activeTab, setActiveTab] = useState<'specs' | 'complex' | 'sop'>('specs');
 
   const totalCapacity = calculateTotalCapacity();
   const evac = calculateEvacuationMetrics(occupancyPercent);
@@ -102,14 +104,15 @@ export function ControlPanel({
           <div className="flex items-center gap-2.5">
             <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
             <h1 className="text-sm font-bold tracking-wider text-[#ededf0] uppercase">
-              Vietnam 200K Stadium
+              Vietnam 200K National Complex
             </h1>
             <span className="rounded-md border border-sky-500/30 bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-sky-300">
-              BIM RC + TRUSS
+              BIM ARCH + CABLE
             </span>
           </div>
           <p className="mt-1 text-xs text-[#a1a1aa]">
-            48 Khung BTCT (Grid A–E) • 48 Dàn kèo thép không gian 2 lớp
+            Đôi Vòm Thép {ROOF_SPECS.archPeakHeightM}m • {ROOF_SPECS.pylonCount} Tháp Dây Văng •{' '}
+            {ROOF_SPECS.helicalRampTowers} Tháp Xoắn Ốc & 5 Khu Phức Hợp
           </p>
           <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 font-semibold text-amber-300 border border-amber-400/20">
@@ -123,8 +126,8 @@ export function ControlPanel({
         </div>
       </header>
 
-      {/* Top-Right Artifact & Telemetry Drawer */}
-      <aside className="fixed top-4 right-4 z-20 w-[340px] rounded-2xl border border-[#26262b] bg-[#141417]/92 backdrop-blur-md shadow-2xl overflow-hidden">
+      {/* Top-Right Artifact, Complex & Telemetry Drawer */}
+      <aside className="fixed top-4 right-4 z-20 w-[356px] rounded-2xl border border-[#26262b] bg-[#141417]/92 backdrop-blur-md shadow-2xl overflow-hidden">
         <button
           type="button"
           onClick={() => setDrawerOpen((v) => !v)}
@@ -132,40 +135,52 @@ export function ControlPanel({
         >
           <span className="flex items-center gap-2">
             <Layers className="h-4 w-4 text-amber-400" />
-            Kỹ thuật & LoopForge SOP
+            Hồ sơ Kỹ thuật & Khu Phức hợp
           </span>
           {drawerOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
 
         {drawerOpen && (
           <div className="border-t border-[#26262b]">
-            <div className="grid grid-cols-2 gap-1 bg-[#0a0a0b] p-1.5 border-b border-[#26262b]">
+            <div className="grid grid-cols-3 gap-1 bg-[#0a0a0b] p-1.5 border-b border-[#26262b]">
               <button
                 type="button"
                 onClick={() => setActiveTab('specs')}
-                className={`rounded-lg py-1.5 text-xs font-medium transition ${
+                className={`rounded-lg py-1.5 text-[11px] font-medium transition ${
                   activeTab === 'specs'
                     ? 'bg-[#26262c] text-[#ededf0] shadow'
                     : 'text-[#a1a1aa] hover:text-white'
                 }`}
               >
-                Kỹ thuật & Kết cấu
+                Kết cấu
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('complex')}
+                className={`inline-flex items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] font-medium transition ${
+                  activeTab === 'complex'
+                    ? 'bg-[#26262c] text-[#ededf0] shadow'
+                    : 'text-[#a1a1aa] hover:text-white'
+                }`}
+              >
+                <Building2 className="h-3 w-3 text-sky-400" />
+                5 Khu Dịch vụ
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('sop')}
-                className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium transition ${
+                className={`inline-flex items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] font-medium transition ${
                   activeTab === 'sop'
                     ? 'bg-[#26262c] text-[#ededf0] shadow'
                     : 'text-[#a1a1aa] hover:text-white'
                 }`}
               >
-                <GitBranch className="h-3.5 w-3.5 text-amber-400" />
-                LoopForge SOP
+                <GitBranch className="h-3 w-3 text-amber-400" />
+                DevFlow SOP
               </button>
             </div>
 
-            {activeTab === 'specs' ? (
+            {activeTab === 'specs' && (
               <div className="px-4 py-3 space-y-3 text-xs max-h-[68vh] overflow-y-auto">
                 <div className="grid grid-cols-2 gap-2 text-[#ededf0]">
                   <div className="rounded-lg border border-[#26262b] bg-[#0a0a0b]/60 p-2">
@@ -187,20 +202,19 @@ export function ControlPanel({
                     </div>
                   </div>
                   <div className="rounded-lg border border-[#26262b] bg-[#0a0a0b]/60 p-2">
-                    <div className="text-[10px] text-[#a1a1aa] uppercase">Công-xôn thép / Gối E</div>
+                    <div className="text-[10px] text-[#a1a1aa] uppercase">Đôi Vòm Thép</div>
                     <div className="mt-0.5 font-semibold text-white">
-                      100m · H={ROOF_SPECS.trussRootDepth}m→{ROOF_SPECS.trussTipDepth}m
+                      Nhịp {ROOF_SPECS.archSpanM}m · Cao {ROOF_SPECS.archPeakHeightM}m
                     </div>
                   </div>
                   <div className="rounded-lg border border-[#26262b] bg-[#0a0a0b]/60 p-2">
-                    <div className="text-[10px] text-[#a1a1aa] uppercase">Tầm nhìn C-Value</div>
+                    <div className="text-[10px] text-[#a1a1aa] uppercase">Cân bằng Lật ΣM=0</div>
                     <div className="mt-0.5 font-semibold text-emerald-400">
-                      {evac.cValueMm} mm (Chuẩn FIFA)
+                      24 Dây văng + 48 Chữ A
                     </div>
                   </div>
                 </div>
 
-                {/* Retractable Oculus Roof Slider */}
                 <div className="rounded-xl border border-[#26262b] bg-[#0a0a0b]/60 p-2.5 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-semibold text-[#ededf0] uppercase">
@@ -222,7 +236,6 @@ export function ControlPanel({
                   />
                 </div>
 
-                {/* Crowd Occupancy & Evacuation Simulator */}
                 <div className="rounded-xl border border-[#26262b] bg-[#0a0a0b]/60 p-2.5 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-semibold text-[#ededf0] uppercase">
@@ -243,7 +256,7 @@ export function ControlPanel({
                     className="w-full accent-amber-500 cursor-pointer"
                   />
                   <div className="flex items-center justify-between text-[11px] text-[#a1a1aa]">
-                    <span>{evac.exitGates} cửa • {PITCH_SPECS.length}×{PITCH_SPECS.width}m</span>
+                    <span>8 Tháp xoắn + 8 Đại sảnh</span>
                     <span>
                       Thoát hiểm:{' '}
                       <strong className="text-emerald-400">{evac.estimatedEvacMinutes} phút</strong>
@@ -260,13 +273,13 @@ export function ControlPanel({
                     }`}
                   >
                     <Route className="h-3.5 w-3.5" />
-                    {showEvacPaths ? 'Đang hiện Tuyến thoát hiểm 3D' : 'Hiển thị Tuyến thoát hiểm 3D'}
+                    {showEvacPaths ? 'Đang hiện Luồng Thoát Hiểm 3D' : 'Hiển thị Luồng Thoát Hiểm 3D'}
                   </button>
                 </div>
 
                 <div className="space-y-1">
                   <div className="text-[10px] font-semibold text-[#a1a1aa] uppercase">
-                    Phân bổ 4 tầng khán đài (Gối trên Grid A–E)
+                    4 Tầng khán đài (Gối trên Grid A–E & {PITCH_SPECS.length}×{PITCH_SPECS.width}m)
                   </div>
                   {STADIUM_TIERS.map((tier) => (
                     <div
@@ -281,7 +294,27 @@ export function ControlPanel({
                   ))}
                 </div>
               </div>
-            ) : (
+            )}
+
+            {activeTab === 'complex' && (
+              <div className="px-4 py-3 space-y-2 text-xs max-h-[68vh] overflow-y-auto">
+                <div className="rounded-lg border border-sky-500/20 bg-sky-500/10 p-2.5 text-[11px] text-sky-200">
+                  Quần thể <strong>1000m × 1000m</strong> tích hợp Metro, Khách sạn 5★, IBC, Nhà thi đấu & Đỗ xe cho 200.000 khán giả.
+                </div>
+                {MASTERPLAN_ZONES.map((zone) => (
+                  <div
+                    key={zone.id}
+                    className="rounded-lg border border-[#26262b] bg-[#0a0a0b]/70 p-2.5 space-y-1"
+                  >
+                    <div className="font-semibold text-[#ededf0]">{zone.name}</div>
+                    <div className="text-[11px] text-amber-300">{zone.location}</div>
+                    <div className="text-[11px] text-[#a1a1aa]">{zone.spec}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {activeTab === 'sop' && (
               <div className="px-4 py-3 space-y-2 text-xs max-h-[68vh] overflow-y-auto">
                 <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-2.5 text-[11px] text-amber-200">
                   Quy trình chuẩn LoopForge DevFlow chạy trực tiếp qua{' '}
@@ -323,7 +356,7 @@ export function ControlPanel({
       {/* Bottom-Center Interactive Controls */}
       <nav
         aria-label="Điều khiển mô hình 3D"
-        className="fixed bottom-4 left-1/2 z-20 -translate-x-1/2 flex flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-[#26262b] bg-[#141417]/90 p-2 backdrop-blur-md shadow-2xl max-w-[97vw]"
+        className="fixed bottom-4 left-1/2 z-20 -translate-x-1/2 flex flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-[#26262b] bg-[#141417]/90 p-2 backdrop-blur-md shadow-2xl max-w-[98vw]"
       >
         <div className="flex items-center gap-1 rounded-xl bg-[#0a0a0b] p-1">
           {LIGHTING_OPTIONS.map(({ mode, label, Icon }) => {
@@ -367,7 +400,6 @@ export function ControlPanel({
           })}
         </div>
 
-        {/* Structural BIM & Architectural Inspection Modes */}
         <div className="flex flex-wrap items-center gap-1">
           <button
             type="button"

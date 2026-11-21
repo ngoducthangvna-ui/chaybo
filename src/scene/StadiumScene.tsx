@@ -70,7 +70,7 @@ function SkyDome({ topColor, horizonColor }: { topColor: string; horizonColor: s
 
   return (
     <mesh scale={[-1, 1, 1]}>
-      <sphereGeometry args={[900, 32, 24]} />
+      <sphereGeometry args={[1250, 32, 24]} />
       <shaderMaterial
         side={THREE.BackSide}
         depthWrite={false}
@@ -107,8 +107,8 @@ function CameraRig({
 }) {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const { camera } = useThree();
-  const desiredPos = useRef(new THREE.Vector3(248, 138, 238));
-  const desiredTarget = useRef(new THREE.Vector3(0, 22, 0));
+  const desiredPos = useRef(new THREE.Vector3(385, 225, 375));
+  const desiredTarget = useRef(new THREE.Vector3(0, 15, 0));
   const transitioning = useRef(false);
 
   useEffect(() => {
@@ -139,9 +139,9 @@ function CameraRig({
       enableDamping
       dampingFactor={0.07}
       autoRotate={autoRotate}
-      autoRotateSpeed={0.4}
+      autoRotateSpeed={0.35}
       minDistance={28}
-      maxDistance={480}
+      maxDistance={760}
       maxPolarAngle={Math.PI / 2 - 0.03}
       onStart={() => {
         transitioning.current = false;
@@ -175,16 +175,16 @@ export function StadiumScene({
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.15,
         }}
-        camera={{ position: [248, 138, 238], fov: 45, near: 1, far: 1800 }}
+        camera={{ position: [385, 225, 375], fov: 45, near: 1, far: 2500 }}
         className="h-full w-full"
       >
         <color attach="background" args={[lighting.skyColor]} />
-        <fog attach="fog" args={[lighting.fogColor, 360, 880]} />
+        <fog attach="fog" args={[lighting.fogColor, 550, 1250]} />
 
         <SkyDome topColor={lighting.skyColor} horizonColor={lighting.horizonColor} />
 
         {lightingMode === 'night' && (
-          <Stars radius={420} depth={80} count={2500} factor={4} saturation={0.2} fade />
+          <Stars radius={520} depth={90} count={2500} factor={4} saturation={0.2} fade />
         )}
 
         <hemisphereLight args={[lighting.skyColor, '#334155', 0.88]} />
@@ -197,11 +197,11 @@ export function StadiumScene({
           shadow-mapSize-width={2048}
           shadow-mapSize-height={2048}
           shadow-camera-near={10}
-          shadow-camera-far={700}
-          shadow-camera-left={-240}
-          shadow-camera-right={240}
-          shadow-camera-top={240}
-          shadow-camera-bottom={-240}
+          shadow-camera-far={950}
+          shadow-camera-left={-380}
+          shadow-camera-right={380}
+          shadow-camera-top={380}
+          shadow-camera-bottom={-380}
         />
 
         {lighting.floodlightIntensity > 0 && (
@@ -230,7 +230,7 @@ export function StadiumScene({
           </>
         )}
 
-        <Surroundings halfCutaway={halfCutaway} isNight={isNight} />
+        <Surroundings halfCutaway={halfCutaway} isNight={isNight} bimFrameMode={bimFrameMode} />
         <Pitch />
         <BowlStands
           ledGlowIntensity={lighting.ledGlowIntensity}

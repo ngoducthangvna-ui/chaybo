@@ -5,7 +5,7 @@ import { ControlPanel } from './components/ControlPanel';
 
 export function App() {
   const [lightingMode, setLightingMode] = useState<LightingMode>('day');
-  const [cameraPreset, setCameraPreset] = useState<CameraPresetId>('overview');
+  const [cameraPreset, setCameraPreset] = useState<CameraPresetId>('masterplan');
   const [xrayRoof, setXrayRoof] = useState(false);
   const [halfCutaway, setHalfCutaway] = useState(false);
   const [bimFrameMode, setBimFrameMode] = useState(false);
@@ -19,7 +19,7 @@ export function App() {
       <Suspense
         fallback={
           <div className="flex h-full w-full items-center justify-center bg-slate-950 text-sm text-slate-300">
-            Đang dựng mô hình BIM 3D Sân vận động 200.000 chỗ ngồi...
+            Đang dựng Quần thể Sân vận động Quốc gia 200.000 chỗ ngồi...
           </div>
         }
       >

@@ -10,7 +10,7 @@ interface RoofStructureProps {
   roofOpenPercent: number;
 }
 
-const SUPPORT_U = 0.074; // Grid E bearing location between outer tail (0) and inner tip (1)
+const SUPPORT_U = 0.074;
 
 function getTrussNodeHeights(u: number): { yBot: number; yTop: number } {
   const yBot = 68.5 + (u - SUPPORT_U) * 4.3;
@@ -21,9 +21,6 @@ function getTrussNodeHeights(u: number): { yBot: number; yTop: number } {
   return { yBot, yTop: yBot + depth };
 }
 
-/**
- * Generates an architectural neutral curtain-wall glazing texture for the stadium exterior.
- */
 function createCurtainWallTexture(isNight: boolean): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 2048;
@@ -55,7 +52,6 @@ function createCurtainWallTexture(isNight: boolean): THREE.CanvasTexture {
     ctx.fillRect(0, band.y + band.h - 10, canvas.width, 10);
   }
 
-  // Aluminum curtain-wall mullions
   ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
   for (let x = 0; x < canvas.width; x += 16) {
     ctx.fillRect(x, 0, 3, canvas.height);
@@ -81,7 +77,7 @@ function createCurtainWallGeometry(
 
   for (let r = 0; r <= rings; r += 1) {
     const vt = r / rings;
-    const y = THREE.MathUtils.lerp(2.4, ROOF_SPECS.supportHeight, vt);
+    const y = THREE.MathUtils.lerp(10.5, ROOF_SPECS.supportHeight, vt);
     for (let i = 0; i <= segments; i += 1) {
       const ut = i / segments;
       const angle = startAngle + ut * arcSpan;
@@ -110,9 +106,6 @@ function createCurtainWallGeometry(
   return geometry;
 }
 
-/**
- * Generates the PTFE tensile roof membrane aligned flush atop the Top Chord of the steel trusses.
- */
 function createRoofCanopyGeometry(
   startAngle: number,
   endAngle: number,
@@ -177,9 +170,7 @@ function createSuperEllipseRingTube(
 }
 
 /**
- * Renders 48 Tapered Double-Chord Cantilever Steel Space Trusses (Top Chord, Bottom Chord,
- * Vertical Posts, Diagonal Web Struts, Concentric Purlin Rings, and Cross-Bracing)
- * seated directly on Grid E RC columns (y=68.5m).
+ * 48 Tapered Double-Chord Triangulated Cantilever Steel Trusses seated on Grid E (y=68.5m).
  */
 function TriangulatedSpaceTrussRoof({
   startAngle,
@@ -231,17 +222,11 @@ function TriangulatedSpaceTrussRoof({
 
       const nodes = getNodesForAngle(angle);
 
-      // 1. Top Chord, Bottom Chord, Vertical Posts, and Triangulated Diagonals
       for (let b = 0; b <= bays; b += 1) {
-        // Vertical post
         addStrut(nodes[b].bot, nodes[b].top, b === 1 ? 0.36 : 0.24);
-
         if (b < bays) {
-          // Top chord & bottom chord
           addStrut(nodes[b].top, nodes[b + 1].top, 0.34);
           addStrut(nodes[b].bot, nodes[b + 1].bot, 0.34);
-
-          // Warren/Pratt diagonal bracing (back-span angled toward support; cantilever angled toward support)
           if (b === 0) {
             addStrut(nodes[0].bot, nodes[1].top, 0.22);
           } else {
@@ -250,7 +235,6 @@ function TriangulatedSpaceTrussRoof({
         }
       }
 
-      // 2. Lateral Circumferential Purlins & Ring Girders tying adjacent trusses
       const nextAngle = ((i + 1) / count) * Math.PI * 2;
       if (nextAngle <= endAngle + 0.03) {
         const nextNodes = getNodesForAngle(nextAngle);
@@ -260,7 +244,6 @@ function TriangulatedSpaceTrussRoof({
           if (b === 1 || b === 5 || b === bays) {
             addStrut(nodes[b].bot, nextNodes[b].bot, isPrimaryRing ? 0.35 : 0.2);
           }
-          // Plan X-bracing in every 4th radial bay
           if (i % 4 === 0 && b < bays && b % 2 === 1) {
             addStrut(nodes[b].top, nextNodes[b + 1].top, 0.14);
           }
@@ -302,8 +285,238 @@ function TriangulatedSpaceTrussRoof({
 }
 
 /**
- * Generates curved elliptical half-dome shells for the retractable Oculus roof.
+ * 24 Cable-Stayed Pylon Masts rising from Grid E (y=68.5m -> 102m) with Forestay Suspension Cables
+ * holding the roof cantilever & Backstay Tie-Down Cables anchored to Concrete Counterweight Blocks (r=196m).
  */
+function CableStayedPylonSystem({
+  startAngle,
+  endAngle,
+}: {
+  startAngle: number;
+  endAngle: number;
+}) {
+  const steelRef = useRef<THREE.InstancedMesh | null>(null);
+  const cableRef = useRef<THREE.InstancedMesh | null>(null);
+  const anchorRef = useRef<THREE.InstancedMesh | null>(null);
+
+  const { pylons, cables, anchors } = useMemo(() => {
+    const pList: Array<{ pos: [number, number, number]; quat: THREE.Quaternion; len: number }> = [];
+    const cList: Array<{ pos: [number, number, number]; quat: THREE.Quaternion; len: number }> = [];
+    const aList: Array<{ pos: [number, number, number]; rotY: number }> = [];
+    const up = new THREE.Vector3(0, 1, 0);
+
+    const addSeg = (
+      target: Array<{ pos: [number, number, number]; quat: THREE.Quaternion; len: number }>,
+      p1: THREE.Vector3,
+      p2: THREE.Vector3
+    ) => {
+      const dir = p2.clone().sub(p1);
+      const len = dir.length();
+      const mid = p1.clone().add(p2).multiplyScalar(0.5);
+      const quat = new THREE.Quaternion().setFromUnitVectors(up, dir.normalize());
+      target.push({ pos: [mid.x, mid.y, mid.z], quat, len });
+    };
+
+    for (let i = 0; i < ROOF_SPECS.ribCount; i += 2) {
+      const angle = (i / ROOF_SPECS.ribCount) * Math.PI * 2;
+      if (angle < startAngle - 0.02 || angle > endAngle + 0.02) {
+        continue;
+      }
+
+      // Base of pylon sits directly on Grid E column bearing (y=68.5m)
+      const [bx, bz] = superEllipsePoint(angle, ROOF_SPECS.supportRadiusX, ROOF_SPECS.supportRadiusZ);
+      // Tip leans slightly outward (+8m) to balance cantilever moment
+      const [tx, tz] = superEllipsePoint(angle, ROOF_SPECS.supportRadiusX + 8, ROOF_SPECS.supportRadiusZ + 8);
+      const pBase = new THREE.Vector3(bx, ROOF_SPECS.supportHeight, bz);
+      const pTip = new THREE.Vector3(tx, ROOF_SPECS.pylonHeightM, tz);
+      addSeg(pList, pBase, pTip);
+
+      // Forestay cable 1 -> Mid-cantilever truss node (u=0.5)
+      const [mx, mz] = superEllipsePoint(
+        angle,
+        THREE.MathUtils.lerp(ROOF_SPECS.outerRadiusX, ROOF_SPECS.oculusRadiusX, 0.5),
+        THREE.MathUtils.lerp(ROOF_SPECS.outerRadiusZ, ROOF_SPECS.oculusRadiusZ, 0.5)
+      );
+      const { yTop: yMid } = getTrussNodeHeights(0.5);
+      addSeg(cList, pTip, new THREE.Vector3(mx, yMid, mz));
+
+      // Forestay cable 2 -> Inner tension ring (u=1.0)
+      const [ix, iz] = superEllipsePoint(angle, ROOF_SPECS.oculusRadiusX, ROOF_SPECS.oculusRadiusZ);
+      const { yTop: yTip } = getTrussNodeHeights(1.0);
+      addSeg(cList, pTip, new THREE.Vector3(ix, yTip, iz));
+
+      // Backstay tie-down cable -> Concrete Anchor Block on Podium perimeter (r=196m, y=10.5m)
+      const [ax, az] = superEllipsePoint(angle, 196, 170);
+      const pAnchor = new THREE.Vector3(ax, 10.5, az);
+      addSeg(cList, pTip, pAnchor);
+      aList.push({ pos: [ax, 9.0, az], rotY: -angle });
+    }
+
+    return { pylons: pList, cables: cList, anchors: aList };
+  }, [startAngle, endAngle]);
+
+  useEffect(() => {
+    const dummy = new THREE.Object3D();
+    if (steelRef.current) {
+      pylons.forEach((p, idx) => {
+        dummy.position.set(...p.pos);
+        dummy.quaternion.copy(p.quat);
+        dummy.scale.set(0.65, p.len, 0.65);
+        dummy.updateMatrix();
+        steelRef.current!.setMatrixAt(idx, dummy.matrix);
+      });
+      steelRef.current.count = pylons.length;
+      steelRef.current.instanceMatrix.needsUpdate = true;
+    }
+
+    if (cableRef.current) {
+      cables.forEach((c, idx) => {
+        dummy.position.set(...c.pos);
+        dummy.quaternion.copy(c.quat);
+        dummy.scale.set(0.14, c.len, 0.14);
+        dummy.updateMatrix();
+        cableRef.current!.setMatrixAt(idx, dummy.matrix);
+      });
+      cableRef.current.count = cables.length;
+      cableRef.current.instanceMatrix.needsUpdate = true;
+    }
+
+    if (anchorRef.current) {
+      anchors.forEach((a, idx) => {
+        dummy.position.set(...a.pos);
+        dummy.rotation.set(0, a.rotY, 0);
+        dummy.scale.set(1, 1, 1);
+        dummy.updateMatrix();
+        anchorRef.current!.setMatrixAt(idx, dummy.matrix);
+      });
+      anchorRef.current.count = anchors.length;
+      anchorRef.current.instanceMatrix.needsUpdate = true;
+    }
+  }, [pylons, cables, anchors]);
+
+  return (
+    <group name="cable-stayed-pylon-system">
+      <instancedMesh ref={steelRef} args={[undefined, undefined, 32]} castShadow>
+        <cylinderGeometry args={[0.7, 1.15, 1, 8]} />
+        <meshStandardMaterial color="#f8fafc" metalness={0.8} roughness={0.25} />
+      </instancedMesh>
+      <instancedMesh ref={cableRef} args={[undefined, undefined, 96]}>
+        <cylinderGeometry args={[1, 1, 1, 6]} />
+        <meshStandardMaterial color="#cbd5e1" metalness={0.85} roughness={0.2} />
+      </instancedMesh>
+      <instancedMesh ref={anchorRef} args={[undefined, undefined, 32]} castShadow receiveShadow>
+        <boxGeometry args={[4.5, 5.0, 4.5]} />
+        <meshStandardMaterial color="#475569" roughness={0.85} />
+      </instancedMesh>
+    </group>
+  );
+}
+
+/**
+ * Twin Monumental 390m-Span Triangulated Steel Space Arches (Wembley/My Dinh style)
+ * arching from East & West ground thrust abutments up to y=124m with vertical hanger cables
+ * carrying the central oculus tension ring.
+ */
+function TwinMegaArches() {
+  const trussRef = useRef<THREE.InstancedMesh | null>(null);
+
+  const members = useMemo(() => {
+    const list: Array<{ pos: [number, number, number]; quat: THREE.Quaternion; len: number; radius: number }> = [];
+    const up = new THREE.Vector3(0, 1, 0);
+    const segs = 32;
+    const halfSpan = ROOF_SPECS.archSpanM / 2;
+
+    const addSeg = (p1: THREE.Vector3, p2: THREE.Vector3, radius: number) => {
+      const dir = p2.clone().sub(p1);
+      const len = dir.length();
+      if (len < 0.05) {
+        return;
+      }
+      const mid = p1.clone().add(p2).multiplyScalar(0.5);
+      const quat = new THREE.Quaternion().setFromUnitVectors(up, dir.normalize());
+      list.push({ pos: [mid.x, mid.y, mid.z], quat, len, radius });
+    };
+
+    const archOffsets = [-22, 22];
+    const archTopPts: THREE.Vector3[][] = [[], []];
+    const archBotPts: THREE.Vector3[][] = [[], []];
+
+    archOffsets.forEach((zOff, aIdx) => {
+      for (let i = 0; i <= segs; i += 1) {
+        const u = i / segs;
+        const x = THREE.MathUtils.lerp(-halfSpan, halfSpan, u);
+        const normX = (u - 0.5) * 2;
+        const yBot = (1 - normX * normX) * (ROOF_SPECS.archPeakHeightM - 4.5);
+        const yTop = (1 - normX * normX) * ROOF_SPECS.archPeakHeightM;
+        archBotPts[aIdx].push(new THREE.Vector3(x, Math.max(0, yBot), zOff));
+        archTopPts[aIdx].push(new THREE.Vector3(x, Math.max(0.5, yTop), zOff));
+      }
+
+      for (let i = 0; i < segs; i += 1) {
+        addSeg(archBotPts[aIdx][i], archBotPts[aIdx][i + 1], 0.75);
+        addSeg(archTopPts[aIdx][i], archTopPts[aIdx][i + 1], 0.75);
+        addSeg(archBotPts[aIdx][i], archTopPts[aIdx][i + 1], 0.42);
+        addSeg(archBotPts[aIdx][i], archTopPts[aIdx][i], 0.42);
+      }
+    });
+
+    // Lateral cross-trusses tying the Twin Mega-Arches together
+    for (let i = 2; i < segs - 1; i += 2) {
+      addSeg(archTopPts[0][i], archTopPts[1][i], 0.45);
+      addSeg(archBotPts[0][i], archBotPts[1][i], 0.45);
+      addSeg(archTopPts[0][i], archTopPts[1][i + 1], 0.25);
+    }
+
+    // Vertical Tension Hanger Cables suspending the Oculus Tension Ring from the Mega-Arches
+    for (let i = 10; i <= 22; i += 2) {
+      archOffsets.forEach((zOff, aIdx) => {
+        const pArch = archBotPts[aIdx][i];
+        if (pArch.y > 76) {
+          addSeg(pArch, new THREE.Vector3(pArch.x, 75.2, zOff * 1.4), 0.16);
+        }
+      });
+    }
+
+    return list;
+  }, []);
+
+  useEffect(() => {
+    const mesh = trussRef.current;
+    if (!mesh) {
+      return;
+    }
+    const dummy = new THREE.Object3D();
+    members.forEach((m, idx) => {
+      dummy.position.set(...m.pos);
+      dummy.quaternion.copy(m.quat);
+      dummy.scale.set(m.radius, m.len, m.radius);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(idx, dummy.matrix);
+    });
+    mesh.count = members.length;
+    mesh.instanceMatrix.needsUpdate = true;
+  }, [members]);
+
+  return (
+    <group name="twin-mega-arches">
+      <instancedMesh ref={trussRef} args={[undefined, undefined, 450]} castShadow>
+        <cylinderGeometry args={[1, 1, 1, 6]} />
+        <meshStandardMaterial color="#f1f5f9" metalness={0.85} roughness={0.22} />
+      </instancedMesh>
+
+      {/* Massive Concrete Thrust Abutment Blocks anchoring East & West Arch Bases at y=0 */}
+      {[-ROOF_SPECS.archSpanM / 2, ROOF_SPECS.archSpanM / 2].map((ax) =>
+        [-22, 22].map((az) => (
+          <mesh key={`${ax}-${az}`} position={[ax, 3.0, az]} castShadow receiveShadow>
+            <boxGeometry args={[14, 7.0, 10]} />
+            <meshStandardMaterial color="#475569" roughness={0.85} />
+          </mesh>
+        ))
+      )}
+    </group>
+  );
+}
+
 function createOculusDomeHalfGeometry(side: -1 | 1): THREE.BufferGeometry {
   const rings = 8;
   const segs = 28;
@@ -416,10 +629,9 @@ export function RoofStructure({
   const curtainGeo = useMemo(() => createCurtainWallGeometry(startAngle, endAngle), [startAngle, endAngle]);
   const canopyGeo = useMemo(() => createRoofCanopyGeometry(startAngle, endAngle), [startAngle, endAngle]);
 
-  // Architectural horizontal aluminum brise-soleil louvers wrapping the exterior facade
   const louverRings = useMemo(
     () =>
-      [10, 16, 24, 32, 40, 48, 56, 63].map((elev) =>
+      [15, 22, 30, 38, 46, 54, 62].map((elev) =>
         createSuperEllipseRingTube(
           ROOF_SPECS.supportRadiusX + 1.8,
           ROOF_SPECS.supportRadiusZ + 1.8,
@@ -452,10 +664,16 @@ export function RoofStructure({
 
   return (
     <group name="buildable-roof-and-facade">
-      {/* 48 Tapered Double-Chord Triangulated Cantilever Steel Space Trusses */}
+      {/* 48 Tapered Double-Chord Cantilever Steel Space Trusses */}
       <TriangulatedSpaceTrussRoof startAngle={startAngle} endAngle={endAngle} />
 
-      {/* Glazed Exterior Curtain Wall & Architectural Aluminum Brise-Soleil Louvers */}
+      {/* 24 Cable-Stayed Pylon Masts + Forestay & Backstay Anchor System */}
+      <CableStayedPylonSystem startAngle={startAngle} endAngle={endAngle} />
+
+      {/* Twin 390m-Span Steel Mega-Arches (y=124m) */}
+      <TwinMegaArches />
+
+      {/* Glazed Exterior Curtain Wall & Aluminum Louvers */}
       {!bimFrameMode && (
         <>
           <mesh geometry={curtainGeo} receiveShadow>
@@ -479,7 +697,7 @@ export function RoofStructure({
         </>
       )}
 
-      {/* Tensile PTFE Roof Membrane resting atop the truss Top Chords */}
+      {/* Tensile PTFE Roof Membrane resting atop Truss Top Chords */}
       {!bimFrameMode && (
         <mesh geometry={canopyGeo} castShadow={!xrayRoof} receiveShadow>
           <meshPhysicalMaterial
@@ -494,12 +712,11 @@ export function RoofStructure({
         </mesh>
       )}
 
-      {/* Curved Retractable Inner Oculus Dome */}
+      {/* Retractable Inner Oculus Dome */}
       {!halfCutaway && !bimFrameMode && (
         <RetractableOculusPanels roofOpenPercent={roofOpenPercent} xrayRoof={xrayRoof} />
       )}
 
-      {/* Floodlights mounted along Inner Tension Ring */}
       {!bimFrameMode &&
         floodlightPositions.map(({ pos, angle }, idx) => (
           <group key={idx} position={pos} rotation={[0, -angle, 0]}>

@@ -3,6 +3,7 @@ import {
   CAMERA_PRESETS,
   LIGHTING_CONFIGS,
   LOOPFORGE_SOP_NODES,
+  MASTERPLAN_ZONES,
   PITCH_SPECS,
   ROOF_SPECS,
   STADIUM_TIERS,
@@ -39,6 +40,13 @@ describe('stadiumSpecs', () => {
     expect(ROOF_SPECS.supportHeight).toBe(STADIUM_TIERS[3].topElevation);
   });
 
+  it('includes 5 masterplan service complex zones and cable-stayed mega-arch specs', () => {
+    expect(MASTERPLAN_ZONES).toHaveLength(5);
+    expect(ROOF_SPECS.archSpanM).toBe(390);
+    expect(ROOF_SPECS.pylonCount).toBe(24);
+    expect(ROOF_SPECS.helicalRampTowers).toBe(8);
+  });
+
   it('computes accurate super-ellipse boundary points at cardinal angles', () => {
     const [x0, z0] = superEllipsePoint(0, 100, 80);
     expect(x0).toBeCloseTo(100, 4);
@@ -71,7 +79,7 @@ describe('stadiumSpecs', () => {
 
   it('calculates structural acoustics and power consumption accurately', () => {
     const quietDay = calculateStructuralMetrics(0, 100, false, 'day');
-    expect(quietDay.steelTonnage).toBe(28_500);
+    expect(quietDay.steelTonnage).toBe(42_800);
     expect(quietDay.crowdDecibels).toBe(45);
     expect(quietDay.roofOpenPercent).toBe(100);
 
