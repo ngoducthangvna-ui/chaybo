@@ -16,10 +16,6 @@ interface RoofStructureProps {
 
 const SUPPORT_U = 0.08;
 
-/**
- * Computes undulating roof truss Top & Bottom chord elevations at normalized radial position u
- * and perimeter angle, matching the Saddle Roof profile seamlessly.
- */
 function getSaddleTrussHeights(u: number, angle: number): { yBot: number; yTop: number } {
   const rimH = getUndulatingRimHeight(angle);
   const oculusH = 73.5 + Math.cos(angle * 2) * 2.2;
@@ -33,8 +29,42 @@ function getSaddleTrussHeights(u: number, angle: number): { yBot: number; yTop: 
 }
 
 /**
- * Generates an upscale architectural glazed sapphire-turquoise & warm champagne curtain-wall texture.
+ * Generates a pleated ETFE/PTFE architectural roof cushion texture (tiled 48 times around the bays)
+ * with seam valleys, cushion pillow shading, and concentric tension clamp bands.
  */
+function createRoofMembraneTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  // Horizontal cushion pillow gradient across each of the 48 radial bays
+  const grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
+  grad.addColorStop(0, '#94a3b8');
+  grad.addColorStop(0.1, '#e2e8f0');
+  grad.addColorStop(0.5, '#f8fafc');
+  grad.addColorStop(0.9, '#e2e8f0');
+  grad.addColorStop(1, '#94a3b8');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Subtle concentric welded membrane seam joints along radial span
+  ctx.fillStyle = 'rgba(71, 85, 105, 0.35)';
+  for (let y = 0; y < canvas.height; y += 64) {
+    ctx.fillRect(0, y, canvas.width, 4);
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.anisotropy = 8;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 function createLuxuryCurtainWallTexture(isNight: boolean): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 2048;
@@ -44,30 +74,29 @@ function createLuxuryCurtainWallTexture(isNight: boolean): THREE.CanvasTexture {
     return new THREE.CanvasTexture(canvas);
   }
 
-  ctx.fillStyle = isNight ? '#0c192c' : '#0f2942';
+  ctx.fillStyle = isNight ? '#0a1628' : '#0f2942';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const floorBands = [
-    { y: 382, h: 100, glow: isNight ? 'rgba(251, 191, 36, 0.55)' : 'rgba(56, 189, 248, 0.35)' },
-    { y: 266, h: 94, glow: isNight ? 'rgba(245, 158, 11, 0.45)' : 'rgba(186, 230, 253, 0.32)' },
-    { y: 152, h: 94, glow: isNight ? 'rgba(56, 189, 248, 0.35)' : 'rgba(125, 211, 252, 0.28)' },
-    { y: 42, h: 90, glow: isNight ? 'rgba(251, 191, 36, 0.38)' : 'rgba(224, 242, 254, 0.25)' },
+    { y: 382, h: 100, glow: isNight ? 'rgba(251, 191, 36, 0.65)' : 'rgba(56, 189, 248, 0.38)' },
+    { y: 266, h: 94, glow: isNight ? 'rgba(245, 158, 11, 0.52)' : 'rgba(186, 230, 253, 0.34)' },
+    { y: 152, h: 94, glow: isNight ? 'rgba(56, 189, 248, 0.38)' : 'rgba(125, 211, 252, 0.30)' },
+    { y: 42, h: 90, glow: isNight ? 'rgba(251, 191, 36, 0.42)' : 'rgba(224, 242, 254, 0.28)' },
   ];
 
   for (const band of floorBands) {
     const grad = ctx.createLinearGradient(0, band.y, 0, band.y + band.h);
-    grad.addColorStop(0, isNight ? 'rgba(15, 23, 42, 0.85)' : 'rgba(14, 116, 144, 0.45)');
+    grad.addColorStop(0, isNight ? 'rgba(15, 23, 42, 0.85)' : 'rgba(14, 116, 144, 0.42)');
     grad.addColorStop(0.55, band.glow);
     grad.addColorStop(1, isNight ? '#0f172a' : '#164e63');
     ctx.fillStyle = grad;
     ctx.fillRect(0, band.y, canvas.width, band.h);
 
     ctx.fillStyle = '#cbd5e1';
-    ctx.fillRect(0, band.y + band.h - 7, canvas.width, 7);
+    ctx.fillRect(0, band.y + band.h - 8, canvas.width, 8);
   }
 
-  // Fine champagne-silver curtain mullions
-  ctx.fillStyle = 'rgba(226, 232, 240, 0.28)';
+  ctx.fillStyle = 'rgba(226, 232, 240, 0.35)';
   for (let x = 0; x < canvas.width; x += 20) {
     ctx.fillRect(x, 0, 2, canvas.height);
   }
@@ -79,10 +108,6 @@ function createLuxuryCurtainWallTexture(isNight: boolean): THREE.CanvasTexture {
   return texture;
 }
 
-/**
- * Generates the flared sculptural "Jade Vessel" glazed facade rising from Podium (+10.5m)
- * seamlessly into the undulating Saddle Roof outer rim.
- */
 function createSculptedVesselFacadeGeometry(
   startAngle: number,
   endAngle: number,
@@ -96,7 +121,6 @@ function createSculptedVesselFacadeGeometry(
 
   for (let r = 0; r <= rings; r += 1) {
     const vt = r / rings;
-    // Graceful outward vessel flare from Podium (+10.5m) up to Saddle Roof eave
     const flare = Math.pow(vt, 0.85);
     const rx = THREE.MathUtils.lerp(ROOF_SPECS.supportRadiusX, ROOF_SPECS.outerRadiusX - 1.5, flare);
     const rz = THREE.MathUtils.lerp(ROOF_SPECS.supportRadiusZ, ROOF_SPECS.outerRadiusZ - 1.5, flare);
@@ -131,10 +155,6 @@ function createSculptedVesselFacadeGeometry(
   return geometry;
 }
 
-/**
- * Generates the Pearl-White ETFE tensile Saddle Roof membrane with radial cushion ribs
- * and a clear inner daylight skylight ring around the Oculus.
- */
 function createSaddleRoofCanopyGeometry(
   startAngle: number,
   endAngle: number,
@@ -144,6 +164,7 @@ function createSaddleRoofCanopyGeometry(
 ): THREE.BufferGeometry {
   const bays = 8;
   const positions: number[] = [];
+  const uvs: number[] = [];
   const indices: number[] = [];
   const arcSpan = endAngle - startAngle;
 
@@ -156,9 +177,10 @@ function createSaddleRoofCanopyGeometry(
       const angle = startAngle + (i / segments) * arcSpan;
       const [x, z] = superEllipsePoint(angle, rx, rz);
       const { yTop } = getSaddleTrussHeights(u, angle);
-      // Subtle aerodynamic ETFE cushion pillowing between the 48 radial trusses
-      const pillow = Math.abs(Math.sin(angle * 24)) * 0.42;
-      positions.push(x, yTop + 0.25 + pillow, z);
+      const pillow = Math.abs(Math.sin(angle * 24)) * 0.48;
+      positions.push(x, yTop + 0.2 + pillow, z);
+      // Tile 48 bays around full circle
+      uvs.push((angle / (Math.PI * 2)) * 48, r / bays);
     }
   }
 
@@ -175,6 +197,7 @@ function createSaddleRoofCanopyGeometry(
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   return geometry;
@@ -203,8 +226,92 @@ function createUndulatingRimTube(
 }
 
 /**
- * Sculpted Champagne-Gold & Pearl-White Dong Son Diagrid Facade Lattice wrapping
- * cleanly around the flared glass vessel from Podium (+10.5m) up to the Saddle Roof Rim.
+ * 48 Exposed Upper Structural Box-Girder Steel Roof Ribs + 5 Concentric Ring Purlins
+ * visible atop the Saddle Roof so the roof structure reads clearly with architectural depth.
+ */
+function ExposedUpperRoofRibs({
+  startAngle,
+  endAngle,
+}: {
+  startAngle: number;
+  endAngle: number;
+}) {
+  const meshRef = useRef<THREE.InstancedMesh | null>(null);
+
+  const members = useMemo(() => {
+    const list: Array<{ pos: [number, number, number]; quat: THREE.Quaternion; len: number; radius: number }> = [];
+    const up = new THREE.Vector3(0, 1, 0);
+    const count = ROOF_SPECS.ribCount;
+    const steps = 8;
+
+    const addSeg = (p1: THREE.Vector3, p2: THREE.Vector3, radius: number) => {
+      const dir = p2.clone().sub(p1);
+      const len = dir.length();
+      if (len < 0.05) {
+        return;
+      }
+      const mid = p1.clone().add(p2).multiplyScalar(0.5);
+      const quat = new THREE.Quaternion().setFromUnitVectors(up, dir.normalize());
+      list.push({ pos: [mid.x, mid.y, mid.z], quat, len, radius });
+    };
+
+    const getPoint = (angle: number, u: number) => {
+      const rx = THREE.MathUtils.lerp(ROOF_SPECS.outerRadiusX, ROOF_SPECS.oculusRadiusX, u);
+      const rz = THREE.MathUtils.lerp(ROOF_SPECS.outerRadiusZ, ROOF_SPECS.oculusRadiusZ, u);
+      const [x, z] = superEllipsePoint(angle, rx, rz);
+      const { yTop } = getSaddleTrussHeights(u, angle);
+      return new THREE.Vector3(x, yTop + 0.55, z);
+    };
+
+    for (let i = 0; i < count; i += 1) {
+      const angle = (i / count) * Math.PI * 2;
+      if (angle < startAngle - 0.02 || angle > endAngle + 0.02) {
+        continue;
+      }
+      for (let s = 0; s < steps; s += 1) {
+        addSeg(getPoint(angle, s / steps), getPoint(angle, (s + 1) / steps), 0.36);
+      }
+
+      const nextAngle = ((i + 1) / count) * Math.PI * 2;
+      if (nextAngle <= endAngle + 0.03) {
+        for (const ringU of [0, 0.25, 0.5, 0.78, 1.0]) {
+          const isMain = ringU === 0 || ringU === 0.78 || ringU === 1.0;
+          addSeg(getPoint(angle, ringU), getPoint(nextAngle, ringU), isMain ? 0.55 : 0.28);
+        }
+      }
+    }
+
+    return list;
+  }, [startAngle, endAngle]);
+
+  useEffect(() => {
+    const mesh = meshRef.current;
+    if (!mesh) {
+      return;
+    }
+    const dummy = new THREE.Object3D();
+    members.forEach((m, idx) => {
+      dummy.position.set(...m.pos);
+      dummy.quaternion.copy(m.quat);
+      dummy.scale.set(m.radius, m.len, m.radius);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(idx, dummy.matrix);
+    });
+    mesh.count = members.length;
+    mesh.instanceMatrix.needsUpdate = true;
+  }, [members]);
+
+  return (
+    <instancedMesh ref={meshRef} name="exposed-upper-roof-ribs" args={[undefined, undefined, 900]} castShadow>
+      <cylinderGeometry args={[1, 1, 1, 6]} />
+      <meshStandardMaterial color="#cbd5e1" metalness={0.78} roughness={0.28} />
+    </instancedMesh>
+  );
+}
+
+/**
+ * Sculpted Champagne-Gold Dong Son Diagrid + 48 Vertical Architectural Fin Columns
+ * wrapping the flared glass vessel facade cleanly from Podium (+10.5m) to Saddle Rim.
  */
 function SculptedDiagridFacade({
   startAngle,
@@ -216,11 +323,11 @@ function SculptedDiagridFacade({
   isNight: boolean;
 }) {
   const goldRef = useRef<THREE.InstancedMesh | null>(null);
-  const pearlRef = useRef<THREE.InstancedMesh | null>(null);
+  const finRef = useRef<THREE.InstancedMesh | null>(null);
 
-  const { goldStruts, pearlStruts } = useMemo(() => {
+  const { goldStruts, finStruts } = useMemo(() => {
     const gold: Array<{ pos: [number, number, number]; quat: THREE.Quaternion; len: number }> = [];
-    const pearl: Array<{ pos: [number, number, number]; quat: THREE.Quaternion; len: number }> = [];
+    const fins: Array<{ pos: [number, number, number]; quat: THREE.Quaternion; len: number }> = [];
     const up = new THREE.Vector3(0, 1, 0);
     const count = 48;
     const tiers = 5;
@@ -256,6 +363,9 @@ function SculptedDiagridFacade({
         continue;
       }
 
+      // Vertical architectural blade fin per structural grid bay
+      addSeg(fins, pointAt(a0, 0), pointAt(a0, 1));
+
       for (let t = 0; t < tiers; t += 1) {
         const vt0 = t / tiers;
         const vt1 = (t + 1) / tiers;
@@ -264,17 +374,12 @@ function SculptedDiagridFacade({
         const angB = ((i + 1 + shift) / count) * Math.PI * 2;
         const angMid = (angA + angB) / 2;
 
-        // Intersecting lotus/Dong Son diamond ribs
         addSeg(gold, pointAt(angA, vt0), pointAt(angMid, vt1));
         addSeg(gold, pointAt(angB, vt0), pointAt(angMid, vt1));
-        // Sleek horizontal pearl ring accent every 2 tiers
-        if (t % 2 === 1) {
-          addSeg(pearl, pointAt(a0, vt0), pointAt(a1, vt0));
-        }
       }
     }
 
-    return { goldStruts: gold, pearlStruts: pearl };
+    return { goldStruts: gold, finStruts: fins };
   }, [startAngle, endAngle]);
 
   useEffect(() => {
@@ -290,43 +395,86 @@ function SculptedDiagridFacade({
       goldRef.current.count = goldStruts.length;
       goldRef.current.instanceMatrix.needsUpdate = true;
     }
-    if (pearlRef.current) {
-      pearlStruts.forEach((s, idx) => {
+    if (finRef.current) {
+      finStruts.forEach((s, idx) => {
         dummy.position.set(...s.pos);
         dummy.quaternion.copy(s.quat);
-        dummy.scale.set(0.36, s.len, 0.36);
+        dummy.scale.set(0.38, s.len, 0.38);
         dummy.updateMatrix();
-        pearlRef.current!.setMatrixAt(idx, dummy.matrix);
+        finRef.current!.setMatrixAt(idx, dummy.matrix);
       });
-      pearlRef.current.count = pearlStruts.length;
-      pearlRef.current.instanceMatrix.needsUpdate = true;
+      finRef.current.count = finStruts.length;
+      finRef.current.instanceMatrix.needsUpdate = true;
     }
-  }, [goldStruts, pearlStruts]);
+  }, [goldStruts, finStruts]);
 
   return (
     <group name="champagne-gold-vessel-diagrid">
       <instancedMesh ref={goldRef} args={[undefined, undefined, 700]} castShadow>
         <cylinderGeometry args={[1, 1, 1, 6]} />
         <meshStandardMaterial
-          color="#f59e0b"
+          color="#eab308"
           emissive="#d97706"
-          emissiveIntensity={isNight ? 0.35 : 0.06}
-          metalness={0.82}
+          emissiveIntensity={isNight ? 0.35 : 0.04}
+          metalness={0.86}
           roughness={0.22}
         />
       </instancedMesh>
-      <instancedMesh ref={pearlRef} args={[undefined, undefined, 300]}>
+      <instancedMesh ref={finRef} args={[undefined, undefined, 64]} castShadow>
         <cylinderGeometry args={[1, 1, 1, 6]} />
-        <meshStandardMaterial color="#f8fafc" metalness={0.55} roughness={0.25} />
+        <meshStandardMaterial color="#f1f5f9" metalness={0.75} roughness={0.25} />
       </instancedMesh>
     </group>
   );
 }
 
 /**
- * Hidden 48 Tapered Double-Chord Triangulated Steel Cantilever Roof Trusses following
- * the undulating Saddle Roof contour (exposed in BIM Frame or X-Ray mode).
+ * 4 Cantilevered Steel-and-Glass Entrance Canopies projecting over the 4 Grand Stairways.
  */
+function GrandEntranceCanopies({
+  startAngle,
+  endAngle,
+}: {
+  startAngle: number;
+  endAngle: number;
+}) {
+  const canopies = useMemo(() => {
+    const list: Array<{ x: number; z: number; rotY: number }> = [];
+    for (let i = 0; i < 4; i += 1) {
+      const a = (i / 4) * Math.PI * 2;
+      if (a < startAngle - 0.05 || a > endAngle + 0.05) {
+        continue;
+      }
+      const [x, z] = superEllipsePoint(a, 178, 152);
+      list.push({ x, z, rotY: -a + Math.PI / 2 });
+    }
+    return list;
+  }, [startAngle, endAngle]);
+
+  return (
+    <group name="grand-entrance-canopies">
+      {canopies.map((c, idx) => (
+        <group key={idx} position={[c.x, 16.5, c.z]} rotation={[0, c.rotY, 0]}>
+          <mesh rotation={[-0.08, 0, 0]} castShadow>
+            <boxGeometry args={[32, 0.8, 16]} />
+            <meshPhysicalMaterial
+              color="#e0f2fe"
+              transparent
+              opacity={0.72}
+              metalness={0.35}
+              roughness={0.15}
+            />
+          </mesh>
+          <mesh position={[0, 0.45, 7.6]}>
+            <boxGeometry args={[32.6, 0.4, 0.8]} />
+            <meshStandardMaterial color="#eab308" metalness={0.85} roughness={0.22} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
 function TriangulatedSpaceTrussRoof({
   startAngle,
   endAngle,
@@ -431,7 +579,7 @@ function TriangulatedSpaceTrussRoof({
       castShadow
     >
       <cylinderGeometry args={[1, 1, 1, 6]} />
-      <meshStandardMaterial color="#f1f5f9" metalness={0.8} roughness={0.25} />
+      <meshStandardMaterial color="#f1f5f9" metalness={0.82} roughness={0.25} />
     </instancedMesh>
   );
 }
@@ -499,10 +647,10 @@ function RetractableOculusPanels({
         <meshPhysicalMaterial
           color="#e0f2fe"
           transparent
-          opacity={xrayRoof ? 0.14 : 0.52}
+          opacity={xrayRoof ? 0.14 : 0.48}
           wireframe={xrayRoof}
           roughness={0.18}
-          metalness={0.15}
+          metalness={0.2}
           side={THREE.DoubleSide}
         />
       </mesh>
@@ -515,10 +663,10 @@ function RetractableOculusPanels({
         <meshPhysicalMaterial
           color="#e0f2fe"
           transparent
-          opacity={xrayRoof ? 0.14 : 0.52}
+          opacity={xrayRoof ? 0.14 : 0.48}
           wireframe={xrayRoof}
           roughness={0.18}
-          metalness={0.15}
+          metalness={0.2}
           side={THREE.DoubleSide}
         />
       </mesh>
@@ -537,13 +685,13 @@ export function RoofStructure({
   const endAngle = halfCutaway ? Math.PI * 1.98 : Math.PI * 2;
   const isNight = floodlightIntensity > 0.5;
 
+  const membraneTex = useMemo(() => createRoofMembraneTexture(), []);
   const curtainTex = useMemo(() => createLuxuryCurtainWallTexture(isNight), [isNight]);
   const vesselCurtainGeo = useMemo(
     () => createSculptedVesselFacadeGeometry(startAngle, endAngle),
     [startAngle, endAngle]
   );
 
-  // Outer Pearl-White ETFE Roof (0..0.78) + Inner Daylight Glass Skylight Ring (0.78..1.0)
   const etfeCanopyGeo = useMemo(
     () => createSaddleRoofCanopyGeometry(startAngle, endAngle, 0, 0.78),
     [startAngle, endAngle]
@@ -559,7 +707,7 @@ export function RoofStructure({
         ROOF_SPECS.outerRadiusX + 0.6,
         ROOF_SPECS.outerRadiusZ + 0.6,
         2.5,
-        1.1,
+        1.15,
         startAngle,
         endAngle
       ),
@@ -591,7 +739,11 @@ export function RoofStructure({
         <TriangulatedSpaceTrussRoof startAngle={startAngle} endAngle={endAngle} />
       )}
 
-      {/* Sculptural Jade-Sapphire Vessel Glass Facade + Champagne-Gold Dong Son Diagrid */}
+      {/* Always-visible 48 Exposed Upper Box-Girder Ribs & 5 Concentric Purlin Rings */}
+      {!bimFrameMode && !xrayRoof && (
+        <ExposedUpperRoofRibs startAngle={startAngle} endAngle={endAngle} />
+      )}
+
       {!bimFrameMode && (
         <>
           <mesh geometry={vesselCurtainGeo} receiveShadow>
@@ -600,8 +752,8 @@ export function RoofStructure({
               emissive="#ffffff"
               emissiveMap={curtainTex}
               emissiveIntensity={isNight ? 0.85 : 0.25}
-              metalness={0.65}
-              roughness={0.22}
+              metalness={0.72}
+              roughness={0.2}
               transparent={xrayRoof}
               opacity={xrayRoof ? 0.28 : 0.96}
               side={THREE.DoubleSide}
@@ -614,41 +766,42 @@ export function RoofStructure({
             isNight={isNight}
           />
 
-          {/* Pearl-White Undulating Saddle Fascia Rim */}
+          <GrandEntranceCanopies startAngle={startAngle} endAngle={endAngle} />
+
           <mesh geometry={outerPearlFasciaGeo} castShadow>
-            <meshStandardMaterial color="#f8fafc" metalness={0.5} roughness={0.24} />
+            <meshStandardMaterial color="#f8fafc" metalness={0.55} roughness={0.22} />
           </mesh>
         </>
       )}
 
-      {/* Pearl-White ETFE Tensile Cushions + Translucent Daylight Skylight Ring */}
+      {/* Pleated ETFE Tensile Cushions + Translucent Daylight Skylight Ring */}
       {!bimFrameMode && (
         <>
           <mesh geometry={etfeCanopyGeo} castShadow={!xrayRoof} receiveShadow>
             <meshPhysicalMaterial
+              map={xrayRoof ? null : membraneTex}
               color={xrayRoof ? '#38bdf8' : '#ffffff'}
               transparent
-              opacity={xrayRoof ? 0.14 : 0.94}
+              opacity={xrayRoof ? 0.14 : 0.92}
               wireframe={xrayRoof}
-              roughness={0.28}
+              roughness={0.35}
               metalness={0.08}
               side={THREE.DoubleSide}
             />
           </mesh>
           <mesh geometry={skylightRingGeo}>
             <meshPhysicalMaterial
-              color="#e0f2fe"
+              color="#bae6fd"
               transparent
-              opacity={xrayRoof ? 0.14 : 0.54}
+              opacity={xrayRoof ? 0.14 : 0.45}
               roughness={0.12}
-              metalness={0.15}
+              metalness={0.22}
               side={THREE.DoubleSide}
             />
           </mesh>
         </>
       )}
 
-      {/* Retractable Inner Oculus Dome */}
       {!halfCutaway && !bimFrameMode && (
         <RetractableOculusPanels roofOpenPercent={roofOpenPercent} xrayRoof={xrayRoof} />
       )}

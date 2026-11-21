@@ -538,6 +538,80 @@ function HaloLedRing({
   );
 }
 
+function createSectionCapQuad(
+  positions: number[],
+  indices: number[],
+  p0: [number, number, number],
+  p1: [number, number, number],
+  p2: [number, number, number],
+  p3: [number, number, number]
+) {
+  const base = positions.length / 3;
+  positions.push(...p0, ...p1, ...p2, ...p3);
+  indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+}
+
+/**
+ * Generates solid architectural cross-section end-cap faces at cutAngle so 90° cutaway
+ * reveals clean, solid concrete section fills with zero hollow polygon voids.
+ */
+function createCutawaySectionCapGeometry(cutAngle: number): THREE.BufferGeometry {
+  const positions: number[] = [];
+  const indices: number[] = [];
+
+  // 1. Precast seating tier section wedges (Tiers 1..4)
+  for (const tier of STADIUM_TIERS) {
+    const [ix, iz] = superEllipsePoint(cutAngle, tier.innerRadiusX, tier.innerRadiusZ);
+    const [ox, oz] = superEllipsePoint(cutAngle, tier.outerRadiusX, tier.outerRadiusZ);
+    createSectionCapQuad(
+      positions,
+      indices,
+      [ix, tier.baseElevation - 0.9, iz],
+      [ix, tier.baseElevation, iz],
+      [ox, tier.topElevation, oz],
+      [ox, tier.topElevation - 0.9, oz]
+    );
+  }
+
+  // 2. Under-bowl service core section walls
+  const cores: Array<[number, number, number, number, number, number]> = [
+    [102, 80, 163, 137, 0.2, 17.5],
+    [124, 100, 163, 137, 18.0, 32.5],
+    [148, 122, 163, 137, 33.0, 52.5],
+    [166, 140, 196, 170, 0.0, 10.5],
+  ];
+  for (const [irx, irz, orx, orz, botY, topY] of cores) {
+    const [ix, iz] = superEllipsePoint(cutAngle, irx, irz);
+    const [ox, oz] = superEllipsePoint(cutAngle, orx, orz);
+    createSectionCapQuad(
+      positions,
+      indices,
+      [ix, botY, iz],
+      [ix, topY, iz],
+      [ox, topY, oz],
+      [ox, botY, oz]
+    );
+  }
+
+  // 3. Under-Tier-1 foundation wedge
+  const [f1x, f1z] = superEllipsePoint(cutAngle, 72, 52);
+  const [f2x, f2z] = superEllipsePoint(cutAngle, 102, 80);
+  createSectionCapQuad(
+    positions,
+    indices,
+    [f1x, 0.0, f1z],
+    [f1x, 2.2, f1z],
+    [f2x, 16.5, f2z],
+    [f2x, 0.0, f2z]
+  );
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 function EvacuationFlowPaths({
   startAngle,
   endAngle,
@@ -657,9 +731,40 @@ export function BowlStands({
     [startAngle, endAngle]
   );
 
+  const foundationSlabGeo = useMemo(
+    () => createConcourseSlabGeometry(72, 52, 166, 140, 0.18, startAngle, endAngle),
+    [startAngle, endAngle]
+  );
+
+  const sectionCapStartGeo = useMemo(
+    () => (halfCutaway ? createCutawaySectionCapGeometry(startAngle) : null),
+    [halfCutaway, startAngle]
+  );
+  const sectionCapEndGeo = useMemo(
+    () => (halfCutaway ? createCutawaySectionCapGeometry(endAngle) : null),
+    [halfCutaway, endAngle]
+  );
+
   return (
     <group name="stadium-bowl-200k">
       <RCFrameBents startAngle={startAngle} endAngle={endAngle} />
+
+      {/* Solid Sub-Bowl Foundation Slab closing ground floor under Tier 1 */}
+      <mesh geometry={foundationSlabGeo} receiveShadow>
+        <meshStandardMaterial color="#94a3b8" roughness={0.85} side={THREE.DoubleSide} />
+      </mesh>
+
+      {/* Solid Architectural Cross-Section End-Caps when 90° Cutaway is enabled */}
+      {halfCutaway && !bimFrameMode && sectionCapStartGeo && sectionCapEndGeo && (
+        <group name="cutaway-section-endcaps">
+          <mesh geometry={sectionCapStartGeo} receiveShadow>
+            <meshStandardMaterial color="#cbd5e1" roughness={0.82} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh geometry={sectionCapEndGeo} receiveShadow>
+            <meshStandardMaterial color="#cbd5e1" roughness={0.82} side={THREE.DoubleSide} />
+          </mesh>
+        </group>
+      )}
 
       <mesh geometry={pitchRetainingWallGeo} position={[0, 0, 0]} receiveShadow>
         <meshStandardMaterial color="#64748b" roughness={0.82} side={THREE.DoubleSide} />

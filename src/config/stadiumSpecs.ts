@@ -192,27 +192,27 @@ export const MASTERPLAN_ZONES: readonly MasterplanZoneSpec[] = [
   },
   {
     id: 'metro-hub',
-    name: '2. Nhà Ga Metro Cánh Chim & Skywalk',
-    location: 'Phía Nam (z = +265m)',
-    spec: 'Mái vòm trắng thanh thoát • Cầu vượt kính nối thẳng Sảnh Nam',
+    name: '2. Nhà Ga Metro Giàn Thép & Cầu Skywalk',
+    location: 'Phía Nam (z = +274m)',
+    spec: 'Đường sắt trên cao & tàu Metro • Cầu kính nối thẳng Podium',
   },
   {
     id: 'hotel-ibc',
     name: '3. Tháp Đôi Khách Sạn 5★ & Hội Nghị IBC',
     location: 'Phía Đông (x = +295m)',
-    spec: 'Tháp cánh buồm kính Sapphire 86m & 70m • Vườn mái xanh',
+    spec: '2 Tòa tháp kính 18 & 14 tầng phân sàn thật • Khối đế cột colonnade',
   },
   {
     id: 'indoor-aquatics',
-    name: '4. Cung Thể Thao 15K & Bơi Lội Ngọc Trai',
+    name: '4. Nhà Thi Đấu 15K & Cung Dưới Nước',
     location: 'Phía Tây (x = -295m)',
-    spec: '2 Tổ hợp mái vòm elip Trắng Ngọc Trai & Vàng Champagne',
+    spec: 'Khung vòm thép lộ thiên nhịp lớn • Mặt dựng kính nghiêng',
   },
   {
     id: 'training-parking',
-    name: '5. Sân Tập FIFA & Eco Parking Mái Xanh',
-    location: 'Phía Bắc (z = -285m)',
-    spec: 'Sân tập 105×68m mái cong • Tổ hợp đỗ xe mái vườn sinh thái',
+    name: '5. Sân Tập FIFA & Nhà Xe 5 Tầng Hở',
+    location: 'Phía Bắc (z = -295m)',
+    spec: 'Sân tập 105×68m + 2 Nhà xe 5 sàn bê tông thông gió & bãi đỗ xe',
   },
 ] as const;
 

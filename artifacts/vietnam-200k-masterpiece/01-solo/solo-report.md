@@ -1,29 +1,28 @@
 <!-- devflow-template: solo-report@1.1 -->
-# 小型任务报告 — Vietnam 200K Sculptural Iconic Stadium & Resort Sports Park
+# 小型任务报告 — Vietnam 200K Stadium Self-Audit & Architectural Realism Fix
 
 ## 范围
 
-Tái thiết kế toàn diện ngôn ngữ thẩm mỹ, chất liệu PBR và quy hoạch cảnh quan của `d:\chaybo` theo chuẩn các siêu công trình quốc tế (Lusail + SoFi + Kai Tak), đưa toàn bộ kết cấu thô vào bên trong lớp vỏ điêu khắc tinh tế và nâng cấp 5 khu phức hợp xung quanh thành các công trình bo cong hiện đại trên công viên sinh thái.
+Tự rà soát và khắc phục các lỗi về vật liệu PBR, độ chi tiết gân mái, khép kín vết cắt 90° và kiến trúc thực tế của 5 khu phức hợp xung quanh tại `d:\chaybo`.
 
 ## 计划
 
-1. Tinh chỉnh `LIGHTING_CONFIGS.day` và thêm `getUndulatingRimHeight(angle)` trong `src/config/stadiumSpecs.ts` & `stadiumSpecs.test.ts`.
-2. Thu gọn khung `RCFrameBents` (`Grid A–E`) vào bên trong lòng sân và phối màu ghế Đỏ Ruby – Vàng Hoàng Kim trong `src/scene/BowlStands.tsx`.
-3. Dựng vỏ mặt dựng điêu khắc `SculptedDiagridFacade` (Vàng Champagne & Trắng Ngọc Trai trên kính Low-E) kết hợp mái đệm khí ETFE Trắng Ngọc Trai lượn sóng yên ngựa (`63m–74m`) trong `src/scene/RoofStructure.tsx`; ẩn dàn kèo thép 48 trục bên dưới (mở khi bật `Khung Kết Cấu (BIM)` hoặc `X-Ray Mái`).
-4. Thiết kế lại `src/scene/Surroundings.tsx`: Quảng trường đá Travertine sáng, 36 cổng vòm viền vàng Champagne, thảm cỏ công viên xanh tươi, hồ cảnh quan xanh ngọc, và 5 phân khu phức hợp bo cong (Tháp đôi Khách sạn kính Sapphire, Cung Thể thao vòm ngọc trai, Nhà ga Metro cánh chim, Sân tập & Eco Parking mái xanh).
+1. Thêm `PbrEnvironment` (`RoomEnvironment` + `PMREMGenerator`) trong `src/scene/StadiumScene.tsx`.
+2. Thêm 48 sườn hộp thép nổi + 5 vòng xà gồ (`ExposedUpperRoofRibs`), texture múi màng `createRoofMembraneTexture` và 4 mái đón `GrandEntranceCanopies` trong `src/scene/RoofStructure.tsx`.
+3. Thêm `foundationSlabGeo` và tường đầu hồi khép kín vết cắt (`createCutawaySectionCapGeometry`) trong `src/scene/BowlStands.tsx`.
+4. Xây dựng lại 5 khu phức hợp theo kiến trúc thật trong `src/scene/Surroundings.tsx` (Tháp khách sạn 5★ phân sàn thật 18/14 tầng, Nhà ga Metro giàn thép có tàu điện, cầu Skywalk không đâm cầu thang, Nhà thi đấu vòm thép lộ thiên, 2 Nhà xe 5 sàn hở thông gió + 112 ô tô tỷ lệ thật, hồ nước bờ kè đá granite và cây phân cụm tán tự nhiên).
 
 ## 变更
 
-- `src/config/stadiumSpecs.ts` & `src/config/stadiumSpecs.test.ts`: Bổ sung `getUndulatingRimHeight`, bảng màu ban ngày rực rỡ và 9/9 unit tests.
-- `src/scene/BowlStands.tsx`: Loại bỏ cấu kiện thò ra ngoài; tinh chỉnh ghế Đỏ Ruby – Vàng và sảnh nội bộ sáng sạch.
-- `src/scene/RoofStructure.tsx`: Dựng `SculptedVesselFacade`, `SculptedDiagridFacade` Vàng Champagne & Trắng Ngọc Trai và mái đệm khí ETFE lượn sóng yên ngựa.
-- `src/scene/Surroundings.tsx`: Dựng quảng trường đá Travertine, hồ nước xanh ngọc và 5 khu phức hợp kiến trúc bo cong hiện đại.
-- `src/components/ControlPanel.tsx`: Cập nhật thông số & mô tả kiến trúc mới.
+- `src/scene/StadiumScene.tsx`: Thêm `PbrEnvironment` (`RoomEnvironment`).
+- `src/scene/RoofStructure.tsx`: Thêm `ExposedUpperRoofRibs`, `createRoofMembraneTexture`, `GrandEntranceCanopies` và 48 lam đứng mặt tiền.
+- `src/scene/BowlStands.tsx`: Thêm `foundationSlabGeo` và `createCutawaySectionCapGeometry` cho mặt cắt 90°.
+- `src/scene/Surroundings.tsx` & `src/config/stadiumSpecs.ts`: Tái xây dựng `RealFloorPlateTower`, `OpenDeckParkingGarage`, `GraniteReflectingBasins`, `NaturalParkLandscaping` và tách cầu thang đôi ở sảnh Nam.
 
 ## 自审
 
 - TypeScript strict mode (`tsc -b`): 0 lỗi, 0 biến dư thừa.
-- Kết cấu chịu lực 48 khung RC + 48 dàn kèo thép vẫn liên kết đầy đủ bên trong vỏ kiến trúc, có thể kiểm tra bất kỳ lúc nào qua nút `Khung Kết Cấu (BIM)` và `Mặt cắt 90°`.
+- Đã loại bỏ hoàn toàn các khối trụ đơn giản, khối cầu bánh bao, cầu thang giao cắt cầu đi bộ, khoảng rỗng đen dưới mặt cắt và thiếu môi trường phản xạ PBR.
 
 ## 测试
 

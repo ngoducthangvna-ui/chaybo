@@ -2,6 +2,7 @@ import { Component, type ReactNode, useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Line, OrbitControls, Stars } from '@react-three/drei';
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import {
   type CameraPresetId,
@@ -52,6 +53,31 @@ class SceneErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundar
     }
     return this.props.children;
   }
+}
+
+/**
+ * Generates an accurate PMREM PBR reflection environment so architectural glass,
+ * brushed steel, anodized gold, and water basins render with realistic specular depth.
+ */
+function PbrEnvironment({ intensity }: { intensity: number }) {
+  const { gl, scene } = useThree();
+
+  useEffect(() => {
+    const pmrem = new THREE.PMREMGenerator(gl);
+    const roomEnv = new RoomEnvironment();
+    const renderTarget = pmrem.fromScene(roomEnv, 0.04);
+    scene.environment = renderTarget.texture;
+    scene.environmentIntensity = intensity;
+
+    return () => {
+      scene.environment = null;
+      renderTarget.dispose();
+      roomEnv.dispose();
+      pmrem.dispose();
+    };
+  }, [gl, scene, intensity]);
+
+  return null;
 }
 
 function SkyDome({ topColor, horizonColor }: { topColor: string; horizonColor: string }) {
@@ -107,8 +133,8 @@ function CameraRig({
 }) {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const { camera } = useThree();
-  const desiredPos = useRef(new THREE.Vector3(385, 225, 375));
-  const desiredTarget = useRef(new THREE.Vector3(0, 15, 0));
+  const desiredPos = useRef(new THREE.Vector3(365, 205, 355));
+  const desiredTarget = useRef(new THREE.Vector3(0, 14, 0));
   const transitioning = useRef(false);
 
   useEffect(() => {
@@ -173,13 +199,15 @@ export function StadiumScene({
         gl={{
           antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.15,
+          toneMappingExposure: 1.08,
         }}
-        camera={{ position: [385, 225, 375], fov: 45, near: 1, far: 2500 }}
+        camera={{ position: [365, 205, 355], fov: 45, near: 1, far: 2500 }}
         className="h-full w-full"
       >
         <color attach="background" args={[lighting.skyColor]} />
-        <fog attach="fog" args={[lighting.fogColor, 550, 1250]} />
+        <fog attach="fog" args={[lighting.fogColor, 580, 1300]} />
+
+        <PbrEnvironment intensity={isNight ? 0.38 : 0.72} />
 
         <SkyDome topColor={lighting.skyColor} horizonColor={lighting.horizonColor} />
 
@@ -187,8 +215,8 @@ export function StadiumScene({
           <Stars radius={520} depth={90} count={2500} factor={4} saturation={0.2} fade />
         )}
 
-        <hemisphereLight args={[lighting.skyColor, '#334155', 0.88]} />
-        <ambientLight intensity={lighting.ambientIntensity} />
+        <hemisphereLight args={[lighting.skyColor, '#475569', 0.75]} />
+        <ambientLight intensity={lighting.ambientIntensity * 0.65} />
         <directionalLight
           position={[...lighting.sunPosition]}
           color={lighting.sunColor}
@@ -202,6 +230,7 @@ export function StadiumScene({
           shadow-camera-right={380}
           shadow-camera-top={380}
           shadow-camera-bottom={-380}
+          shadow-bias={-0.0004}
         />
 
         {lighting.floodlightIntensity > 0 && (
