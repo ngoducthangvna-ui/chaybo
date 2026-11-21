@@ -1,11 +1,19 @@
 import {
+  FLOOR_CORRIDORS,
   FLOOR_ELEVATION_Y,
   FLOOR_LEVEL_SPECS,
   STADIUM_INTERIOR_ROOMS,
+  VERTICAL_CORES,
+  findNearestVerticalCore,
   findRoomAtPoint,
+  getCorridorsByFloor,
   getRoom3dWalkthroughPose,
+  getRoomNpcPoses,
+  getRoomSafeSpawnPoint,
   getRoomsByFloor,
   isDoorwayOpen,
+  isFurnitureSolidForWalk,
+  isPointInInteriorClearZone,
   stepExplorerAvatar,
 } from './interiorRooms';
 import { describe, expect, it } from 'vitest';
@@ -199,6 +207,87 @@ describe('stadiumSpecs', () => {
       expect(follow.avatarPos[1]).toBe(FLOOR_ELEVATION_Y[room.floor]);
       expect(fps.cameraPos[1]).toBeCloseTo(FLOOR_ELEVATION_Y[room.floor] + 1.72, 2);
       expect(cutaway.cameraPos[1]).toBeCloseTo(FLOOR_ELEVATION_Y[room.floor] + 14, 2);
+    }
+  });
+
+  it('defines connected floor corridors, 4 vertical elevator cores, and column-free interior clear zones', () => {
+    expect(VERTICAL_CORES).toHaveLength(4);
+    expect(FLOOR_CORRIDORS.length).toBeGreaterThanOrEqual(16);
+    for (const floor of ['B0', 'L1', 'L2', 'L3'] as const) {
+      expect(getCorridorsByFloor(floor).length).toBeGreaterThanOrEqual(3);
+    }
+    expect(findNearestVerticalCore(-134, 36)?.code).toBe('CORE-W');
+    expect(findNearestVerticalCore(0, 0)).toBeNull();
+
+    // Verify L2-01, B0-01, and B0-03 interiors report active clear-zone envelopes above table/tunnel height
+    const vvipZone = isPointInInteriorClearZone(-12, 97, 1.4);
+    expect(vvipZone.inRoom).toBe(true);
+    expect(vvipZone.maxCeilingY).toBeGreaterThanOrEqual(FLOOR_ELEVATION_Y.L2 + 5.5);
+
+    const tunnelZone = isPointInInteriorClearZone(-72, 0, 1.4);
+    expect(tunnelZone.inRoom).toBe(true);
+    expect(tunnelZone.maxCeilingY).toBeGreaterThanOrEqual(FLOOR_ELEVATION_Y.B0 + 4.5);
+  });
+
+  it('enforces real-world wall, doorway, open east portal, and furniture collision sliding', () => {
+    // Solid north wall of B0-01 (y = -42) blocks walking north from inside room
+    const blockedWall = stepExplorerAvatar(
+      { x: -115, y: -41.2 },
+      { dx: 0, dy: -1 },
+      0.1,
+      'B0'
+    );
+    expect(blockedWall.y).toBe(-41.2);
+
+    // Doorway of B0-01 at (-110, -24) allows walking straight out south into corridor
+    const throughDoor = stepExplorerAvatar(
+      { x: -110, y: -24.4 },
+      { dx: 0, dy: 1 },
+      0.1,
+      'B0'
+    );
+    expect(throughDoor.y).toBeGreaterThan(-24.4);
+
+    // East mouth of B0-03 Players' Tunnel at x = -58 opens freely onto pitch apron
+    const outTunnel = stepExplorerAvatar(
+      { x: -58.3, y: 0 },
+      { dx: 1, dy: 0 },
+      0.1,
+      'B0'
+    );
+    expect(outTunnel.x).toBeGreaterThan(-58);
+
+    // Banquet table inside L2-01 (-22..0, 92..99.5) blocks walking into tabletop from foyer (z = 100.3)
+    const hitTable = stepExplorerAvatar(
+      { x: -12, y: 100.3 },
+      { dx: 0, dy: -1 },
+      0.1,
+      'L2'
+    );
+    expect(hitTable.y).toBe(100.3);
+  });
+
+  it('places NPCs and safe spawns strictly on unobstructed aisles across all 16 rooms', () => {
+    for (const room of STADIUM_INTERIOR_ROOMS) {
+      const spawn = getRoomSafeSpawnPoint(room);
+      expect(spawn.x).toBeGreaterThan(room.bounds.x);
+      expect(spawn.x).toBeLessThan(room.bounds.x + room.bounds.w);
+
+      for (const sec of [0, 3.2, 7.5]) {
+        const npcs = getRoomNpcPoses(room, sec);
+        expect(npcs.length).toBeGreaterThanOrEqual(2);
+        for (const npc of npcs) {
+          for (const item of room.furniture) {
+            if (!isFurnitureSolidForWalk(item)) continue;
+            const insideSolid =
+              npc.x > item.x - 0.3 &&
+              npc.x < item.x + item.w + 0.3 &&
+              npc.z > item.y - 0.3 &&
+              npc.z < item.y + item.h + 0.3;
+            expect(insideSolid).toBe(false);
+          }
+        }
+      }
     }
   });
 });

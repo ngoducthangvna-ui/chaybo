@@ -620,12 +620,17 @@ function PitchLedPerimeter() {
           <meshStandardMaterial color="#0f172a" emissive="#1e293b" emissiveIntensity={0.3} />
         </mesh>
       ))}
-      {[-boardDistX, boardDistX].map((x, idx) => (
-        <mesh key={`lx-${idx}`} position={[x, 0.55, 0]}>
-          <boxGeometry args={[0.35, 0.95, 74]} />
+      {/* West LED perimeter split around central |z| < 6.5m Players' Tunnel Vomitory opening */}
+      {[-21.75, 21.75].map((zPos, idx) => (
+        <mesh key={`lx-west-${idx}`} position={[-boardDistX, 0.55, zPos]}>
+          <boxGeometry args={[0.35, 0.95, 30.5]} />
           <meshStandardMaterial color="#0f172a" emissive="#1e293b" emissiveIntensity={0.3} />
         </mesh>
       ))}
+      <mesh position={[boardDistX, 0.55, 0]}>
+        <boxGeometry args={[0.35, 0.95, 74]} />
+        <meshStandardMaterial color="#0f172a" emissive="#1e293b" emissiveIntensity={0.3} />
+      </mesh>
     </group>
   );
 }

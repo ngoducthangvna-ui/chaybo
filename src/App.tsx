@@ -5,8 +5,10 @@ import {
   type FloorLevelId,
   STADIUM_INTERIOR_ROOMS,
   type StadiumRoomSpec,
+  type VerticalCoreSpec,
   type Walkthrough3DCameraMode,
   findRoomAtPoint,
+  getRoomSafeSpawnPoint,
   getRoomsByFloor,
   stepExplorerAvatar,
 } from './config/interiorRooms';
@@ -74,12 +76,27 @@ export function App() {
   const handleTeleportTo3dRoom = useCallback((room: StadiumRoomSpec) => {
     setWalkthroughFloor(room.floor);
     setWalkthroughSelectedId(room.id);
-    const rx = room.bounds.x + room.bounds.w * 0.5;
-    const rz = room.bounds.y + room.bounds.h * 0.5;
-    const spawnX = room.id === 'players-tunnel' ? room.bounds.x + 8 : (room.door.x + rx) * 0.5;
-    const spawnZ = (room.door.y + rz) * 0.5;
+    const spawn = getRoomSafeSpawnPoint(room);
     const heading = getRoomHeroHeading(room);
-    const nextAvatar = { x: spawnX, y: spawnZ, heading, speedMps: 0 };
+    const nextAvatar = { x: spawn.x, y: spawn.y, heading, speedMps: 0 };
+    avatarRef.current = nextAvatar;
+    setWalkthroughAvatar(nextAvatar);
+    setWalkthrough3dActive(true);
+    setExplorer2dOpen(false);
+  }, []);
+
+  const handleUseElevatorCore = useCallback((floorId: FloorLevelId, core: VerticalCoreSpec) => {
+    setWalkthroughFloor(floorId);
+    const roomsOnFloor = getRoomsByFloor(floorId);
+    if (roomsOnFloor[0]) {
+      setWalkthroughSelectedId(roomsOnFloor[0].id);
+    }
+    const nextAvatar = {
+      x: core.x,
+      y: core.y,
+      heading: Math.atan2(-core.y, -core.x),
+      speedMps: 0,
+    };
     avatarRef.current = nextAvatar;
     setWalkthroughAvatar(nextAvatar);
     setWalkthrough3dActive(true);
@@ -139,7 +156,8 @@ export function App() {
         const stepped = stepExplorerAvatar(
           { x: cur.x, y: cur.y, heading: nextHeading },
           { dx, dy },
-          dt
+          dt,
+          walkthroughFloor
         );
         avatarRef.current = {
           x: stepped.x,
@@ -167,7 +185,7 @@ export function App() {
       window.removeEventListener('keyup', onKeyUp);
       keysRef.current.clear();
     };
-  }, [walkthrough3dActive, explorer2dOpen]);
+  }, [walkthrough3dActive, explorer2dOpen, walkthroughFloor]);
 
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-slate-950">
@@ -243,6 +261,7 @@ export function App() {
           avatarHeading={walkthroughAvatar.heading}
           avatarSpeed={walkthroughAvatar.speedMps}
           onSelectFloor={handleSelect3dFloor}
+          onUseElevatorCore={handleUseElevatorCore}
           onCameraModeChange={setWalkthroughCameraMode}
           onTeleportToRoom={handleTeleportTo3dRoom}
           onSetDpadInput={(dx, dy) => {

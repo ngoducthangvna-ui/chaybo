@@ -3,6 +3,10 @@ import { Line } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
+  isPointInInteriorClearZone,
+  type Walkthrough3DCameraMode,
+} from '../config/interiorRooms';
+import {
   ROOF_SPECS,
   STADIUM_TIERS,
   STRUCTURAL_GRID_LINES,
@@ -19,6 +23,7 @@ interface BowlStandsProps {
   showEvacPaths: boolean;
   liveSimActive?: boolean;
   walkthrough3dActive?: boolean;
+  walkthroughCameraMode?: Walkthrough3DCameraMode;
 }
 
 /**
@@ -296,7 +301,10 @@ function createSteppedTierGeometry(
       const uFrac = i / segments;
       const angle = startAngle + uFrac * arcSpan;
       const [x, z] = superEllipsePoint(angle, rx, rz);
-      positions.push(x, y, z);
+      // Raise West Players' Tunnel Vomitory brow so B0-03 opens freely onto FIFA pitch
+      const inWestVomitory = tier.id === 'tier-1' && x < -50 && Math.abs(z) < 6.5;
+      const finalY = inWestVomitory ? Math.max(y, 4.55) : y;
+      positions.push(x, finalY, z);
       uvs.push(uFrac * (arcSpan / (Math.PI * 2)), v);
     }
   }
@@ -416,7 +424,8 @@ function createSuperEllipseBandGeometry(
   height: number,
   startAngle: number,
   endAngle: number,
-  segments = 108
+  segments = 108,
+  cutWestPortal = false
 ): THREE.BufferGeometry {
   const positions: number[] = [];
   const uvs: number[] = [];
@@ -433,6 +442,13 @@ function createSuperEllipseBandGeometry(
   }
 
   for (let i = 0; i < segments; i += 1) {
+    if (cutWestPortal) {
+      const angleMid = startAngle + ((i + 0.5) / segments) * arcSpan;
+      const [mx, mz] = superEllipsePoint(angleMid, radiusX, radiusZ);
+      if (mx < -50 && Math.abs(mz) < 7.2) {
+        continue;
+      }
+    }
     const a = i * 2;
     const b = a + 1;
     const c = a + 2;
@@ -471,6 +487,16 @@ function RCFrameBents({
     const up = new THREE.Vector3(0, 1, 0);
 
     const addBeam = (p1: THREE.Vector3, p2: THREE.Vector3, width: number, depth: number) => {
+      // Skip any structural beam passing through a room interior or tunnel envelope
+      for (const tSamp of [0, 0.25, 0.5, 0.75, 1]) {
+        const sx = THREE.MathUtils.lerp(p1.x, p2.x, tSamp);
+        const sy = THREE.MathUtils.lerp(p1.y, p2.y, tSamp);
+        const sz = THREE.MathUtils.lerp(p1.z, p2.z, tSamp);
+        const clear = isPointInInteriorClearZone(sx, sz, 1.5);
+        if (clear.inRoom && sy <= clear.maxCeilingY + 0.6) {
+          return;
+        }
+      }
       const mid = p1.clone().add(p2).multiplyScalar(0.5);
       const dir = p2.clone().sub(p1);
       const len = dir.length();
@@ -492,10 +518,22 @@ function RCFrameBents({
         const [gx, gz] = superEllipsePoint(angle, grid.rx, grid.rz);
         const colW = grid.id === 'E' ? 1.8 : 1.3;
         const colD = grid.id === 'E' ? 3.0 : 1.6;
+        const clear = isPointInInteriorClearZone(gx, gz, 1.8);
+        let fromY = 0;
+        if (clear.inRoom) {
+          if (grid.topElevation <= clear.maxCeilingY + 2.0) {
+            continue;
+          }
+          fromY = clear.maxCeilingY + 0.65;
+        }
+        const colH = grid.topElevation - fromY;
+        if (colH <= 0.5) {
+          continue;
+        }
         colList.push({
-          pos: [gx, grid.topElevation / 2, gz],
+          pos: [gx, fromY + colH * 0.5, gz],
           rotY: -angle,
-          scale: [colW, grid.topElevation, colD],
+          scale: [colW, colH, colD],
         });
       }
 
@@ -830,6 +868,9 @@ function VerticalCirculationCores({
         continue;
       }
       const [cx, cz] = superEllipsePoint(a, 155, 129);
+      if (isPointInInteriorClearZone(cx, cz, 5.5).inRoom) {
+        continue;
+      }
       const tangentAngle = -a + Math.PI / 2;
 
       for (const offset of [-4.2, 4.2]) {
@@ -953,6 +994,10 @@ function LiveSeatedSpectatorCrowd({
             continue;
           }
           const [x, z] = superEllipsePoint(angle, rx, rz);
+          // Keep West Players' Tunnel Vomitory arch (|z| < 7.2m, y < 5.2m) free of floating spectators
+          if (tier.id === 'tier-1' && yTread < 5.2 && x < -50 && Math.abs(z) < 7.2) {
+            continue;
+          }
           const shirtHex = hash < 0.7 ? '#e11d48' : hash < 0.88 ? '#fbbf24' : '#f8fafc';
           list.push({ x, baseY, z, angle, seed: hash, shirtHex });
         }
@@ -1303,9 +1348,11 @@ export function BowlStands({
   showEvacPaths,
   liveSimActive = true,
   walkthrough3dActive = false,
+  walkthroughCameraMode = 'follow3d',
 }: BowlStandsProps) {
   const startAngle = halfCutaway ? Math.PI * 0.45 : 0;
   const endAngle = halfCutaway ? Math.PI * 1.95 : Math.PI * 2;
+  const bowlXrayMode = bimFrameMode || (walkthrough3dActive && walkthroughCameraMode === 'cutaway3d');
 
   const seatingPbr = useMemo(() => createSeatingBowlPbrTextures(occupancyPercent), [occupancyPercent]);
   const sectionCapPbr = useMemo(() => createCutawaySectionPbrTextures(), []);
@@ -1328,13 +1375,15 @@ export function BowlStands({
 
   const ribbonGeos = useMemo(
     () =>
-      STADIUM_TIERS.map((tier) =>
+      STADIUM_TIERS.map((tier, idx) =>
         createSuperEllipseBandGeometry(
           tier.innerRadiusX - 0.25,
           tier.innerRadiusZ - 0.25,
           1.3,
           startAngle,
-          endAngle
+          endAngle,
+          108,
+          idx === 0
         )
       ),
     [startAngle, endAngle]
@@ -1347,7 +1396,9 @@ export function BowlStands({
         STADIUM_TIERS[0].innerRadiusZ,
         STADIUM_TIERS[0].baseElevation,
         startAngle,
-        endAngle
+        endAngle,
+        108,
+        true
       ),
     [startAngle, endAngle]
   );
@@ -1468,8 +1519,8 @@ export function BowlStands({
           <meshStandardMaterial
             color="#d6d3d1"
             roughness={0.78}
-            transparent={bimFrameMode || walkthrough3dActive}
-            opacity={bimFrameMode ? 0.35 : walkthrough3dActive ? 0.22 : 1}
+            transparent={bowlXrayMode}
+            opacity={bimFrameMode ? 0.35 : bowlXrayMode ? 0.22 : 1}
             side={THREE.DoubleSide}
           />
         </mesh>
@@ -1477,15 +1528,15 @@ export function BowlStands({
 
       {STADIUM_TIERS.map((tier, idx) => (
         <group key={tier.id} name={tier.id}>
-          <mesh geometry={tierGeos[idx]} castShadow={!bimFrameMode && !walkthrough3dActive} receiveShadow>
+          <mesh geometry={tierGeos[idx]} castShadow={!bowlXrayMode} receiveShadow>
             <meshStandardMaterial
               map={seatingPbr.map}
               bumpMap={seatingPbr.bumpMap}
               bumpScale={0.28}
               roughness={0.68}
               metalness={0.06}
-              transparent={bimFrameMode || walkthrough3dActive}
-              opacity={bimFrameMode || walkthrough3dActive ? 0.22 : 1}
+              transparent={bowlXrayMode}
+              opacity={bowlXrayMode ? 0.22 : 1}
               side={THREE.DoubleSide}
             />
           </mesh>

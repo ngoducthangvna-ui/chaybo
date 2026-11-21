@@ -37,6 +37,28 @@ export interface RoomDoorSpec {
   readonly width: number;
 }
 
+export type CardinalSide = 'north' | 'south' | 'east' | 'west';
+
+export interface CorridorSegmentSpec {
+  readonly id: string;
+  readonly floor: FloorLevelId;
+  readonly label: string;
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+}
+
+export interface VerticalCoreSpec {
+  readonly id: string;
+  readonly code: string;
+  readonly name: string;
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+}
+
 export interface StadiumRoomSpec {
   readonly id: string;
   readonly floor: FloorLevelId;
@@ -51,6 +73,8 @@ export interface StadiumRoomSpec {
   readonly description: string;
   readonly bounds: RoomBounds;
   readonly door: RoomDoorSpec;
+  readonly pitchWindowSide?: CardinalSide;
+  readonly eastPortalOpen?: boolean;
   readonly camera3dPreset: CameraPresetId;
   readonly equipmentList: readonly string[];
   readonly furniture: readonly FurnitureItem[];
@@ -169,8 +193,9 @@ export const STADIUM_INTERIOR_ROOMS: readonly StadiumRoomSpec[] = [
     fireRating: 'REI 180 · Thoát nạn chính',
     description:
       'Đường hầm đôi chống ồn nối trực tiếp từ khu vực 2 đội thay đồ ra đường biên ngang phía Tây của thảm cỏ FIFA 105×68m.',
-    bounds: { x: -100, y: -9, w: 42, h: 18 },
+    bounds: { x: -100, y: -7.5, w: 42, h: 15 },
     door: { x: -100, y: 0, orientation: 'v', width: 6.0 },
+    eastPortalOpen: true,
     camera3dPreset: 'pitch',
     equipmentList: [
       'Lối đi đôi ngăn cách bằng vách kính cường lực',
@@ -178,9 +203,8 @@ export const STADIUM_INTERIOR_ROOMS: readonly StadiumRoomSpec[] = [
       'Thảm chống trượt FIFA cleat-safe',
     ],
     furniture: [
-      { label: 'Sàn Thảm Đỏ Đón Cầu Thủ', x: -94, y: -4.5, w: 32, h: 9, kind: 'bar', color: '#9f1239' },
-      { label: 'Trạm Camera Flash Interview', x: -72, y: -8, w: 5, h: 2.5, kind: 'screen', color: '#fbbf24' },
-      { label: 'Cửa Ra Sân Cỏ (Đông)', x: -60, y: -4, w: 2, h: 8, kind: 'turnstile', color: '#10b981' },
+      { label: 'Sàn Thảm Đỏ Đón Cầu Thủ', x: -98, y: -4.2, w: 40, h: 8.4, kind: 'bar', color: '#9f1239' },
+      { label: 'Trạm Camera Flash Interview', x: -82, y: -7.0, w: 5.5, h: 1.8, kind: 'screen', color: '#fbbf24' },
     ],
   },
   {
@@ -225,6 +249,7 @@ export const STADIUM_INTERIOR_ROOMS: readonly StadiumRoomSpec[] = [
       'Phòng họp báo sau trận đấu tiêu âm chuẩn quốc tế với 350 chỗ ngồi phóng viên, bục phát biểu và hành lang phỏng vấn nhanh Mixed Zone.',
     bounds: { x: -34, y: 66, w: 38, h: 22 },
     door: { x: -15, y: 66, orientation: 'h', width: 5.0 },
+    pitchWindowSide: 'north',
     camera3dPreset: 'overview',
     equipmentList: [
       'Bục Chủ tọa HLV & Cầu thủ (6 micro dịch cabin 8 ngôn ngữ)',
@@ -283,6 +308,7 @@ export const STADIUM_INTERIOR_ROOMS: readonly StadiumRoomSpec[] = [
       'Điểm tiếp nhận luồng khán giả từ Cầu kính Metro Skywalk đi vào Podium (+10.5m) với 24 cổng kiểm soát vé RFID & nhận diện khuôn mặt.',
     bounds: { x: -36, y: 122, w: 72, h: 28 },
     door: { x: 0, y: 122, orientation: 'h', width: 12.0 },
+    pitchWindowSide: 'north',
     camera3dPreset: 'masterplan',
     equipmentList: [
       '24 Cổng Soát Vé RFID & Turnstile tự động mở khi khẩn cấp',
@@ -337,6 +363,7 @@ export const STADIUM_INTERIOR_ROOMS: readonly StadiumRoomSpec[] = [
       'Tổ hợp 16 quầy đồ ăn/đồ uống phục vụ nhanh công suất 1,200 suất/phút trong 15 phút nghỉ giữa hiệp cho khán giả đại sảnh.',
     bounds: { x: -32, y: -144, w: 64, h: 26 },
     door: { x: 0, y: -118, orientation: 'h', width: 8.0 },
+    pitchWindowSide: 'south',
     camera3dPreset: 'overview',
     equipmentList: [
       '16 Quầy F&B Order nhanh qua App/QR',
@@ -393,6 +420,7 @@ export const STADIUM_INTERIOR_ROOMS: readonly StadiumRoomSpec[] = [
       'Phòng nguyên thủ cao cấp nhìn thẳng tâm sân bóng từ cao độ +22.8m, có phòng họp nghi lễ ngoại giao, sofa tiếp khách và ban công VIP.',
     bounds: { x: -28, y: 86, w: 56, h: 24 },
     door: { x: 0, y: 110, orientation: 'h', width: 6.0 },
+    pitchWindowSide: 'north',
     camera3dPreset: 'vip',
     equipmentList: [
       'Bàn Tiệc Ngoại Giao 24 Ghế gỗ gụ & đồng Champagne',
@@ -420,6 +448,7 @@ export const STADIUM_INTERIOR_ROOMS: readonly StadiumRoomSpec[] = [
       'Câu lạc bộ doanh nhân sức chứa 800 khách VIP phục vụ ẩm thực 5★ trước/sau trận đấu với quầy bar cẩm thạch trung tâm dài 18m.',
     bounds: { x: -34, y: -118, w: 68, h: 26 },
     door: { x: 0, y: -92, orientation: 'h', width: 7.0 },
+    pitchWindowSide: 'south',
     camera3dPreset: 'vip',
     equipmentList: [
       'Quầy Bar Đá Cẩm Thạch Champagne dài 18m',
@@ -475,6 +504,7 @@ export const STADIUM_INTERIOR_ROOMS: readonly StadiumRoomSpec[] = [
       'Phòng vận hành VAR & Bắt việt vị bán tự động SAOT (12 camera tracking tốc độ cao) kết hợp tổ hợp cabin bình luận viên truyền hình 4K HDR.',
     bounds: { x: -146, y: -22, w: 26, h: 44 },
     door: { x: -120, y: 0, orientation: 'v', width: 4.5 },
+    pitchWindowSide: 'east',
     camera3dPreset: 'sky',
     equipmentList: [
       '8 Bàn Trạm VAR & Công nghệ Việt vị Bán tự động SAOT',
@@ -502,6 +532,7 @@ export const STADIUM_INTERIOR_ROOMS: readonly StadiumRoomSpec[] = [
       'Chuỗi phòng Skybox khép kín cho đối tác doanh nghiệp với khu họp, quầy buffet riêng và ban công kính 16 ghế da nhìn toàn cảnh sân.',
     bounds: { x: -38, y: 108, w: 76, h: 22 },
     door: { x: 0, y: 130, orientation: 'h', width: 8.0 },
+    pitchWindowSide: 'north',
     camera3dPreset: 'vip',
     equipmentList: [
       '4 Suite Skybox liên thông (vách ngăn di động cách âm)',
@@ -544,8 +575,99 @@ export const STADIUM_INTERIOR_ROOMS: readonly StadiumRoomSpec[] = [
   },
 ] as const;
 
+export const VERTICAL_CORES: readonly VerticalCoreSpec[] = [
+  { id: 'core-west', code: 'CORE-W', name: 'Lõi Thang Máy & Thang Bộ Tây (Đội Bóng / VAR)', x: -134, y: 36, w: 8, h: 8 },
+  { id: 'core-south', code: 'CORE-S', name: 'Lõi Thang Máy & Thang Bộ Nam (Metro / VVIP)', x: 54, y: 112, w: 8, h: 8 },
+  { id: 'core-north', code: 'CORE-N', name: 'Lõi Thang Máy & Thang Bộ Bắc (F&B / Lounge)', x: -54, y: -112, w: 8, h: 8 },
+  { id: 'core-east', code: 'CORE-E', name: 'Lõi Thang Máy & Thang Bộ Đông (MEP / BMS)', x: 134, y: 36, w: 8, h: 8 },
+] as const;
+
+export const FLOOR_CORRIDORS: readonly CorridorSegmentSpec[] = [
+  // B0 Corridors linking Locker Rooms, Referee/WADA, Tunnel, Press, MEP & Vertical Cores
+  { id: 'b0-c1', floor: 'B0', label: 'Hành lang Đội Chủ nhà', x: -116, y: -24, w: 16, h: 3 },
+  { id: 'b0-c2', floor: 'B0', label: 'Trục Hành lang Cầu thủ Tây', x: -104, y: -24, w: 4, h: 48 },
+  { id: 'b0-c3', floor: 'B0', label: 'Hành lang Đội Khách -> Lõi Tây', x: -138, y: 20, w: 42, h: 4 },
+  { id: 'b0-c4', floor: 'B0', label: 'Sảnh Lõi Thang Tây B0', x: -138, y: 24, w: 8, h: 20 },
+  { id: 'b0-c5', floor: 'B0', label: 'Hành lang Mixed Zone -> Họp báo', x: -138, y: 60, w: 196, h: 6 },
+  { id: 'b0-c6', floor: 'B0', label: 'Nhánh Nối Lõi Thang Nam B0', x: 50, y: 60, w: 8, h: 56 },
+  { id: 'b0-c7', floor: 'B0', label: 'Hành lang Kỹ Thuật MEP Đông', x: 54, y: 0, w: 24, h: 66 },
+  { id: 'b0-c8', floor: 'B0', label: 'Nhánh Lõi Thang Đông B0', x: 74, y: 32, w: 64, h: 8 },
+  { id: 'b0-c9', floor: 'B0', label: 'Hành lang Bắc -> Lõi Thang Bắc B0', x: -138, y: -116, w: 88, h: 6 },
+
+  // L1 Podium Corridors (+10.5m)
+  { id: 'l1-c1', floor: 'L1', label: 'Đại sảnh Kết nối Nam', x: -40, y: 112, w: 98, h: 10 },
+  { id: 'l1-c2', floor: 'L1', label: 'Hành lang Vành đai Podium Tây', x: -138, y: 18, w: 32, h: 22 },
+  { id: 'l1-c3', floor: 'L1', label: 'Hành lang Cửa Trạm Y tế Tây', x: -110, y: -6, w: 6, h: 46 },
+  { id: 'l1-c4', floor: 'L1', label: 'Đại lộ F&B Podium Bắc', x: -58, y: -118, w: 64, h: 8 },
+  { id: 'l1-c5', floor: 'L1', label: 'Hành lang Bảo tàng & Megastore Đông', x: 90, y: -28, w: 48, h: 68 },
+
+  // L2 VVIP & BMS Corridors (+17.8m)
+  { id: 'l2-c1', floor: 'L2', label: 'Hành lang Nghi lễ Nguyên thủ VVIP', x: -6, y: 110, w: 64, h: 6 },
+  { id: 'l2-c2', floor: 'L2', label: 'Sảnh Gold Champagne Lounge Bắc', x: -58, y: -116, w: 64, h: 24 },
+  { id: 'l2-c3', floor: 'L2', label: 'Hành lang An ninh BMS Đông', x: 96, y: -4, w: 42, h: 44 },
+  { id: 'l2-c4', floor: 'L2', label: 'Trục Hành lang Tây L2', x: -138, y: 32, w: 12, h: 10 },
+
+  // L3 VAR & Skybox Corridors (+32.8m)
+  { id: 'l3-c1', floor: 'L3', label: 'Hành lang IBC & Studio VAR Tây', x: -138, y: -4, w: 22, h: 44 },
+  { id: 'l3-c2', floor: 'L3', label: 'Hành lang Skybox Doanh nghiệp Nam', x: -6, y: 112, w: 64, h: 22 },
+  { id: 'l3-c3', floor: 'L3', label: 'Hành lang Điều khiển Mái Oculus Đông', x: 108, y: -4, w: 30, h: 44 },
+  { id: 'l3-c4', floor: 'L3', label: 'Sảnh Lõi Thang Bắc L3', x: -58, y: -116, w: 12, h: 10 },
+] as const;
+
+export const FLOOR_ELEVATION_Y: Record<FloorLevelId, number> = {
+  B0: 0.25,
+  L1: 10.55,
+  L2: 17.85,
+  L3: 32.85,
+};
+
 export function getRoomsByFloor(floor: FloorLevelId): readonly StadiumRoomSpec[] {
   return STADIUM_INTERIOR_ROOMS.filter((room) => room.floor === floor);
+}
+
+export function getCorridorsByFloor(floor: FloorLevelId): readonly CorridorSegmentSpec[] {
+  return FLOOR_CORRIDORS.filter((corridor) => corridor.floor === floor);
+}
+
+export function findNearestVerticalCore(
+  x: number,
+  y: number,
+  maxDist = 8.5
+): VerticalCoreSpec | null {
+  let nearest: VerticalCoreSpec | null = null;
+  let best = maxDist;
+  for (const core of VERTICAL_CORES) {
+    const d = Math.hypot(x - core.x, y - core.y);
+    if (d <= best) {
+      best = d;
+      nearest = core;
+    }
+  }
+  return nearest;
+}
+
+/**
+ * Checks whether world plan point (x, z) falls inside any architectural room interior clear envelope
+ * so RC columns and low beams transfer load over roof slabs rather than piercing through rooms.
+ */
+export function isPointInInteriorClearZone(
+  x: number,
+  z: number,
+  pad = 1.4
+): { inRoom: boolean; maxCeilingY: number } {
+  let inRoom = false;
+  let maxCeilingY = 0;
+  for (const room of STADIUM_INTERIOR_ROOMS) {
+    const { x: rx, y: ry, w, h } = room.bounds;
+    if (x >= rx - pad && x <= rx + w + pad && z >= ry - pad && z <= ry + h + pad) {
+      inRoom = true;
+      const roomTop = FLOOR_ELEVATION_Y[room.floor] + room.ceilingHeightM;
+      if (roomTop > maxCeilingY) {
+        maxCeilingY = roomTop;
+      }
+    }
+  }
+  return { inRoom, maxCeilingY };
 }
 
 export function findRoomAtPoint(floor: FloorLevelId, x: number, y: number): StadiumRoomSpec | null {
@@ -563,6 +685,193 @@ export function isDoorwayOpen(room: StadiumRoomSpec, avatarX: number, avatarY: n
   return Math.hypot(avatarX - room.door.x, avatarY - room.door.y) <= 5.5;
 }
 
+export function isFurnitureSolidForWalk(item: FurnitureItem): boolean {
+  return !(item.kind === 'bar' && item.label.includes('Thảm Đỏ'));
+}
+
+function pointClearOfFurniture(
+  room: StadiumRoomSpec,
+  px: number,
+  py: number,
+  pad = 0.7
+): boolean {
+  const { x: rx, y: ry, w, h } = room.bounds;
+  if (px < rx + 0.85 || px > rx + w - 0.85 || py < ry + 0.85 || py > ry + h - 0.85) {
+    return false;
+  }
+  for (const item of room.furniture) {
+    if (!isFurnitureSolidForWalk(item)) continue;
+    if (
+      px >= item.x - pad &&
+      px <= item.x + item.w + pad &&
+      py >= item.y - pad &&
+      py <= item.y + item.h + pad
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function getRoomSafeSpawnPoint(room: StadiumRoomSpec): { x: number; y: number } {
+  const { x: rx, y: ry, w, h } = room.bounds;
+  if (room.id === 'players-tunnel') {
+    return { x: rx + 7.5, y: ry + h * 0.5 };
+  }
+  const cx = rx + w * 0.5;
+  const cy = ry + h * 0.5;
+  const prefX = (room.door.x + cx) * 0.5;
+  const prefY = (room.door.y + cy) * 0.5;
+  if (pointClearOfFurniture(room, prefX, prefY, 0.75)) {
+    return { x: prefX, y: prefY };
+  }
+
+  let best: { x: number; y: number } | null = null;
+  let bestDist = Infinity;
+  const stepX = Math.max(1.2, w / 16);
+  const stepY = Math.max(1.2, h / 12);
+  for (let px = rx + 1.2; px <= rx + w - 1.2; px += stepX) {
+    for (let py = ry + 1.2; py <= ry + h - 1.2; py += stepY) {
+      if (!pointClearOfFurniture(room, px, py, 0.75)) continue;
+      const d = Math.hypot(px - prefX, py - prefY);
+      if (d < bestDist) {
+        bestDist = d;
+        best = { x: Number(px.toFixed(2)), y: Number(py.toFixed(2)) };
+      }
+    }
+  }
+  return best ?? { x: room.door.x, y: room.door.y };
+}
+
+export interface RoomNpcPose {
+  readonly x: number;
+  readonly z: number;
+  readonly heading: number;
+  readonly roleShirtHex: string;
+  readonly walking: boolean;
+}
+
+const CATEGORY_NPC_SHIRT: Record<StadiumRoomSpec['category'], string> = {
+  sports: '#e11d48',
+  vip: '#18181b',
+  media: '#0284c7',
+  public: '#0d9488',
+  mep: '#d97706',
+  medical: '#f8fafc',
+};
+
+/**
+ * Generates deterministic NPC positions strictly on unobstructed floor aisles
+ * so personnel/athletes never stand inside tables, pools, beds, or the red-carpet tunnel center.
+ */
+export function getRoomNpcPoses(
+  room: StadiumRoomSpec,
+  elapsedSec: number
+): readonly RoomNpcPose[] {
+  const shirtHex = CATEGORY_NPC_SHIRT[room.category];
+  if (room.id === 'players-tunnel') {
+    const stride = Math.sin(elapsedSec * 0.9) * 4.5;
+    return [
+      { x: room.bounds.x + 12 + stride, z: room.bounds.y + 1.6, heading: 0, roleShirtHex: '#38bdf8', walking: true },
+      { x: room.bounds.x + 28 - stride, z: room.bounds.y + room.bounds.h - 1.6, heading: Math.PI, roleShirtHex: '#fbbf24', walking: true },
+    ];
+  }
+
+  const { x: rx, y: ry, w, h } = room.bounds;
+  const clearPoints: Array<{ x: number; y: number }> = [];
+  const stepX = Math.max(2.0, w / 12);
+  const stepY = Math.max(2.0, h / 9);
+  for (let py = ry + 1.3; py <= ry + h - 1.3; py += stepY) {
+    for (let px = rx + 1.3; px <= rx + w - 1.3; px += stepX) {
+      if (Math.hypot(px - room.door.x, py - room.door.y) < 2.0) continue;
+      if (pointClearOfFurniture(room, px, py, 0.72)) {
+        clearPoints.push({ x: px, y: py });
+      }
+    }
+  }
+
+  if (clearPoints.length === 0) {
+    const safe = getRoomSafeSpawnPoint(room);
+    return [{ x: safe.x, z: safe.y, heading: 0, roleShirtHex: shirtHex, walking: false }];
+  }
+
+  const count = Math.min(3, clearPoints.length);
+  const poses: RoomNpcPose[] = [];
+  for (let k = 0; k < count; k += 1) {
+    const anchor = clearPoints[Math.floor(((k + 0.5) / count) * clearPoints.length)];
+    const phase = elapsedSec * (0.7 + k * 0.15) + k * 2.1;
+    const candDx = Math.cos(phase) * 1.1;
+    const candDz = Math.sin(phase) * 0.7;
+    const tryX = anchor.x + candDx;
+    const tryY = anchor.y + candDz;
+    const moved = pointClearOfFurniture(room, tryX, tryY, 0.65);
+    const fx = moved ? tryX : anchor.x;
+    const fz = moved ? tryY : anchor.y;
+    const heading = moved ? Math.atan2(-Math.cos(phase) * 0.7, -Math.sin(phase) * 1.1) : k * 1.2;
+    poses.push({ x: fx, z: fz, heading, roleShirtHex: shirtHex, walking: moved });
+  }
+  return poses;
+}
+
+function canOccupyPoint(floor: FloorLevelId, px: number, py: number): boolean {
+  const r = 0.42;
+  const wallHalfT = 0.24;
+  for (const room of STADIUM_INTERIOR_ROOMS) {
+    if (room.floor !== floor) continue;
+    const { x: rx, y: ry, w, h } = room.bounds;
+
+    if (px >= rx - r && px <= rx + w + r && py >= ry - r && py <= ry + h + r) {
+      // North wall check
+      if (Math.abs(py - ry) < wallHalfT + r) {
+        const doorHere =
+          room.door.orientation === 'h' &&
+          Math.abs(room.door.y - ry) < 1.5 &&
+          Math.abs(px - room.door.x) <= room.door.width * 0.5 - 0.15;
+        if (!doorHere) return false;
+      }
+      // South wall check
+      if (Math.abs(py - (ry + h)) < wallHalfT + r) {
+        const doorHere =
+          room.door.orientation === 'h' &&
+          Math.abs(room.door.y - (ry + h)) < 1.5 &&
+          Math.abs(px - room.door.x) <= room.door.width * 0.5 - 0.15;
+        if (!doorHere) return false;
+      }
+      // West wall check
+      if (Math.abs(px - rx) < wallHalfT + r) {
+        const doorHere =
+          room.door.orientation === 'v' &&
+          Math.abs(room.door.x - rx) < 1.5 &&
+          Math.abs(py - room.door.y) <= room.door.width * 0.5 - 0.15;
+        if (!doorHere) return false;
+      }
+      // East wall check
+      if (Math.abs(px - (rx + w)) < wallHalfT + r) {
+        const doorHere =
+          room.eastPortalOpen ||
+          (room.door.orientation === 'v' &&
+            Math.abs(room.door.x - (rx + w)) < 1.5 &&
+            Math.abs(py - room.door.y) <= room.door.width * 0.5 - 0.15);
+        if (!doorHere) return false;
+      }
+
+      // Solid furniture AABB check
+      for (const item of room.furniture) {
+        if (!isFurnitureSolidForWalk(item)) continue;
+        if (
+          px >= item.x - r &&
+          px <= item.x + item.w + r &&
+          py >= item.y - r &&
+          py <= item.y + item.h + r
+        ) {
+          return false;
+        }
+      }
+    }
+  }
+  return true;
+}
+
 export interface ExplorerAvatarState {
   readonly x: number;
   readonly y: number;
@@ -571,20 +880,21 @@ export interface ExplorerAvatarState {
 }
 
 /**
- * Advances 2D free-roam avatar kinematics using WASD/Arrows or Click-to-Walk targets
- * cleanly within interior architectural boundaries [-195..195, -172..172].
+ * Advances free-roam avatar kinematics using WASD/Arrows or Click-to-Walk targets,
+ * enforcing wall, doorway, and solid furniture collision sliding when a floor is supplied.
  */
 export function stepExplorerAvatar(
   state: { x: number; y: number; heading?: number },
   input: { dx: number; dy: number; targetX?: number | null; targetY?: number | null },
-  dt: number
+  dt: number,
+  floor?: FloorLevelId
 ): ExplorerAvatarState {
   const safeDt = Math.min(0.1, Math.max(0, dt));
   const walkSpeedMps = 4.8;
   let vx = 0;
   let vy = 0;
-  let nextX = state.x;
-  let nextY = state.y;
+  let candX = state.x;
+  let candY = state.y;
   let heading = state.heading ?? 0;
 
   const hasKeyboard = Math.abs(input.dx) > 0.01 || Math.abs(input.dy) > 0.01;
@@ -592,8 +902,8 @@ export function stepExplorerAvatar(
     const mag = Math.hypot(input.dx, input.dy) || 1;
     vx = (input.dx / mag) * walkSpeedMps;
     vy = (input.dy / mag) * walkSpeedMps;
-    nextX += vx * safeDt;
-    nextY += vy * safeDt;
+    candX += vx * safeDt;
+    candY += vy * safeDt;
     heading = Math.atan2(vy, vx);
   } else if (
     input.targetX !== undefined &&
@@ -608,29 +918,41 @@ export function stepExplorerAvatar(
       const step = Math.min(dist, walkSpeedMps * safeDt);
       vx = (tdx / dist) * walkSpeedMps;
       vy = (tdy / dist) * walkSpeedMps;
-      nextX += (tdx / dist) * step;
-      nextY += (tdy / dist) * step;
+      candX += (tdx / dist) * step;
+      candY += (tdy / dist) * step;
       heading = Math.atan2(tdy, tdx);
     }
   }
 
-  nextX = Math.min(195, Math.max(-195, nextX));
-  nextY = Math.min(172, Math.max(-172, nextY));
+  candX = Math.min(195, Math.max(-195, candX));
+  candY = Math.min(172, Math.max(-172, candY));
+
+  let nextX = candX;
+  let nextY = candY;
+  if (floor) {
+    if (!canOccupyPoint(floor, candX, candY)) {
+      if (canOccupyPoint(floor, candX, state.y)) {
+        nextX = candX;
+        nextY = state.y;
+      } else if (canOccupyPoint(floor, state.x, candY)) {
+        nextX = state.x;
+        nextY = candY;
+      } else {
+        nextX = state.x;
+        nextY = state.y;
+      }
+    }
+  }
+
+  const displacedSpeed = safeDt > 0 ? Math.hypot(nextX - state.x, nextY - state.y) / safeDt : 0;
 
   return {
     x: nextX,
     y: nextY,
     heading,
-    speedMps: Number(Math.hypot(vx, vy).toFixed(2)),
+    speedMps: Number((floor ? displacedSpeed : Math.hypot(vx, vy)).toFixed(2)),
   };
 }
-
-export const FLOOR_ELEVATION_Y: Record<FloorLevelId, number> = {
-  B0: 0.25,
-  L1: 10.55,
-  L2: 17.85,
-  L3: 32.85,
-};
 
 export type Walkthrough3DCameraMode = 'follow3d' | 'fps3d' | 'cutaway3d';
 
@@ -660,7 +982,7 @@ export function getRoom3dWalkthroughPose(
     return {
       avatarPos,
       cameraPos: [avatarX, baseY + 1.72, avatarY],
-      targetPos: [avatarX + fwdX * 8, baseY + 1.55, avatarY + fwdZ * 8],
+      targetPos: [avatarX + fwdX * 10, baseY + 1.55, avatarY + fwdZ * 10],
     };
   }
 
@@ -676,8 +998,8 @@ export function getRoom3dWalkthroughPose(
 
   return {
     avatarPos,
-    cameraPos: [avatarX - fwdX * 6.5, baseY + 3.2, avatarY - fwdZ * 6.5],
-    targetPos: [avatarX + fwdX * 5, baseY + 1.3, avatarY + fwdZ * 5],
+    cameraPos: [avatarX - fwdX * 3.8, baseY + 2.25, avatarY - fwdZ * 3.8],
+    targetPos: [avatarX + fwdX * 5, baseY + 1.35, avatarY + fwdZ * 5],
   };
 }
 

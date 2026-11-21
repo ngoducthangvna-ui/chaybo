@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
+  ArrowUpDown,
   Box,
   Compass,
   DoorOpen,
@@ -19,7 +20,11 @@ import {
   FLOOR_LEVEL_SPECS,
   type FloorLevelId,
   type StadiumRoomSpec,
+  VERTICAL_CORES,
+  type VerticalCoreSpec,
   type Walkthrough3DCameraMode,
+  findNearestVerticalCore,
+  getCorridorsByFloor,
   getRoomsByFloor,
 } from '../config/interiorRooms';
 
@@ -33,6 +38,7 @@ interface Walkthrough3DHudProps {
   avatarHeading: number;
   avatarSpeed: number;
   onSelectFloor: (floor: FloorLevelId) => void;
+  onUseElevatorCore: (floor: FloorLevelId, core: VerticalCoreSpec) => void;
   onCameraModeChange: (mode: Walkthrough3DCameraMode) => void;
   onTeleportToRoom: (room: StadiumRoomSpec) => void;
   onSetDpadInput: (dx: number, dy: number) => void;
@@ -50,6 +56,7 @@ export function Walkthrough3DHud({
   avatarHeading,
   avatarSpeed,
   onSelectFloor,
+  onUseElevatorCore,
   onCameraModeChange,
   onTeleportToRoom,
   onSetDpadInput,
@@ -58,6 +65,16 @@ export function Walkthrough3DHud({
 }: Walkthrough3DHudProps) {
   const miniCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const floorRooms = getRoomsByFloor(activeFloor);
+  const floorCorridors = getCorridorsByFloor(activeFloor);
+  const nearestCore = findNearestVerticalCore(avatarX, avatarY, 10.5);
+  const fallbackCore =
+    VERTICAL_CORES.reduce((best, core) =>
+      Math.hypot(avatarX - core.x, avatarY - core.y) <
+      Math.hypot(avatarX - best.x, avatarY - best.y)
+        ? core
+        : best
+    ) ?? VERTICAL_CORES[0];
+  const activeElevatorCore = nearestCore ?? fallbackCore;
   const floorSpec = FLOOR_LEVEL_SPECS.find((f) => f.id === activeFloor) ?? FLOOR_LEVEL_SPECS[0];
   const displayRoom = activeRoom ?? selectedRoom;
   const elevationY = FLOOR_ELEVATION_Y[activeFloor];
@@ -94,6 +111,12 @@ export function Walkthrough3DHud({
       ctx.stroke();
     }
 
+    // Floor corridor paths connecting rooms & cores
+    floorCorridors.forEach((c) => {
+      ctx.fillStyle = 'rgba(14, 165, 233, 0.18)';
+      ctx.fillRect(toX(c.x), toY(c.y), c.w * scale, c.h * scale);
+    });
+
     // Nearby rooms on active floor
     floorRooms.forEach((room) => {
       const rx = toX(room.bounds.x);
@@ -115,6 +138,17 @@ export function Walkthrough3DHud({
       ctx.strokeRect(rx, ry, rw, rh);
     });
 
+    // Vertical elevator cores
+    VERTICAL_CORES.forEach((core) => {
+      const cxCore = toX(core.x - core.w * 0.5);
+      const cyCore = toY(core.y - core.h * 0.5);
+      ctx.fillStyle = 'rgba(251, 191, 36, 0.35)';
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1.2;
+      ctx.fillRect(cxCore, cyCore, core.w * scale, core.h * scale);
+      ctx.strokeRect(cxCore, cyCore, core.w * scale, core.h * scale);
+    });
+
     // Engineer Avatar heading triangle at center
     ctx.save();
     ctx.translate(cx, cy);
@@ -128,7 +162,7 @@ export function Walkthrough3DHud({
     ctx.closePath();
     ctx.fill();
     ctx.restore();
-  }, [activeFloor, floorRooms, activeRoom, avatarX, avatarY, avatarHeading]);
+  }, [activeFloor, floorRooms, floorCorridors, activeRoom, avatarX, avatarY, avatarHeading]);
 
   return (
     <>
@@ -250,6 +284,32 @@ export function Walkthrough3DHud({
                 <li key={idx}>{eq}</li>
               ))}
             </ul>
+          </div>
+        </div>
+
+        <div className="px-3 py-2 border-b border-[#26262b] bg-[#0a0e14]/70 space-y-1.5">
+          <div className="flex items-center justify-between text-[10px]">
+            <span className="inline-flex items-center gap-1 font-semibold uppercase text-amber-300">
+              <ArrowUpDown className="h-3 w-3" />
+              {nearestCore ? `Đang Tại ${nearestCore.code}` : `Thang Máy Gần (${activeElevatorCore.code})`}
+            </span>
+            <span className="text-[#a1a1aa]">Nối B0↔L3</span>
+          </div>
+          <div className="grid grid-cols-4 gap-1">
+            {FLOOR_LEVEL_SPECS.map((fl) => (
+              <button
+                key={fl.id}
+                type="button"
+                onClick={() => onUseElevatorCore(fl.id, activeElevatorCore)}
+                className={`rounded-md py-1 text-[10px] font-bold border transition ${
+                  activeFloor === fl.id
+                    ? 'border-amber-400/60 bg-amber-500/20 text-amber-200'
+                    : 'border-[#26262b] bg-[#141417] text-[#a1a1aa] hover:text-white'
+                }`}
+              >
+                {fl.id}
+              </button>
+            ))}
           </div>
         </div>
 

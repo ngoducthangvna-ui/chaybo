@@ -19,9 +19,14 @@ import {
   FLOOR_LEVEL_SPECS,
   type FloorLevelId,
   type StadiumRoomSpec,
+  VERTICAL_CORES,
   findRoomAtPoint,
+  getCorridorsByFloor,
+  getRoomNpcPoses,
+  getRoomSafeSpawnPoint,
   getRoomsByFloor,
   isDoorwayOpen,
+  isPointInInteriorClearZone,
   stepExplorerAvatar,
 } from '../config/interiorRooms';
 import {
@@ -147,15 +152,14 @@ export function FloorplanExplorer2D({
       setActiveFloor(room.floor);
     }
     setSelectedRoomId(room.id);
-    const cx = room.bounds.x + room.bounds.w * 0.5;
-    const cy = room.bounds.y + room.bounds.h * 0.5;
+    const safeTarget = getRoomSafeSpawnPoint(room);
     avatarRef.current = {
       x: room.door.x,
       y: room.door.y,
-      heading: Math.atan2(cy - room.door.y, cx - room.door.x),
+      heading: Math.atan2(safeTarget.y - room.door.y, safeTarget.x - room.door.x),
       speedMps: 0,
     };
-    walkTargetRef.current = { x: cx, y: cy };
+    walkTargetRef.current = safeTarget;
   };
 
   useEffect(() => {
@@ -207,7 +211,8 @@ export function FloorplanExplorer2D({
           targetX: walkTargetRef.current?.x ?? null,
           targetY: walkTargetRef.current?.y ?? null,
         },
-        dt
+        dt,
+        activeFloor
       );
       avatarRef.current = nextAvatar;
 
@@ -314,13 +319,16 @@ export function FloorplanExplorer2D({
           ctx.arc(toX(0), toY(0), PITCH_SPECS.centerCircleRadius * ppm, 0, Math.PI * 2);
           ctx.stroke();
 
-          // 16 Elevator & Helical Ramp Core Symbols around Grid D-E
+          // 16 Perimeter Ramp Core Symbols (skipping interior rooms) + Connected Corridors + 4 Vertical Elevator Cores
           ctx.fillStyle = 'rgba(197, 160, 89, 0.22)';
           ctx.strokeStyle = '#c5a059';
           ctx.lineWidth = 1.2;
           for (let i = 0; i < 16; i += 1) {
             const a = (i / 16) * Math.PI * 2;
             const [rx, rz] = superEllipsePoint(a, 155, 129);
+            if (isPointInInteriorClearZone(rx, rz, 5.5).inRoom) {
+              continue;
+            }
             const esx = toX(rx);
             const esy = toY(rz);
             const size = 4.5 * ppm;
@@ -328,11 +336,40 @@ export function FloorplanExplorer2D({
             ctx.strokeRect(esx - size / 2, esy - size / 2, size, size);
           }
 
+          const corridors = getCorridorsByFloor(activeFloor);
+          corridors.forEach((c) => {
+            const cxCorr = toX(c.x);
+            const cyCorr = toY(c.y);
+            const cw = c.w * ppm;
+            const ch = c.h * ppm;
+            ctx.fillStyle = 'rgba(14, 165, 233, 0.16)';
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+            ctx.lineWidth = 1;
+            ctx.fillRect(cxCorr, cyCorr, cw, ch);
+            ctx.strokeRect(cxCorr, cyCorr, cw, ch);
+          });
+
+          VERTICAL_CORES.forEach((core) => {
+            const vx = toX(core.x - core.w * 0.5);
+            const vy = toY(core.y - core.h * 0.5);
+            const vw = core.w * ppm;
+            const vh = core.h * ppm;
+            ctx.fillStyle = 'rgba(251, 191, 36, 0.28)';
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 1.6;
+            ctx.fillRect(vx, vy, vw, vh);
+            ctx.strokeRect(vx, vy, vw, vh);
+            ctx.fillStyle = '#fde68a';
+            ctx.font = 'bold 9px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(core.code, vx + vw * 0.5, vy + vh * 0.5 + 3);
+          });
+
           // Render All Rooms on Current Floor with Furniture, Sliding Doors & NPCs
           const rooms = getRoomsByFloor(activeFloor);
           const insideRoom = findRoomAtPoint(activeFloor, nextAvatar.x, nextAvatar.y);
 
-          rooms.forEach((room, rIdx) => {
+          rooms.forEach((room) => {
             const rx = toX(room.bounds.x);
             const ry = toY(room.bounds.y);
             const rw = room.bounds.w * ppm;
@@ -413,21 +450,13 @@ export function FloorplanExplorer2D({
               }
             });
 
-            // Interior Animated Staff / Athletes inside each room
-            for (let npc = 0; npc < 3; npc += 1) {
-              const nxWorld =
-                room.bounds.x +
-                room.bounds.w * (0.22 + 0.26 * npc) +
-                Math.cos(elapsedSec * 0.9 + rIdx + npc * 2.1) * Math.min(2.8, room.bounds.w * 0.14);
-              const nyWorld =
-                room.bounds.y +
-                room.bounds.h * (0.32 + 0.18 * (npc % 2)) +
-                Math.sin(elapsedSec * 1.1 + rIdx + npc * 1.7) * Math.min(2.2, room.bounds.h * 0.14);
-              ctx.fillStyle = catColor;
+            // Interior Animated Staff / Athletes strictly along unobstructed aisles
+            getRoomNpcPoses(room, elapsedSec).forEach((pose) => {
+              ctx.fillStyle = pose.roleShirtHex;
               ctx.beginPath();
-              ctx.arc(toX(nxWorld), toY(nyWorld), Math.max(2.6, ppm * 0.42), 0, Math.PI * 2);
+              ctx.arc(toX(pose.x), toY(pose.z), Math.max(2.6, ppm * 0.42), 0, Math.PI * 2);
               ctx.fill();
-            }
+            });
 
             // Structural Room Perimeter Wall
             ctx.strokeStyle = isInside ? '#f59e0b' : catColor;

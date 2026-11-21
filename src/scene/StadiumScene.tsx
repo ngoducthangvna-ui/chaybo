@@ -201,12 +201,18 @@ function CameraRig({
   const transitioning = useRef(false);
 
   useEffect(() => {
+    const cam = camera as THREE.PerspectiveCamera;
+    const nextNear = walkthrough3dActive ? 0.35 : 2;
+    if (cam.near !== nextNear) {
+      cam.near = nextNear;
+      cam.updateProjectionMatrix();
+    }
     if (walkthrough3dActive) return;
     const preset = getCameraPreset(presetId);
     desiredPos.current.set(...preset.position);
     desiredTarget.current.set(...preset.target);
     transitioning.current = true;
-  }, [presetId, walkthrough3dActive]);
+  }, [camera, presetId, walkthrough3dActive]);
 
   useEffect(() => {
     if (!walkthrough3dActive) return;
@@ -390,10 +396,12 @@ export function StadiumScene({
           showEvacPaths={showEvacPaths}
           liveSimActive={liveSimActive}
           walkthrough3dActive={walkthrough3dActive}
+          walkthroughCameraMode={walkthroughCameraMode}
         />
         <InteriorRooms3D
           activeFloor={walkthroughFloor}
           walkthrough3dActive={walkthrough3dActive}
+          cameraMode={walkthroughCameraMode}
           avatarX={walkthroughAvatar.x}
           avatarY={walkthroughAvatar.y}
           avatarHeading={walkthroughAvatar.heading}
@@ -401,7 +409,7 @@ export function StadiumScene({
           activeRoomId={activeRoomForRig.id}
         />
         <RoofStructure
-          xrayRoof={xrayRoof || walkthrough3dActive}
+          xrayRoof={xrayRoof || (walkthrough3dActive && walkthroughCameraMode === 'cutaway3d')}
           halfCutaway={halfCutaway}
           bimFrameMode={bimFrameMode}
           floodlightIntensity={lighting.floodlightIntensity}
