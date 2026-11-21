@@ -34,7 +34,7 @@ const TOTAL_SEQ_DURATION = MATCH_SEQUENCE.reduce((s, seg) => s + seg.duration, 0
 
 interface PitchActorSpec {
   readonly basePos: [number, number];
-  readonly role: 'home' | 'away' | 'gk-home' | 'gk-away' | 'ref';
+  readonly role: 'home' | 'away' | 'gk-home' | 'gk-away' | 'ref' | 'coach-home' | 'coach-away';
   readonly phaseOffset: number;
   readonly shiftFactor: number;
 }
@@ -70,6 +70,10 @@ const PITCH_ACTORS: readonly PitchActorSpec[] = [
   { basePos: [0, -8], role: 'ref', phaseOffset: 2.2, shiftFactor: 0.52 },
   { basePos: [-18, -35.2], role: 'ref', phaseOffset: 0.8, shiftFactor: 0.45 },
   { basePos: [18, 35.2], role: 'ref', phaseOffset: 3.6, shiftFactor: 0.45 },
+
+  // 2 Head Coaches pacing along technical areas facing pitch
+  { basePos: [-18, 36.2], role: 'coach-home', phaseOffset: 0.4, shiftFactor: 0 },
+  { basePos: [18, 36.2], role: 'coach-away', phaseOffset: 2.6, shiftFactor: 0 },
 ];
 
 function getActorShirtColor(role: PitchActorSpec['role']): string {
@@ -77,17 +81,21 @@ function getActorShirtColor(role: PitchActorSpec['role']): string {
   if (role === 'away') return '#f8fafc';
   if (role === 'gk-home') return '#10b981';
   if (role === 'gk-away') return '#0ea5e9';
+  if (role === 'coach-home') return '#be123c';
+  if (role === 'coach-away') return '#1e293b';
   return '#facc15';
 }
 
 /**
- * Simulates 22 footballers, 3 referees, and a 3D ball governed by gravity/bounce trajectories.
+ * Simulates 22 footballers, 3 referees, 2 technical coaches, and a 3D ball governed by gravity/bounce trajectories.
  */
 function LiveMatchSimulation({ active }: { active: boolean }) {
   const torsoRef = useRef<THREE.InstancedMesh | null>(null);
   const headRef = useRef<THREE.InstancedMesh | null>(null);
   const leftLegRef = useRef<THREE.InstancedMesh | null>(null);
   const rightLegRef = useRef<THREE.InstancedMesh | null>(null);
+  const leftArmRef = useRef<THREE.InstancedMesh | null>(null);
+  const rightArmRef = useRef<THREE.InstancedMesh | null>(null);
   const shadowRef = useRef<THREE.InstancedMesh | null>(null);
   const ballRef = useRef<THREE.Mesh | null>(null);
   const ballShadowRef = useRef<THREE.Mesh | null>(null);
@@ -103,21 +111,21 @@ function LiveMatchSimulation({ active }: { active: boolean }) {
   useEffect(() => {
     const color = new THREE.Color();
     PITCH_ACTORS.forEach((actor, idx) => {
-      color.set(getActorShirtColor(actor.role));
-      torsoRef.current?.setColorAt(idx, color);
+      const shirtHex = getActorShirtColor(actor.role);
+      torsoRef.current?.setColorAt(idx, color.set(shirtHex));
+      leftArmRef.current?.setColorAt(idx, color.set(shirtHex));
+      rightArmRef.current?.setColorAt(idx, color.set(shirtHex));
       if (roleIsSkin(actor.role)) {
         headRef.current?.setColorAt(idx, color.set('#fdba74'));
       }
-      leftLegRef.current?.setColorAt(
-        idx,
-        color.set(actor.role === 'home' ? '#9f1239' : actor.role === 'away' ? '#1e293b' : '#18181b')
-      );
-      rightLegRef.current?.setColorAt(
-        idx,
-        color.set(actor.role === 'home' ? '#9f1239' : actor.role === 'away' ? '#1e293b' : '#18181b')
-      );
+      const shortHex =
+        actor.role === 'home' ? '#9f1239' : actor.role === 'away' ? '#1e293b' : '#18181b';
+      leftLegRef.current?.setColorAt(idx, color.set(shortHex));
+      rightLegRef.current?.setColorAt(idx, color.set(shortHex));
     });
     if (torsoRef.current?.instanceColor) torsoRef.current.instanceColor.needsUpdate = true;
+    if (leftArmRef.current?.instanceColor) leftArmRef.current.instanceColor.needsUpdate = true;
+    if (rightArmRef.current?.instanceColor) rightArmRef.current.instanceColor.needsUpdate = true;
     if (headRef.current?.instanceColor) headRef.current.instanceColor.needsUpdate = true;
     if (leftLegRef.current?.instanceColor) leftLegRef.current.instanceColor.needsUpdate = true;
     if (rightLegRef.current?.instanceColor) rightLegRef.current.instanceColor.needsUpdate = true;
@@ -167,11 +175,17 @@ function LiveMatchSimulation({ active }: { active: boolean }) {
     const globalTime = active ? performance.now() * 0.001 : 0;
 
     PITCH_ACTORS.forEach((actor, idx) => {
-      if (actor.role === 'gk-home' || actor.role === 'gk-away') {
+      if (actor.role === 'coach-home' || actor.role === 'coach-away') {
+        targetVec.set(
+          actor.basePos[0] + Math.sin(globalTime * 0.9 + actor.phaseOffset) * 2.4,
+          0.08,
+          actor.basePos[1]
+        );
+      } else if (actor.role === 'gk-home' || actor.role === 'gk-away') {
         const clampedZ = THREE.MathUtils.clamp(bz * 0.28, -4.1, 4.1);
         targetVec.set(actor.basePos[0], 0.08, clampedZ);
       } else if (actor.role === 'ref') {
-        const isAssistant = idx >= PITCH_ACTORS.length - 2;
+        const isAssistant = Math.abs(actor.basePos[1]) > 30;
         if (isAssistant) {
           targetVec.set(THREE.MathUtils.clamp(bx * 0.72, -46, 46), 0.08, actor.basePos[1]);
         } else {
@@ -202,9 +216,12 @@ function LiveMatchSimulation({ active }: { active: boolean }) {
         pos.z += (dz / dist) * moveStep;
       }
 
-      const heading = dist > 0.15 ? Math.atan2(dx, dz) : Math.atan2(bx - pos.x, bz - pos.z);
+      const isCoach = actor.role === 'coach-home' || actor.role === 'coach-away';
+      const heading =
+        isCoach || dist <= 0.15 ? Math.atan2(bx - pos.x, bz - pos.z) : Math.atan2(dx, dz);
       const stridePhase = globalTime * (3.2 + speed * 1.1) + actor.phaseOffset;
       const legSwing = active ? Math.sin(stridePhase) * Math.min(0.65, speed * 0.14) : 0;
+      const armSwing = -legSwing * 0.85;
       const bob = active ? Math.abs(Math.sin(stridePhase)) * Math.min(0.14, speed * 0.025) : 0;
 
       // Ground contact shadow
@@ -243,12 +260,28 @@ function LiveMatchSimulation({ active }: { active: boolean }) {
       dummy.rotateX(-legSwing);
       dummy.updateMatrix();
       rightLegRef.current?.setMatrixAt(idx, dummy.matrix);
+
+      // Left Arm (counter-phase swing)
+      dummy.position.set(pos.x + cosH * 0.36, pos.y + 1.12 + bob, pos.z - sinH * 0.36);
+      dummy.rotation.set(0, heading, 0);
+      dummy.rotateX(armSwing);
+      dummy.updateMatrix();
+      leftArmRef.current?.setMatrixAt(idx, dummy.matrix);
+
+      // Right Arm (counter-phase swing)
+      dummy.position.set(pos.x - cosH * 0.36, pos.y + 1.12 + bob, pos.z + sinH * 0.36);
+      dummy.rotation.set(0, heading, 0);
+      dummy.rotateX(-armSwing);
+      dummy.updateMatrix();
+      rightArmRef.current?.setMatrixAt(idx, dummy.matrix);
     });
 
     if (torsoRef.current) torsoRef.current.instanceMatrix.needsUpdate = true;
     if (headRef.current) headRef.current.instanceMatrix.needsUpdate = true;
     if (leftLegRef.current) leftLegRef.current.instanceMatrix.needsUpdate = true;
     if (rightLegRef.current) rightLegRef.current.instanceMatrix.needsUpdate = true;
+    if (leftArmRef.current) leftArmRef.current.instanceMatrix.needsUpdate = true;
+    if (rightArmRef.current) rightArmRef.current.instanceMatrix.needsUpdate = true;
     if (shadowRef.current) shadowRef.current.instanceMatrix.needsUpdate = true;
   });
 
@@ -275,6 +308,14 @@ function LiveMatchSimulation({ active }: { active: boolean }) {
       <instancedMesh ref={rightLegRef} args={[undefined, undefined, actorCount]} castShadow>
         <boxGeometry args={[0.17, 0.76, 0.19]} />
         <meshStandardMaterial roughness={0.7} />
+      </instancedMesh>
+      <instancedMesh ref={leftArmRef} args={[undefined, undefined, actorCount]} castShadow>
+        <boxGeometry args={[0.14, 0.62, 0.15]} />
+        <meshStandardMaterial roughness={0.65} />
+      </instancedMesh>
+      <instancedMesh ref={rightArmRef} args={[undefined, undefined, actorCount]} castShadow>
+        <boxGeometry args={[0.14, 0.62, 0.15]} />
+        <meshStandardMaterial roughness={0.65} />
       </instancedMesh>
 
       {/* Match Football & Projected Turf Shadow */}
@@ -376,6 +417,53 @@ function createPitchPbrTextures(): { map: THREE.CanvasTexture; bumpMap: THREE.Ca
   ctx.strokeRect(padX, midY - goalH / 2, goalW, goalH);
   ctx.strokeRect(padX + fieldW - goalW, midY - goalH / 2, goalW, goalH);
 
+  // 2 Penalty Spots (11m from goal lines) & Penalty Box "D" Arcs
+  const penSpotLeftX = padX + 11 * scaleX;
+  const penSpotRightX = padX + fieldW - 11 * scaleX;
+  const arcHalfAngle = Math.acos((16.5 - 11) / 9.15);
+
+  ctx.fillStyle = '#f5f5f4';
+  for (const spotX of [penSpotLeftX, penSpotRightX]) {
+    ctx.beginPath();
+    ctx.arc(spotX, midY, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.beginPath();
+  ctx.arc(penSpotLeftX, midY, centerR, -arcHalfAngle, arcHalfAngle);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(penSpotRightX, midY, centerR, Math.PI - arcHalfAngle, Math.PI + arcHalfAngle);
+  ctx.stroke();
+
+  // 4 Corner Kick Quarter-Circle Arcs
+  const cornerR = 1.4 * scaleX;
+  ctx.beginPath();
+  ctx.arc(padX, padY, cornerR, 0, Math.PI / 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(padX + fieldW, padY, cornerR, Math.PI / 2, Math.PI);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(padX + fieldW, padY + fieldH, cornerR, Math.PI, Math.PI * 1.5);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(padX, padY + fieldH, cornerR, Math.PI * 1.5, Math.PI * 2);
+  ctx.stroke();
+
+  // 2 Dashed Technical Area Boxes along bench touchline
+  ctx.save();
+  ctx.lineWidth = 4;
+  ctx.setLineDash([8, 8]);
+  for (const offsetM of [-18, 18]) {
+    const boxCenterX = midX + offsetM * scaleX;
+    const boxW = 14 * scaleX;
+    const boxD = 2.4 * scaleY;
+    ctx.strokeRect(boxCenterX - boxW / 2, padY + fieldH + 4, boxW, boxD);
+  }
+  ctx.restore();
+
   const map = new THREE.CanvasTexture(canvas);
   map.anisotropy = 8;
   map.colorSpace = THREE.SRGBColorSpace;
@@ -394,6 +482,7 @@ function GoalFrame({ positionX, flip }: { positionX: number; flip: boolean }) {
 
   return (
     <group position={[positionX, 0, 0]}>
+      {/* Front Goal Posts & Crossbar */}
       <mesh position={[0, h / 2, -halfW]} castShadow>
         <cylinderGeometry args={[0.08, 0.08, h, 12]} />
         <meshStandardMaterial color="#f8fafc" metalness={0.4} roughness={0.2} />
@@ -406,10 +495,44 @@ function GoalFrame({ positionX, flip }: { positionX: number; flip: boolean }) {
         <cylinderGeometry args={[0.08, 0.08, PITCH_SPECS.goalWidth, 12]} />
         <meshStandardMaterial color="#f8fafc" metalness={0.4} roughness={0.2} />
       </mesh>
-      <mesh position={[dir * (d / 2), h / 2, 0]}>
-        <boxGeometry args={[d, h, PITCH_SPECS.goalWidth]} />
-        <meshStandardMaterial color="#e2e8f0" transparent opacity={0.25} wireframe />
+
+      {/* Rear Net Stanchions & Ground Base Frame */}
+      <mesh position={[dir * d, 0.05, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.04, 0.04, PITCH_SPECS.goalWidth, 8]} />
+        <meshStandardMaterial color="#cbd5e1" metalness={0.6} roughness={0.3} />
       </mesh>
+      {[-halfW, halfW].map((z) => (
+        <group key={z}>
+          <mesh position={[dir * d, h / 2, z]}>
+            <cylinderGeometry args={[0.04, 0.04, h, 8]} />
+            <meshStandardMaterial color="#cbd5e1" metalness={0.6} roughness={0.3} />
+          </mesh>
+          <mesh position={[dir * (d / 2), h, z]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.04, 0.04, d, 8]} />
+            <meshStandardMaterial color="#cbd5e1" metalness={0.6} roughness={0.3} />
+          </mesh>
+          <mesh position={[dir * (d / 2), 0.05, z]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.04, 0.04, d, 8]} />
+            <meshStandardMaterial color="#cbd5e1" metalness={0.6} roughness={0.3} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* 4 Open-Front Fine Woven Net Panels (zero obstruction across goal mouth) */}
+      <mesh position={[dir * d, h / 2, 0]} rotation={[0, Math.PI / 2, 0]}>
+        <planeGeometry args={[PITCH_SPECS.goalWidth, h, 14, 6]} />
+        <meshBasicMaterial color="#e2e8f0" transparent opacity={0.32} wireframe side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[dir * (d / 2), h, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[d, PITCH_SPECS.goalWidth, 5, 14]} />
+        <meshBasicMaterial color="#e2e8f0" transparent opacity={0.32} wireframe side={THREE.DoubleSide} />
+      </mesh>
+      {[-halfW, halfW].map((z) => (
+        <mesh key={`net-${z}`} position={[dir * (d / 2), h / 2, z]}>
+          <planeGeometry args={[d, h, 5, 6]} />
+          <meshBasicMaterial color="#e2e8f0" transparent opacity={0.32} wireframe side={THREE.DoubleSide} />
+        </mesh>
+      ))}
     </group>
   );
 }
@@ -446,21 +569,40 @@ function TeamDugouts() {
   return (
     <group name="team-dugouts">
       {[-18, 18].map((x) => (
-        <group key={x} position={[x, 0, 39.5]}>
-          <mesh position={[0, 1.1, 0]} castShadow>
-            <boxGeometry args={[12, 2.2, 2.4]} />
-            <meshPhysicalMaterial
-              color="#94a3b8"
-              transparent
-              opacity={0.42}
-              metalness={0.5}
-              roughness={0.18}
-            />
+        <group key={x} position={[x, 0, 39.8]}>
+          {/* Dark Stone Base Plinth */}
+          <mesh position={[0, 0.12, 0]} receiveShadow>
+            <boxGeometry args={[12.4, 0.25, 2.4]} />
+            <meshStandardMaterial color="#27272a" roughness={0.78} />
           </mesh>
-          <mesh position={[0, 0.4, 0]}>
-            <boxGeometry args={[11.6, 0.6, 1.8]} />
-            <meshStandardMaterial color="#334155" roughness={0.55} />
+          {/* Cantilevered Dark Steel & Obsidian Shelter Canopy */}
+          <mesh position={[0, 2.25, 0]} castShadow>
+            <boxGeometry args={[12.4, 0.16, 2.6]} />
+            <meshStandardMaterial color="#18181b" metalness={0.82} roughness={0.24} />
           </mesh>
+          <mesh position={[0, 1.2, 1.18]}>
+            <boxGeometry args={[12.2, 2.1, 0.1]} />
+            <meshPhysicalMaterial color="#0f172a" transparent opacity={0.58} metalness={0.88} roughness={0.08} />
+          </mesh>
+          {[-6.1, -2.0, 2.0, 6.1].map((rx) => (
+            <mesh key={rx} position={[rx, 1.2, 0.4]} castShadow>
+              <boxGeometry args={[0.14, 2.2, 1.8]} />
+              <meshStandardMaterial color="#27272a" metalness={0.8} roughness={0.28} />
+            </mesh>
+          ))}
+          {/* 8 Red Sports Bucket Seats inside Dugout */}
+          {[-4.2, -3.0, -1.8, -0.6, 0.6, 1.8, 3.0, 4.2].map((sx) => (
+            <group key={sx} position={[sx, 0.25, 0.35]}>
+              <mesh position={[0, 0.22, 0]}>
+                <boxGeometry args={[0.62, 0.14, 0.56]} />
+                <meshStandardMaterial color="#e11d48" roughness={0.45} />
+              </mesh>
+              <mesh position={[0, 0.56, 0.22]}>
+                <boxGeometry args={[0.62, 0.72, 0.14]} />
+                <meshStandardMaterial color="#be123c" roughness={0.42} />
+              </mesh>
+            </group>
+          ))}
         </group>
       ))}
     </group>

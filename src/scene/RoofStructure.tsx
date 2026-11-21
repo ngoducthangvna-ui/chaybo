@@ -737,8 +737,8 @@ export function RoofStructure({
   floodlightIntensity,
   roofOpenPercent,
 }: RoofStructureProps) {
-  const startAngle = halfCutaway ? Math.PI * 0.52 : 0;
-  const endAngle = halfCutaway ? Math.PI * 1.98 : Math.PI * 2;
+  const startAngle = halfCutaway ? Math.PI * 0.45 : 0;
+  const endAngle = halfCutaway ? Math.PI * 1.95 : Math.PI * 2;
   const isNight = floodlightIntensity > 0.5;
 
   const membranePbr = useMemo(() => createRoofMembranePbrTextures(), []);

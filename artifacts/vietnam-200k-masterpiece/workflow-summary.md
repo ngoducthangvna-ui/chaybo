@@ -1,25 +1,27 @@
 <!-- devflow-template: workflow-summary@1.0 -->
-# DevFlow 交付总结 — Vietnam 200K Live Match Physics & Crowd Simulation
+# DevFlow 交付总结 — Vietnam 200K Microscopic Engineering Refinement
 
 ## 交付结果
 
-Hoàn tất mô phỏng trận đấu thực tế full `100%` sức chứa (`200,000` chỗ) và dòng người lưu thông theo động học vật lý tại `http://localhost:5173/`:
-- **Trận đấu 3D thời gian thực**: 22 cầu thủ (đỏ Việt Nam vs trắng đội khách + 2 thủ môn), 3 trọng tài và bóng 3D chuyển động theo quỹ đạo trọng lực + độ nảy trên mặt cỏ FIFA `105×68m`.
-- **Khán đài full 100%**: `5,600` nhân vật khán giả 3D phân bổ trên cả 4 tầng khán đài thực hiện hiệu ứng sóng cổ vũ theo thời gian thực.
-- **Lưu thông người đi bộ (Weidmann / Fruin / ISO 10137)**: `1,500` người đi bộ ngoại khu (trên 5 đại cầu thang Travertine, cầu kính Metro Skywalk, Podium 36 cổng và 4 đại lộ), `900` người đi bộ nội khu (trên 3 tầng hành lang + 16 lõi ram dốc đứng), cùng đoàn tàu Metro di chuyển 2 ray trên cầu cạn phía Nam.
+Hoàn tất tinh chỉnh kỹ thuật và chi tiết kiến trúc-thể thao trên toàn mô hình 3D tại `http://localhost:5173/`:
+- **Mặt cắt 90° chuẩn kết cấu rỗng (`0.45π..1.95π`)**: bảo toàn đầu cầu kính Skywalk phía Nam (`0.50π`), lộ rõ 5 bản sàn ngang, 4 bản xiên raker, 5 trục cột A–E, sảnh hành lang mở và lõi ram dốc có người đi bộ lưu thông bên trong.
+- **Khán giả chuẩn bậc & chừa lối đi**: nhân vật khán giả 3D đặt khớp chính xác lên 12 bậc thềm ngang của mỗi tầng và chừa trống 48 lối cầu thang dọc + cửa vomitory.
+- **Sân FIFA & Trận đấu chi tiết**: đầy đủ chấm phạt đền `11m`, cung tròn D `9.15m`, 4 cung phạt góc, vùng kỹ thuật BHL, lưới gôn 4 mặt hở miệng khung thành, 2 cabin ghế ngồi dự bị có 2 HLV trưởng và cầu thủ đánh tay/chân theo tốc độ.
+- **Quần thể ngoại khu**: sạch sọc chéo trên nóc ga Metro, bổ sung bãi đáp trực thăng chữ `H` trên nóc tháp khách sạn đôi và 40 xe buýt/ô tô lưu thông 2 chiều đường vành đai 6 làn.
 
 ## 产物
 
 - `artifacts/vietnam-200k-masterpiece/workflow-state.json`
 - `artifacts/vietnam-200k-masterpiece/01-solo/solo-report.md`
 - `artifacts/vietnam-200k-masterpiece/workflow-summary.md`
-- `src/config/stadiumSpecs.ts`, `src/config/stadiumSpecs.test.ts`, `src/scene/Pitch.tsx`, `src/scene/BowlStands.tsx`, `src/scene/Surroundings.tsx`, `src/scene/StadiumScene.tsx`, `src/components/ControlPanel.tsx`, `src/App.tsx`
+- `src/scene/BowlStands.tsx`, `src/scene/RoofStructure.tsx`, `src/scene/Pitch.tsx`, `src/scene/Surroundings.tsx`
 
 ## 验证
 
 - `npm.cmd test`: 12/12 unit tests pass.
-- `npm.cmd run build`: `tsc -b && vite build` thành công (2158 modules).
+- `npm.cmd run build`: `tsc -b && vite build` thành công.
+- `workflow_state.py validate`: `OK: workflow state and completed-stage artifacts are valid`.
 
 ## 剩余风险
 
-Chờ nghiệm thu trực quan 4 góc nhìn và kiểm tra console trên trình duyệt trước khi commit/push.
+Chờ nghiệm thu ảnh chụp màn hình 4 góc nhìn cuối trên trình duyệt trước khi commit/push.

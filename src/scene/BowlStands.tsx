@@ -676,15 +676,15 @@ function createSectionCapQuad(
 }
 
 /**
- * Generates solid architectural cross-section end-cap faces at cutAngle so 90° cutaway
- * reveals clean, solid concrete section fills with planar UVs for structural slab stratification.
+ * Generates true hollow structural cross-section faces at cutAngle so 90° cutaway exposes
+ * the 4 inclined raker slabs, 5 horizontal floor plates, 5 RC column piers A-E, and open concourse galleries.
  */
 function createCutawaySectionCapGeometry(cutAngle: number): THREE.BufferGeometry {
   const positions: number[] = [];
   const uvs: number[] = [];
   const indices: number[] = [];
 
-  // 1. Precast seating tier section wedges (Tiers 1..4)
+  // 1. Inclined precast raker slabs for Tiers 1..4
   for (const tier of STADIUM_TIERS) {
     const [ix, iz] = superEllipsePoint(cutAngle, tier.innerRadiusX, tier.innerRadiusZ);
     const [ox, oz] = superEllipsePoint(cutAngle, tier.outerRadiusX, tier.outerRadiusZ);
@@ -692,21 +692,22 @@ function createCutawaySectionCapGeometry(cutAngle: number): THREE.BufferGeometry
       positions,
       uvs,
       indices,
-      [ix, tier.baseElevation - 0.9, iz],
+      [ix, tier.baseElevation - 1.1, iz],
       [ix, tier.baseElevation, iz],
       [ox, tier.topElevation, oz],
-      [ox, tier.topElevation - 0.9, oz]
+      [ox, tier.topElevation - 1.1, oz]
     );
   }
 
-  // 2. Under-bowl service core section walls
-  const cores: Array<[number, number, number, number, number, number]> = [
-    [102, 80, 163, 137, 0.2, 17.5],
-    [124, 100, 163, 137, 18.0, 32.5],
-    [148, 122, 163, 137, 33.0, 52.5],
-    [166, 140, 196, 170, 0.0, 10.5],
+  // 2. Five horizontal structural concrete floor plates
+  const floorPlates: Array<[number, number, number, number, number, number]> = [
+    [72, 52, 166, 140, 0.0, 0.85],
+    [100, 78, 196, 170, 9.65, 10.5],
+    [100, 78, 166, 140, 17.0, 17.85],
+    [122, 98, 166, 140, 32.0, 32.85],
+    [146, 120, 166, 140, 52.0, 52.85],
   ];
-  for (const [irx, irz, orx, orz, botY, topY] of cores) {
+  for (const [irx, irz, orx, orz, botY, topY] of floorPlates) {
     const [ix, iz] = superEllipsePoint(cutAngle, irx, irz);
     const [ox, oz] = superEllipsePoint(cutAngle, orx, orz);
     createSectionCapQuad(
@@ -720,18 +721,41 @@ function createCutawaySectionCapGeometry(cutAngle: number): THREE.BufferGeometry
     );
   }
 
-  // 3. Under-Tier-1 foundation wedge
-  const [f1x, f1z] = superEllipsePoint(cutAngle, 72, 52);
-  const [f2x, f2z] = superEllipsePoint(cutAngle, 102, 80);
-  createSectionCapQuad(
-    positions,
-    uvs,
-    indices,
-    [f1x, 0.0, f1z],
-    [f1x, 2.2, f1z],
-    [f2x, 16.5, f2z],
-    [f2x, 0.0, f2z]
-  );
+  // 3. Five vertical RC structural column piers along Grid Lines A-E
+  for (const grid of STRUCTURAL_GRID_LINES) {
+    const [ix, iz] = superEllipsePoint(cutAngle, grid.rx - 1.1, grid.rz - 1.1);
+    const [ox, oz] = superEllipsePoint(cutAngle, grid.rx + 1.1, grid.rz + 1.1);
+    createSectionCapQuad(
+      positions,
+      uvs,
+      indices,
+      [ix, 0.0, iz],
+      [ix, grid.topElevation, iz],
+      [ox, grid.topElevation, oz],
+      [ox, 0.0, oz]
+    );
+  }
+
+  // 4. Narrowed inner utility core walls + outer podium edge wall (leaving outer concourse galleries open)
+  const coreWalls: Array<[number, number, number, number, number, number]> = [
+    [102, 80, 120, 96, 0.2, 17.5],
+    [124, 100, 136, 112, 18.0, 32.5],
+    [148, 122, 154, 128, 33.0, 52.5],
+    [193, 167, 196, 170, 0.0, 10.5],
+  ];
+  for (const [irx, irz, orx, orz, botY, topY] of coreWalls) {
+    const [ix, iz] = superEllipsePoint(cutAngle, irx, irz);
+    const [ox, oz] = superEllipsePoint(cutAngle, orx, orz);
+    createSectionCapQuad(
+      positions,
+      uvs,
+      indices,
+      [ix, botY, iz],
+      [ix, topY, iz],
+      [ox, topY, oz],
+      [ox, botY, oz]
+    );
+  }
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -899,26 +923,30 @@ function LiveSeatedSpectatorCrowd({
 
   const spectators = useMemo(() => {
     const list: SeatSpectatorRecord[] = [];
-    const perTierCounts = [1820, 1260, 1540, 980];
+    const stepCount = 12;
+    const colsPerTier = [172, 140, 160, 120];
     const fillRatio = Math.min(1, Math.max(0, occupancyPercent / 100));
 
     STADIUM_TIERS.forEach((tier, tIdx) => {
-      const targetCount = perTierCounts[tIdx];
-      const radialRows = tIdx === 0 ? 14 : tIdx === 1 ? 11 : tIdx === 2 ? 14 : 10;
-      const angularCols = Math.ceil(targetCount / radialRows);
+      const angularCols = colsPerTier[tIdx];
 
-      for (let r = 0; r < radialRows; r += 1) {
-        const rowT = (r + 0.5) / radialRows;
+      for (let s = 0; s < stepCount; s += 1) {
+        const yTread = THREE.MathUtils.lerp(tier.baseElevation, tier.topElevation, s / stepCount);
+        const rowT = (s + 0.55) / stepCount;
         const rx = THREE.MathUtils.lerp(tier.innerRadiusX, tier.outerRadiusX, rowT);
         const rz = THREE.MathUtils.lerp(tier.innerRadiusZ, tier.outerRadiusZ, rowT);
-        const baseY = THREE.MathUtils.lerp(tier.baseElevation, tier.topElevation, rowT) + 0.52;
+        const baseY = yTread + 0.14;
 
         for (let c = 0; c < angularCols; c += 1) {
-          const angle = ((c + (r % 2) * 0.5) / angularCols) * Math.PI * 2;
+          // Reserve clean 48 radial stair aisles & mid-bowl vomitory portals
+          if (c % 4 === 0 || (s >= 4 && s <= 6 && c % 8 === 2)) {
+            continue;
+          }
+          const angle = ((c + (s % 2) * 0.25) / angularCols) * Math.PI * 2;
           if (angle < startAngle + 0.02 || angle > endAngle - 0.02) {
             continue;
           }
-          const hash = Math.abs(Math.sin(tIdx * 31.7 + r * 78.233 + c * 17.13));
+          const hash = Math.abs(Math.sin(tIdx * 31.7 + s * 78.233 + c * 17.13));
           if (hash >= fillRatio) {
             continue;
           }
@@ -1174,8 +1202,8 @@ export function BowlStands({
   showEvacPaths,
   liveSimActive = true,
 }: BowlStandsProps) {
-  const startAngle = halfCutaway ? Math.PI * 0.52 : 0;
-  const endAngle = halfCutaway ? Math.PI * 1.98 : Math.PI * 2;
+  const startAngle = halfCutaway ? Math.PI * 0.45 : 0;
+  const endAngle = halfCutaway ? Math.PI * 1.95 : Math.PI * 2;
 
   const seatingPbr = useMemo(() => createSeatingBowlPbrTextures(occupancyPercent), [occupancyPercent]);
   const sectionCapPbr = useMemo(() => createCutawaySectionPbrTextures(), []);
@@ -1186,12 +1214,12 @@ export function BowlStands({
     [startAngle, endAngle]
   );
 
-  // Enclosed under-bowl service cores (light architectural limestone & glass concourses)
+  // Inner utility spine cores (tucked beneath upper bowl tiers so outer concourse galleries stay open)
   const serviceVolumes = useMemo(
     () => [
-      createServiceVolumeRingGeometry(102, 80, 163, 137, 0.2, 17.5, startAngle, endAngle),
-      createServiceVolumeRingGeometry(124, 100, 163, 137, 18.0, 32.5, startAngle, endAngle),
-      createServiceVolumeRingGeometry(148, 122, 163, 137, 33.0, 52.5, startAngle, endAngle),
+      createServiceVolumeRingGeometry(102, 80, 120, 96, 0.2, 17.5, startAngle, endAngle),
+      createServiceVolumeRingGeometry(124, 100, 136, 112, 18.0, 32.5, startAngle, endAngle),
+      createServiceVolumeRingGeometry(148, 122, 154, 128, 33.0, 52.5, startAngle, endAngle),
     ],
     [startAngle, endAngle]
   );
@@ -1238,6 +1266,7 @@ export function BowlStands({
 
   const concourseSlabs = useMemo(
     () => [
+      createConcourseSlabGeometry(100, 78, 166, 140, 10.5, startAngle, endAngle),
       createConcourseSlabGeometry(100, 78, 166, 140, 17.8, startAngle, endAngle),
       createConcourseSlabGeometry(122, 98, 166, 140, 32.8, startAngle, endAngle),
       createConcourseSlabGeometry(146, 120, 166, 140, 52.8, startAngle, endAngle),

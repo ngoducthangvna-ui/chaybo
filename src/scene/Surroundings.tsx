@@ -456,7 +456,7 @@ function RealFloorPlateTower({
         </mesh>
       ))}
 
-      {/* Rooftop Mechanical Penthouse Screen & Champagne-Bronze Crown Trim */}
+      {/* Rooftop Mechanical Penthouse Screen, Champagne Crown Trim & VIP Helipad */}
       <mesh position={[0, totalHeight + 2.2, 0]} castShadow>
         <boxGeometry args={[width * 0.65, 4.4, depth * 0.65]} />
         <meshStandardMaterial color="#27272a" metalness={0.72} roughness={0.32} />
@@ -465,6 +465,28 @@ function RealFloorPlateTower({
         <boxGeometry args={[width + 1.1, 0.7, depth + 1.1]} />
         <meshStandardMaterial color="#c5a059" metalness={0.88} roughness={0.22} />
       </mesh>
+      <group position={[0, totalHeight + 4.55, 0]}>
+        <mesh castShadow receiveShadow>
+          <cylinderGeometry args={[7.5, 7.5, 0.35, 24]} />
+          <meshStandardMaterial color="#1e293b" roughness={0.72} metalness={0.25} />
+        </mesh>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.2, 0]}>
+          <ringGeometry args={[5.2, 5.8, 24]} />
+          <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={0.25} />
+        </mesh>
+        <mesh position={[-1.6, 0.21, 0]}>
+          <boxGeometry args={[0.7, 0.08, 4.8]} />
+          <meshStandardMaterial color="#f8fafc" />
+        </mesh>
+        <mesh position={[1.6, 0.21, 0]}>
+          <boxGeometry args={[0.7, 0.08, 4.8]} />
+          <meshStandardMaterial color="#f8fafc" />
+        </mesh>
+        <mesh position={[0, 0.21, 0]}>
+          <boxGeometry args={[3.2, 0.08, 0.7]} />
+          <meshStandardMaterial color="#f8fafc" />
+        </mesh>
+      </group>
     </group>
   );
 }
@@ -606,15 +628,21 @@ function RealServiceComplexes({
             roughness={0.1}
           />
         </mesh>
-        {/* Cantilevered Ivory-PTFE Ribbed Station Roof with Dark Graphite Purlin Trim */}
+        {/* Cantilevered Ivory-PTFE Ribbed Station Roof with Obsidian Skylight & Steel Purlins */}
         <mesh position={[0, 17.5, 282]} castShadow>
           <boxGeometry args={[124, 1.0, 48]} />
           <meshStandardMaterial color="#d6d3d1" metalness={0.42} roughness={0.35} />
         </mesh>
-        <mesh position={[0, 18.1, 282]}>
-          <boxGeometry args={[125, 0.35, 49]} />
-          <meshStandardMaterial color="#27272a" metalness={0.82} roughness={0.25} wireframe />
+        <mesh position={[0, 18.08, 282]}>
+          <boxGeometry args={[92, 0.45, 16]} />
+          <meshPhysicalMaterial color="#0b1324" metalness={0.9} roughness={0.08} />
         </mesh>
+        {[258, 274, 290, 306].map((lz) => (
+          <mesh key={lz} position={[0, 18.18, lz]} castShadow>
+            <boxGeometry args={[124.4, 0.55, 0.9]} />
+            <meshStandardMaterial color="#27272a" metalness={0.85} roughness={0.24} />
+          </mesh>
+        ))}
         {[-48, -24, 0, 24, 48].map((rx) => (
           <mesh key={rx} position={[rx, 18.2, 282]} castShadow>
             <boxGeometry args={[1.1, 0.7, 48.5]} />
@@ -1158,6 +1186,105 @@ function LiveExteriorPedestrianFlows({
   );
 }
 
+/**
+ * 40 Animated Shuttle Buses & Executive Vehicles driving in opposing lanes along the Outer 6-Lane Ring Road.
+ */
+function LiveRingRoadTraffic({ active }: { active: boolean }) {
+  const busRef = useRef<THREE.InstancedMesh | null>(null);
+  const carRef = useRef<THREE.InstancedMesh | null>(null);
+
+  const vehicles = useMemo(() => {
+    const buses: Array<{ angle: number; r: number; dir: 1 | -1; speed: number; color: string }> = [];
+    const cars: Array<{ angle: number; r: number; dir: 1 | -1; speed: number; color: string }> = [];
+    const carPalette = ['#e2e8f0', '#334155', '#64748b', '#1e293b', '#94a3b8'];
+
+    for (let i = 0; i < 16; i += 1) {
+      const dir = i % 2 === 0 ? 1 : -1;
+      buses.push({
+        angle: (i / 16) * Math.PI * 2,
+        r: dir > 0 ? 378.5 : 391.5,
+        dir,
+        speed: 14.5 + (i % 3) * 1.4,
+        color: i % 3 === 0 ? '#c5a059' : '#f1f5f9',
+      });
+    }
+    for (let i = 0; i < 24; i += 1) {
+      const dir = i % 2 === 0 ? 1 : -1;
+      cars.push({
+        angle: (i / 24) * Math.PI * 2 + 0.14,
+        r: dir > 0 ? 381.2 : 388.8,
+        dir,
+        speed: 19.5 + (i % 4) * 1.8,
+        color: carPalette[i % carPalette.length],
+      });
+    }
+    return { buses, cars };
+  }, []);
+
+  useEffect(() => {
+    const color = new THREE.Color();
+    vehicles.buses.forEach((b, idx) => {
+      busRef.current?.setColorAt(idx, color.set(b.color));
+    });
+    vehicles.cars.forEach((c, idx) => {
+      carRef.current?.setColorAt(idx, color.set(c.color));
+    });
+    if (busRef.current?.instanceColor) busRef.current.instanceColor.needsUpdate = true;
+    if (carRef.current?.instanceColor) carRef.current.instanceColor.needsUpdate = true;
+  }, [vehicles]);
+
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+
+  useFrame(({ clock }) => {
+    const t = active ? clock.getElapsedTime() : 0;
+
+    if (busRef.current) {
+      vehicles.buses.forEach((b, idx) => {
+        const a = b.angle + ((t * b.speed) / b.r) * b.dir;
+        const x = Math.cos(a) * b.r;
+        const z = Math.sin(a) * b.r;
+        const heading = -a + (b.dir > 0 ? 0 : Math.PI);
+        dummy.position.set(x, 1.45, z);
+        dummy.rotation.set(0, heading, 0);
+        dummy.scale.set(1, 1, 1);
+        dummy.updateMatrix();
+        busRef.current!.setMatrixAt(idx, dummy.matrix);
+      });
+      busRef.current.count = vehicles.buses.length;
+      busRef.current.instanceMatrix.needsUpdate = true;
+    }
+
+    if (carRef.current) {
+      vehicles.cars.forEach((c, idx) => {
+        const a = c.angle + ((t * c.speed) / c.r) * c.dir;
+        const x = Math.cos(a) * c.r;
+        const z = Math.sin(a) * c.r;
+        const heading = -a + (c.dir > 0 ? 0 : Math.PI);
+        dummy.position.set(x, 0.8, z);
+        dummy.rotation.set(0, heading, 0);
+        dummy.scale.set(1, 1, 1);
+        dummy.updateMatrix();
+        carRef.current!.setMatrixAt(idx, dummy.matrix);
+      });
+      carRef.current.count = vehicles.cars.length;
+      carRef.current.instanceMatrix.needsUpdate = true;
+    }
+  });
+
+  return (
+    <group name="live-ring-road-traffic">
+      <instancedMesh ref={busRef} args={[undefined, undefined, 20]} castShadow>
+        <boxGeometry args={[2.6, 2.8, 9.5]} />
+        <meshStandardMaterial metalness={0.55} roughness={0.3} />
+      </instancedMesh>
+      <instancedMesh ref={carRef} args={[undefined, undefined, 30]} castShadow>
+        <boxGeometry args={[2.0, 1.5, 4.6]} />
+        <meshStandardMaterial metalness={0.62} roughness={0.26} />
+      </instancedMesh>
+    </group>
+  );
+}
+
 export function Surroundings({
   halfCutaway,
   isNight,
@@ -1165,8 +1292,8 @@ export function Surroundings({
   occupancyPercent,
   liveSimActive = true,
 }: SurroundingsProps) {
-  const startAngle = halfCutaway ? Math.PI * 0.52 : 0;
-  const endAngle = halfCutaway ? Math.PI * 1.98 : Math.PI * 2;
+  const startAngle = halfCutaway ? Math.PI * 0.45 : 0;
+  const endAngle = halfCutaway ? Math.PI * 1.95 : Math.PI * 2;
   const groundPbr = useMemo(() => createMasterplanGroundPbrTextures(), []);
   const podiumTexture = useMemo(() => createTravertineArcadeTexture(isNight), [isNight]);
 
@@ -1218,6 +1345,8 @@ export function Surroundings({
         occupancyPercent={occupancyPercent}
         liveSimActive={liveSimActive}
       />
+
+      <LiveRingRoadTraffic active={liveSimActive} />
 
       <NaturalParkLandscaping isNight={isNight} />
     </group>
