@@ -99,6 +99,7 @@ export function FloorplanExplorer2D({
   const [zoomMode, setZoomMode] = useState<'follow' | 'blueprint'>('follow');
   const [selectedRoomId, setSelectedRoomId] = useState<string>('home-locker');
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
+  const [inspectorOpen, setInspectorOpen] = useState(true);
   const [hudTelemetry, setHudTelemetry] = useState({ x: -108, y: -12, speedMps: 0 });
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -676,6 +677,19 @@ export function FloorplanExplorer2D({
 
           <button
             type="button"
+            onClick={() => setInspectorOpen((v) => !v)}
+            className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium transition ${
+              inspectorOpen
+                ? 'border-amber-400/50 bg-amber-500/15 text-amber-200'
+                : 'border-[#26262b] bg-[#141417] text-[#a1a1aa] hover:text-white'
+            }`}
+          >
+            <Layers className="h-3 w-3" />
+            {inspectorOpen ? 'Ẩn Hồ Sơ' : 'Hồ Sơ Phòng'}
+          </button>
+
+          <button
+            type="button"
             onClick={onClose}
             aria-label="Đóng khám phá 2D"
             className="inline-flex items-center gap-1 rounded-lg border border-rose-500/35 bg-rose-500/15 px-2.5 py-1 text-[11px] font-medium text-rose-300 hover:bg-rose-500/25"
@@ -788,8 +802,9 @@ export function FloorplanExplorer2D({
           </div>
         </div>
 
-        {/* Right Architectural Room Inspector & Quick Teleport List */}
-        <aside className="w-full md:w-[310px] border-t md:border-t-0 md:border-l border-[#26262b] bg-[#0f131a] flex flex-col min-h-0">
+        {/* Right Architectural Room Inspector & Quick Teleport List (Collapsible) */}
+        {inspectorOpen && (
+          <aside className="w-full md:w-[268px] border-t md:border-t-0 md:border-l border-[#26262b] bg-[#0f131a] flex flex-col min-h-0">
           <div className="p-3 border-b border-[#26262b] space-y-2">
             <div className="flex items-center justify-between text-[11px] font-semibold uppercase text-amber-300">
               <span className="flex items-center gap-1.5">
@@ -885,6 +900,7 @@ export function FloorplanExplorer2D({
             })}
           </div>
         </aside>
+        )}
       </div>
     </section>
   );

@@ -103,7 +103,9 @@ export function ControlPanel({
   onEnterWalkthrough3d,
   fpsTelemetry = { fps: 120, frameTimeMs: 2.2, budgetPercent: 26, modeLabel: '120 FPS ULTRA' },
 }: ControlPanelProps) {
-  const [drawerOpen, setDrawerOpen] = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [brandExpanded, setBrandExpanded] = useState(false);
+  const [dockMinimized, setDockMinimized] = useState(false);
   const [activeTab, setActiveTab] = useState<'specs' | 'complex' | 'sop'>('specs');
 
   const totalCapacity = calculateTotalCapacity();
@@ -118,49 +120,59 @@ export function ControlPanel({
 
   return (
     <>
-      {/* Top-Left Brand & Structural Engineering Card */}
-      <header className="pointer-events-none fixed top-4 left-4 z-20 flex flex-col gap-2">
-        <div className="pointer-events-auto rounded-2xl border border-[#26262b] bg-[#141417]/90 px-4 py-3 backdrop-blur-md shadow-2xl">
-          <div className="flex items-center gap-2.5">
-            <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
-            <h1 className="text-sm font-bold tracking-wider text-[#ededf0] uppercase">
-              Vietnam 200K National Complex
+      {/* Compact Top-Left Brand Pill (Expandable for Steel/Material Specs) */}
+      <header className="pointer-events-none fixed top-3 left-3 z-20 flex flex-col gap-1.5">
+        <div className="pointer-events-auto rounded-xl border border-[#26262b] bg-[#141417]/90 px-3 py-1.5 backdrop-blur-md shadow-xl">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+            <h1 className="font-bold tracking-wider text-[#ededf0] uppercase text-[11px]">
+              Vietnam 200K Stadium
             </h1>
-            <span className="rounded-md border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300">
-              DONG SON ICONIC
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 font-semibold text-amber-300 border border-amber-400/20 text-[10px]">
+              <Users className="h-3 w-3" />
+              {totalCapacity.toLocaleString('en-US')}
             </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 font-mono font-bold text-emerald-300 border border-emerald-400/40 text-[10px]">
+              <Zap className="h-2.5 w-2.5 text-emerald-400" />
+              {fpsTelemetry.fps} FPS • 120Hz
+            </span>
+            <button
+              type="button"
+              onClick={() => setBrandExpanded((v) => !v)}
+              aria-label="Mở rộng thông tin dự án"
+              className="rounded-md p-0.5 text-[#a1a1aa] hover:bg-white/10 hover:text-white transition"
+            >
+              {brandExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            </button>
           </div>
-          <p className="mt-1 text-xs text-[#a1a1aa]">
-            Mái ETFE Ngọc Trai • Mặt dựng Vàng Champagne • 5 Khu Phức Hợp
-          </p>
-          <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 font-semibold text-amber-300 border border-amber-400/20">
-              <Users className="h-3.5 w-3.5" />
-              {totalCapacity.toLocaleString('en-US')} chỗ ngồi
-            </span>
-            <span className="rounded-full bg-[#26262c] px-2.5 py-1 text-[#ededf0] border border-[#26262b]">
-              {ROOF_SPECS.steelTonnage.toLocaleString('en-US')} tấn thép
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-1 font-mono font-bold text-emerald-300 border border-emerald-400/40">
-              <Zap className="h-3 w-3 text-emerald-400" />
-              {fpsTelemetry.fps} FPS ULTRA • 120Hz ({fpsTelemetry.frameTimeMs}ms)
-            </span>
-          </div>
+          {brandExpanded && (
+            <div className="mt-1.5 pt-1.5 border-t border-[#26262b] flex flex-wrap items-center gap-2 text-[11px] text-[#a1a1aa]">
+              <span>Mái ETFE Ngọc Trai • Mặt dựng Vàng Champagne • 5 Khu Phức Hợp</span>
+              <span className="rounded bg-[#26262c] px-1.5 py-0.5 text-[#ededf0]">
+                {ROOF_SPECS.steelTonnage.toLocaleString('en-US')} tấn thép
+              </span>
+              <span className="font-mono text-emerald-300">({fpsTelemetry.frameTimeMs}ms/frame)</span>
+            </div>
+          )}
         </div>
       </header>
 
-      {/* Top-Right Artifact, Complex & Telemetry Drawer */}
-      <aside className="fixed top-4 right-4 z-20 w-[356px] rounded-2xl border border-[#26262b] bg-[#141417]/92 backdrop-blur-md shadow-2xl overflow-hidden">
+      {/* Top-Right Collapsible Technical Drawer (Compact by default) */}
+      <aside
+        className={`fixed top-3 right-3 z-20 rounded-xl border border-[#26262b] bg-[#141417]/92 backdrop-blur-md shadow-2xl overflow-hidden transition-all ${
+          drawerOpen ? 'w-[332px]' : 'w-[248px]'
+        }`}
+      >
         <button
           type="button"
           onClick={() => setDrawerOpen((v) => !v)}
-          className="flex w-full items-center justify-between bg-[#0a0a0b]/80 px-4 py-3 text-left text-xs font-semibold tracking-wide text-[#ededf0] uppercase hover:bg-white/5 transition"
+          className="flex w-full items-center justify-between bg-[#0a0a0b]/85 px-3 py-2 text-left text-[11px] font-semibold tracking-wide text-[#ededf0] uppercase hover:bg-white/5 transition"
         >
-          <span className="flex items-center gap-2">
-            <Layers className="h-4 w-4 text-amber-400" />
-            Hồ sơ Kỹ thuật & Khu Phức hợp
+          <span className="flex items-center gap-1.5">
+            <Layers className="h-3.5 w-3.5 text-amber-400" />
+            Hồ sơ Kỹ thuật & Phức hợp
           </span>
-          {drawerOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          {drawerOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
         </button>
 
         {drawerOpen && (
@@ -426,149 +438,182 @@ export function ControlPanel({
         )}
       </aside>
 
-      {/* Bottom-Center Interactive Controls */}
-      <nav
-        aria-label="Điều khiển mô hình 3D"
-        className="fixed bottom-4 left-1/2 z-20 -translate-x-1/2 flex flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-[#26262b] bg-[#141417]/90 p-2 backdrop-blur-md shadow-2xl max-w-[98vw]"
-      >
-        <div className="flex items-center gap-1 rounded-xl bg-[#0a0a0b] p-1">
-          {LIGHTING_OPTIONS.map(({ mode, label, Icon }) => {
-            const active = lightingMode === mode;
-            return (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => onLightingChange(mode)}
-                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${
-                  active
-                    ? 'bg-amber-500 text-slate-950 shadow'
-                    : 'text-[#a1a1aa] hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex items-center gap-1 rounded-xl bg-[#0a0a0b] p-1">
-          <Camera className="mx-1 h-3.5 w-3.5 text-[#a1a1aa] hidden sm:block" />
-          {CAMERA_PRESETS.map((preset) => {
-            const active = cameraPreset === preset.id;
-            return (
-              <button
-                key={preset.id}
-                type="button"
-                onClick={() => onCameraPresetChange(preset.id)}
-                className={`rounded-lg px-2 py-1.5 text-xs font-medium transition ${
-                  active
-                    ? 'bg-rose-600 text-white shadow'
-                    : 'text-[#a1a1aa] hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                {preset.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-1">
+      {/* Bottom-Center Compact Collapsible Dock */}
+      {dockMinimized ? (
+        <div className="fixed bottom-3 left-1/2 z-20 -translate-x-1/2 flex items-center gap-1.5 rounded-full border border-[#26262b] bg-[#141417]/92 px-2.5 py-1.5 backdrop-blur-md shadow-2xl">
           <button
             type="button"
-            onClick={onToggleBimFrameMode}
-            aria-pressed={bimFrameMode}
-            className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition border ${
-              bimFrameMode
-                ? 'border-amber-400/60 bg-amber-500/20 text-amber-300'
-                : 'border-[#26262b] bg-[#0a0a0b] text-[#a1a1aa] hover:text-white'
-            }`}
+            onClick={() => setDockMinimized(false)}
+            className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 border border-amber-400/40 px-2.5 py-1 text-[11px] font-semibold text-amber-200 hover:bg-amber-500/30"
           >
-            <Box className="h-3.5 w-3.5" />
-            Khung Kết Cấu (BIM)
+            <ChevronUp className="h-3.5 w-3.5" />
+            Mở Điều Khiển 3D
           </button>
-
-          <button
-            type="button"
-            onClick={onToggleXrayRoof}
-            aria-pressed={xrayRoof}
-            className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition border ${
-              xrayRoof
-                ? 'border-sky-400/50 bg-sky-500/20 text-sky-300'
-                : 'border-[#26262b] bg-[#0a0a0b] text-[#a1a1aa] hover:text-white'
-            }`}
-          >
-            <Eye className="h-3.5 w-3.5" />
-            X-Ray Mái
-          </button>
-
-          <button
-            type="button"
-            onClick={onToggleHalfCutaway}
-            aria-pressed={halfCutaway}
-            className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition border ${
-              halfCutaway
-                ? 'border-violet-400/50 bg-violet-500/20 text-violet-300'
-                : 'border-[#26262b] bg-[#0a0a0b] text-[#a1a1aa] hover:text-white'
-            }`}
-          >
-            <Scissors className="h-3.5 w-3.5" />
-            Mặt cắt 90°
-          </button>
-
-          <button
-            type="button"
-            onClick={onToggleLiveSim}
-            aria-pressed={liveSimActive}
-            className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition border ${
-              liveSimActive
-                ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-300'
-                : 'border-[#26262b] bg-[#0a0a0b] text-[#a1a1aa] hover:text-white'
-            }`}
-          >
-            <Activity className="h-3.5 w-3.5" />
-            Mô phỏng Trận đấu & Dòng người
-          </button>
-
-          <button
-            type="button"
-            onClick={onToggleExplorer2d}
-            aria-pressed={explorer2dOpen}
-            className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition border ${
-              explorer2dOpen
-                ? 'border-amber-400/60 bg-amber-500/20 text-amber-300'
-                : 'border-amber-500/40 bg-amber-500/15 text-amber-200 hover:bg-amber-500/25'
-            }`}
-          >
-            <Compass className="h-3.5 w-3.5" />
-            Khám Phá 2D (16 Phòng Nội Khu)
-          </button>
-
           <button
             type="button"
             onClick={onEnterWalkthrough3d}
-            aria-pressed={walkthrough3dActive}
-            className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition border border-emerald-400/50 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
+            className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 border border-emerald-400/50 px-2.5 py-1 text-[11px] font-semibold text-emerald-300 hover:bg-emerald-500/30"
           >
             <Footprints className="h-3.5 w-3.5" />
-            Đi Bộ 3D Nội Khu (16 Phòng)
-          </button>
-
-          <button
-            type="button"
-            onClick={onToggleAutoRotate}
-            aria-pressed={autoRotate}
-            className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition border ${
-              autoRotate
-                ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-300'
-                : 'border-[#26262b] bg-[#0a0a0b] text-[#a1a1aa] hover:text-white'
-            }`}
-          >
-            <RotateCw className={`h-3.5 w-3.5 ${autoRotate ? 'animate-spin' : ''}`} />
-            Xoay
+            Đi Bộ 3D
           </button>
         </div>
-      </nav>
+      ) : (
+        <nav
+          aria-label="Điều khiển mô hình 3D"
+          className="fixed bottom-2.5 left-1/2 z-20 -translate-x-1/2 flex flex-col items-center gap-1 rounded-xl border border-[#26262b] bg-[#141417]/90 px-2 py-1.5 backdrop-blur-md shadow-2xl max-w-[97vw]"
+        >
+          <div className="flex flex-wrap items-center justify-center gap-1">
+            <div className="flex items-center gap-0.5 rounded-lg bg-[#0a0a0b] p-0.5">
+              {LIGHTING_OPTIONS.map(({ mode, label, Icon }) => {
+                const active = lightingMode === mode;
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => onLightingChange(mode)}
+                    className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition ${
+                      active
+                        ? 'bg-amber-500 text-slate-950 shadow'
+                        : 'text-[#a1a1aa] hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    <Icon className="h-3 w-3" />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center gap-0.5 rounded-lg bg-[#0a0a0b] p-0.5">
+              <Camera className="mx-1 h-3 w-3 text-[#a1a1aa] hidden sm:block" />
+              {CAMERA_PRESETS.map((preset) => {
+                const active = cameraPreset === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => onCameraPresetChange(preset.id)}
+                    className={`rounded-md px-2 py-1 text-[11px] font-medium transition ${
+                      active
+                        ? 'bg-rose-600 text-white shadow'
+                        : 'text-[#a1a1aa] hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-1">
+            <button
+              type="button"
+              onClick={onToggleBimFrameMode}
+              aria-pressed={bimFrameMode}
+              className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition border ${
+                bimFrameMode
+                  ? 'border-amber-400/60 bg-amber-500/20 text-amber-300'
+                  : 'border-[#26262b] bg-[#0a0a0b] text-[#a1a1aa] hover:text-white'
+              }`}
+            >
+              <Box className="h-3 w-3" />
+              BIM
+            </button>
+
+            <button
+              type="button"
+              onClick={onToggleXrayRoof}
+              aria-pressed={xrayRoof}
+              className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition border ${
+                xrayRoof
+                  ? 'border-sky-400/50 bg-sky-500/20 text-sky-300'
+                  : 'border-[#26262b] bg-[#0a0a0b] text-[#a1a1aa] hover:text-white'
+              }`}
+            >
+              <Eye className="h-3 w-3" />
+              X-Ray Mái
+            </button>
+
+            <button
+              type="button"
+              onClick={onToggleHalfCutaway}
+              aria-pressed={halfCutaway}
+              className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition border ${
+                halfCutaway
+                  ? 'border-violet-400/50 bg-violet-500/20 text-violet-300'
+                  : 'border-[#26262b] bg-[#0a0a0b] text-[#a1a1aa] hover:text-white'
+              }`}
+            >
+              <Scissors className="h-3 w-3" />
+              Cắt 90°
+            </button>
+
+            <button
+              type="button"
+              onClick={onToggleLiveSim}
+              aria-pressed={liveSimActive}
+              className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition border ${
+                liveSimActive
+                  ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-300'
+                  : 'border-[#26262b] bg-[#0a0a0b] text-[#a1a1aa] hover:text-white'
+              }`}
+            >
+              <Activity className="h-3 w-3" />
+              Trận đấu & Dòng người
+            </button>
+
+            <button
+              type="button"
+              onClick={onToggleExplorer2d}
+              aria-pressed={explorer2dOpen}
+              className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition border ${
+                explorer2dOpen
+                  ? 'border-amber-400/60 bg-amber-500/20 text-amber-300'
+                  : 'border-amber-500/40 bg-amber-500/15 text-amber-200 hover:bg-amber-500/25'
+              }`}
+            >
+              <Compass className="h-3 w-3" />
+              Khám Phá 2D
+            </button>
+
+            <button
+              type="button"
+              onClick={onEnterWalkthrough3d}
+              aria-pressed={walkthrough3dActive}
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition border border-emerald-400/50 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
+            >
+              <Footprints className="h-3 w-3" />
+              Đi Bộ 3D (16 Phòng)
+            </button>
+
+            <button
+              type="button"
+              onClick={onToggleAutoRotate}
+              aria-pressed={autoRotate}
+              className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition border ${
+                autoRotate
+                  ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-300'
+                  : 'border-[#26262b] bg-[#0a0a0b] text-[#a1a1aa] hover:text-white'
+              }`}
+            >
+              <RotateCw className={`h-3 w-3 ${autoRotate ? 'animate-spin' : ''}`} />
+              Xoay
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setDockMinimized(true)}
+              aria-label="Thu gọn bảng điều khiển dưới"
+              className="inline-flex items-center gap-0.5 rounded-lg border border-[#26262b] bg-[#0a0a0b] px-2 py-1 text-[11px] text-[#a1a1aa] hover:text-white"
+            >
+              <ChevronDown className="h-3 w-3" />
+              Thu gọn
+            </button>
+          </div>
+        </nav>
+      )}
     </>
   );
 }
