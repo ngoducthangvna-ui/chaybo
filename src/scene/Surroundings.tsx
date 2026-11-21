@@ -133,19 +133,19 @@ export function Surroundings({ halfCutaway }: SurroundingsProps) {
   return (
     <group name="stadium-surroundings">
       {/* Ground terrain */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.2, 0]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.2, 0]} receiveShadow>
         <circleGeometry args={[640, 64]} />
         <meshStandardMaterial color="#0f172a" roughness={0.95} />
       </mesh>
 
-      {/* Grand Concourse Podium */}
-      <mesh position={[0, 0.4, 0]} scale={[1.18, 1, 1.0]} receiveShadow>
+      {/* Grand Concourse Podium (top surface sits cleanly at y = 0.0 beneath the FIFA pitch at y = 0.08) */}
+      <mesh position={[0, -0.6, 0]} scale={[1.18, 1, 1.0]} receiveShadow>
         <cylinderGeometry args={[178, 188, 1.2, 72]} />
         <meshStandardMaterial color="#334155" roughness={0.82} />
       </mesh>
 
       {/* Outer Ceremonial Plaza Ring */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]} scale={[1.16, 1.0, 1]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} scale={[1.16, 1.0, 1]} receiveShadow>
         <ringGeometry args={[186, 245, 72]} />
         <meshStandardMaterial color="#1e293b" roughness={0.88} side={THREE.DoubleSide} />
       </mesh>
