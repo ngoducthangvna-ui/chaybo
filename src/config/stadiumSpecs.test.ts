@@ -6,6 +6,7 @@ import {
   PITCH_SPECS,
   ROOF_SPECS,
   STADIUM_TIERS,
+  STRUCTURAL_GRID_LINES,
   calculateEvacuationMetrics,
   calculateStructuralMetrics,
   calculateTotalCapacity,
@@ -20,7 +21,7 @@ describe('stadiumSpecs', () => {
     expect(calculateTotalCapacity()).toBe(200_000);
   });
 
-  it('orders tiers monotonically in elevation and radius', () => {
+  it('orders tiers monotonically in elevation and aligns outer radii with Grid B..E', () => {
     for (let i = 1; i < STADIUM_TIERS.length; i += 1) {
       const prev = STADIUM_TIERS[i - 1];
       const curr = STADIUM_TIERS[i];
@@ -28,6 +29,14 @@ describe('stadiumSpecs', () => {
       expect(curr.innerRadiusX).toBeGreaterThan(prev.innerRadiusX);
       expect(curr.outerRadiusX).toBeGreaterThan(prev.outerRadiusX);
     }
+
+    expect(STRUCTURAL_GRID_LINES).toHaveLength(5);
+    expect(STADIUM_TIERS[0].outerRadiusX).toBe(STRUCTURAL_GRID_LINES[1].rx);
+    expect(STADIUM_TIERS[1].outerRadiusX).toBe(STRUCTURAL_GRID_LINES[2].rx);
+    expect(STADIUM_TIERS[2].outerRadiusX).toBe(STRUCTURAL_GRID_LINES[3].rx);
+    expect(STADIUM_TIERS[3].outerRadiusX).toBe(STRUCTURAL_GRID_LINES[4].rx);
+    expect(ROOF_SPECS.supportRadiusX).toBe(STRUCTURAL_GRID_LINES[4].rx);
+    expect(ROOF_SPECS.supportHeight).toBe(STADIUM_TIERS[3].topElevation);
   });
 
   it('computes accurate super-ellipse boundary points at cardinal angles', () => {

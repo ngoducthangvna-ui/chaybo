@@ -1,9 +1,9 @@
 <!-- devflow-template: workflow-summary@1.0 -->
-# DevFlow 交付总结 — Vietnam 200K Stadium Architectural Overhaul
+# DevFlow 交付总结 — Vietnam 200K Stadium Buildable Structural BIM
 
 ## 交付结果
 
-Hoàn tất tái thiết kế toàn diện kiến trúc 3D thực tế cho **Vietnam 200K Stadium** (`http://localhost:5173/`). Công trình sử dụng hình khối Super-Ellipse chuẩn FIFA ôm sát sân bóng, lòng khán đài 4 tầng bậc thang thật với 36 khoang ghế & lối cầu thang vomitory, màn hình LED 360° Halo Video Board treo dưới vành căng mái, vỏ bao mặt dựng kính đa tầng kết hợp hệ lưới vàng đồng Trống đồng, khối đế granite 3 bậc tam cấp, quy hoạch 4 đại lộ nghi lễ + đường vành đai 6 làn xe, cây xanh tán tròn đa tầng và bầu trời gradient ACESFilmic.
+Hoàn tất tái thiết kế mô hình 3D chuẩn kỹ thuật xây dựng thực tế cho **Vietnam 200K Stadium** (`http://localhost:5173/`). Toàn bộ công trình gồm **48 khung Bê tông cốt thép hướng tâm (`Grid A–E`)** với 4 dầm raker áp sát đáy từng tầng khán đài, **8 lõi cứng thang máy/bộ**, tường chắn hào kỹ thuật quanh sân, **48 dàn kèo thép công-xôn tam giác 2 lớp** gối trực tiếp lên cột `Grid E` (`y = 68.5m`), vách kính mặt dựng + lam nhôm chắn nắng thực tế và chế độ kiểm tra **Khung Kết Cấu (BIM)**.
 
 ## 产物
 
@@ -11,13 +11,13 @@ Hoàn tất tái thiết kế toàn diện kiến trúc 3D thực tế cho **Vie
 - `artifacts/vietnam-200k-masterpiece/01-solo/solo-report.md`
 - `artifacts/vietnam-200k-masterpiece/workflow-summary.md`
 - `src/config/stadiumSpecs.ts` & `src/config/stadiumSpecs.test.ts`
-- `src/scene/BowlStands.tsx`, `src/scene/RoofStructure.tsx`, `src/scene/Surroundings.tsx`, `src/scene/StadiumScene.tsx`, `src/scene/Pitch.tsx`
+- `src/scene/BowlStands.tsx`, `src/scene/RoofStructure.tsx`, `src/scene/Pitch.tsx`, `src/scene/Surroundings.tsx`, `src/scene/StadiumScene.tsx`
 - `src/components/ControlPanel.tsx` & `src/App.tsx`
 
 ## 验证
 
-- `npm.cmd test`: 8/8 unit tests pass (`src/config/stadiumSpecs.test.ts`).
-- `npm.cmd run build`: `tsc -b && vite build` thành công (0 lỗi TypeScript).
+- `npm.cmd test`: 8/8 unit tests pass.
+- `npm.cmd run build`: `tsc -b && vite build` thành công (0 lỗi).
 - `workflow_state.py validate`: `OK: workflow state and completed-stage artifacts are valid`.
 
 ## 剩余风险

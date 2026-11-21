@@ -18,6 +18,14 @@ export interface TierSpec {
   readonly slopeDeg: number;
 }
 
+export interface StructuralGridLine {
+  readonly id: 'A' | 'B' | 'C' | 'D' | 'E';
+  readonly rx: number;
+  readonly rz: number;
+  readonly topElevation: number;
+  readonly concourseElevation: number;
+}
+
 export interface CameraPreset {
   readonly id: CameraPresetId;
   readonly label: string;
@@ -79,17 +87,31 @@ export const PITCH_SPECS = {
 } as const;
 
 export const ROOF_SPECS = {
+  supportRadiusX: 166,
+  supportRadiusZ: 140,
+  supportHeight: 68.5,
   outerRadiusX: 174,
   outerRadiusZ: 148,
-  oculusRadiusX: 64,
-  oculusRadiusZ: 45,
-  eaveHeight: 68,
-  peakHeight: 87,
+  oculusRadiusX: 66,
+  oculusRadiusZ: 46,
+  eaveHeight: 67.5,
+  peakHeight: 75.5,
   ribCount: 48,
+  trussBays: 10,
+  trussRootDepth: 6.5,
+  trussTipDepth: 2.7,
   exitGates: 48,
   steelTonnage: 28_500,
   superEllipsePower: 2.4,
 } as const;
+
+export const STRUCTURAL_GRID_LINES: readonly StructuralGridLine[] = [
+  { id: 'A', rx: 86, rz: 65, topElevation: 8.6, concourseElevation: 6.0 },
+  { id: 'B', rx: 100, rz: 78, topElevation: 18.0, concourseElevation: 18.0 },
+  { id: 'C', rx: 122, rz: 98, topElevation: 33.0, concourseElevation: 33.0 },
+  { id: 'D', rx: 146, rz: 120, topElevation: 53.0, concourseElevation: 53.0 },
+  { id: 'E', rx: 166, rz: 140, topElevation: 68.5, concourseElevation: 68.5 },
+] as const;
 
 export const STADIUM_TIERS: readonly TierSpec[] = [
   {
@@ -99,8 +121,8 @@ export const STADIUM_TIERS: readonly TierSpec[] = [
     rows: 34,
     innerRadiusX: 72,
     innerRadiusZ: 52,
-    outerRadiusX: 98,
-    outerRadiusZ: 76,
+    outerRadiusX: 100,
+    outerRadiusZ: 78,
     baseElevation: 2.2,
     topElevation: 16.5,
     seatColor: '#b91c1c',
@@ -114,10 +136,10 @@ export const STADIUM_TIERS: readonly TierSpec[] = [
     rows: 24,
     innerRadiusX: 96,
     innerRadiusZ: 74,
-    outerRadiusX: 118,
-    outerRadiusZ: 95,
-    baseElevation: 19.0,
-    topElevation: 31.5,
+    outerRadiusX: 122,
+    outerRadiusZ: 98,
+    baseElevation: 18.8,
+    topElevation: 32.0,
     seatColor: '#991b1b',
     accentColor: '#fbbf24',
     slopeDeg: 28,
@@ -127,11 +149,11 @@ export const STADIUM_TIERS: readonly TierSpec[] = [
     name: 'Tầng 3 — Upper Bowl',
     seats: 55_000,
     rows: 32,
-    innerRadiusX: 115,
-    innerRadiusZ: 92,
-    outerRadiusX: 142,
-    outerRadiusZ: 118,
-    baseElevation: 34.0,
+    innerRadiusX: 118,
+    innerRadiusZ: 94,
+    outerRadiusX: 146,
+    outerRadiusZ: 120,
+    baseElevation: 34.5,
     topElevation: 52.0,
     seatColor: '#dc2626',
     accentColor: '#f8fafc',
@@ -142,12 +164,12 @@ export const STADIUM_TIERS: readonly TierSpec[] = [
     name: 'Tầng 4 — Sky Tier',
     seats: 35_000,
     rows: 22,
-    innerRadiusX: 138,
-    innerRadiusZ: 114,
-    outerRadiusX: 162,
-    outerRadiusZ: 136,
+    innerRadiusX: 142,
+    innerRadiusZ: 116,
+    outerRadiusX: 166,
+    outerRadiusZ: 140,
     baseElevation: 54.5,
-    topElevation: 69.5,
+    topElevation: 68.5,
     seatColor: '#7f1d1d',
     accentColor: '#fbbf24',
     slopeDeg: 35,
@@ -199,8 +221,8 @@ export const LIGHTING_CONFIGS: Record<LightingMode, LightingConfig> = {
     sunColor: '#fffbeb',
     sunIntensity: 2.35,
     floodlightIntensity: 0,
-    ledGlowIntensity: 0.65,
-    facadeGlowColor: '#f59e0b',
+    ledGlowIntensity: 0.55,
+    facadeGlowColor: '#94a3b8',
   },
   sunset: {
     mode: 'sunset',
@@ -213,7 +235,7 @@ export const LIGHTING_CONFIGS: Record<LightingMode, LightingConfig> = {
     sunColor: '#fb923c',
     sunIntensity: 1.9,
     floodlightIntensity: 1.4,
-    ledGlowIntensity: 1.8,
+    ledGlowIntensity: 1.6,
     facadeGlowColor: '#f59e0b',
   },
   night: {
@@ -227,8 +249,8 @@ export const LIGHTING_CONFIGS: Record<LightingMode, LightingConfig> = {
     sunColor: '#64748b',
     sunIntensity: 0.45,
     floodlightIntensity: 3.6,
-    ledGlowIntensity: 2.6,
-    facadeGlowColor: '#f59e0b',
+    ledGlowIntensity: 2.4,
+    facadeGlowColor: '#38bdf8',
   },
 };
 
@@ -250,14 +272,14 @@ export const LOOPFORGE_SOP_NODES: readonly LoopForgeSopNode[] = [
   {
     id: 'design',
     title: '3. Design',
-    role: 'Architect (Grasp + Harness UI)',
+    role: 'Structural BIM Engineer',
     status: 'passed',
     artifact: 'design.md',
   },
   {
     id: 'implement',
     title: '4. Implement',
-    role: '3D WebGL Developer',
+    role: 'RC & Steel Truss 3D Engineer',
     status: 'passed',
     artifact: 'src/scene/*.tsx',
   },

@@ -19,11 +19,10 @@ interface StadiumSceneProps {
   cameraPreset: CameraPresetId;
   xrayRoof: boolean;
   halfCutaway: boolean;
+  bimFrameMode: boolean;
   autoRotate: boolean;
   occupancyPercent: number;
   roofOpenPercent: number;
-  ceremonyMode: boolean;
-  crowdWave: boolean;
   showEvacPaths: boolean;
 }
 
@@ -140,7 +139,7 @@ function CameraRig({
       enableDamping
       dampingFactor={0.07}
       autoRotate={autoRotate}
-      autoRotateSpeed={0.45}
+      autoRotateSpeed={0.4}
       minDistance={28}
       maxDistance={480}
       maxPolarAngle={Math.PI / 2 - 0.03}
@@ -156,11 +155,10 @@ export function StadiumScene({
   cameraPreset,
   xrayRoof,
   halfCutaway,
+  bimFrameMode,
   autoRotate,
   occupancyPercent,
   roofOpenPercent,
-  ceremonyMode,
-  crowdWave,
   showEvacPaths,
 }: StadiumSceneProps) {
   const lighting = getLightingConfig(lightingMode);
@@ -237,17 +235,16 @@ export function StadiumScene({
         <BowlStands
           ledGlowIntensity={lighting.ledGlowIntensity}
           halfCutaway={halfCutaway}
+          bimFrameMode={bimFrameMode}
           occupancyPercent={occupancyPercent}
-          crowdWave={crowdWave}
           showEvacPaths={showEvacPaths}
         />
         <RoofStructure
           xrayRoof={xrayRoof}
           halfCutaway={halfCutaway}
+          bimFrameMode={bimFrameMode}
           floodlightIntensity={lighting.floodlightIntensity}
-          facadeGlowColor={lighting.facadeGlowColor}
           roofOpenPercent={roofOpenPercent}
-          ceremonyMode={ceremonyMode}
         />
 
         {showSightline && (

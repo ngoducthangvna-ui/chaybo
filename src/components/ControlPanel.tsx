@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Activity,
+  Box,
   Camera,
   CheckCircle2,
   ChevronDown,
@@ -12,7 +12,6 @@ import {
   RotateCw,
   Route,
   Scissors,
-  Sparkles,
   Sun,
   Sunset,
   Users,
@@ -41,16 +40,14 @@ interface ControlPanelProps {
   onToggleXrayRoof: () => void;
   halfCutaway: boolean;
   onToggleHalfCutaway: () => void;
+  bimFrameMode: boolean;
+  onToggleBimFrameMode: () => void;
   autoRotate: boolean;
   onToggleAutoRotate: () => void;
   occupancyPercent: number;
   onOccupancyChange: (value: number) => void;
   roofOpenPercent: number;
   onRoofOpenChange: (value: number) => void;
-  ceremonyMode: boolean;
-  onToggleCeremonyMode: () => void;
-  crowdWave: boolean;
-  onToggleCrowdWave: () => void;
   showEvacPaths: boolean;
   onToggleEvacPaths: () => void;
 }
@@ -74,16 +71,14 @@ export function ControlPanel({
   onToggleXrayRoof,
   halfCutaway,
   onToggleHalfCutaway,
+  bimFrameMode,
+  onToggleBimFrameMode,
   autoRotate,
   onToggleAutoRotate,
   occupancyPercent,
   onOccupancyChange,
   roofOpenPercent,
   onRoofOpenChange,
-  ceremonyMode,
-  onToggleCeremonyMode,
-  crowdWave,
-  onToggleCrowdWave,
   showEvacPaths,
   onToggleEvacPaths,
 }: ControlPanelProps) {
@@ -95,26 +90,26 @@ export function ControlPanel({
   const structural = calculateStructuralMetrics(
     occupancyPercent,
     roofOpenPercent,
-    ceremonyMode,
+    false,
     lightingMode
   );
 
   return (
     <>
-      {/* Top-Left Brand & Status Card (Grasp + Harness UI dark surface) */}
+      {/* Top-Left Brand & Structural Engineering Card */}
       <header className="pointer-events-none fixed top-4 left-4 z-20 flex flex-col gap-2">
         <div className="pointer-events-auto rounded-2xl border border-[#26262b] bg-[#141417]/90 px-4 py-3 backdrop-blur-md shadow-2xl">
           <div className="flex items-center gap-2.5">
-            <span className="inline-flex h-2.5 w-2.5 rounded-full bg-rose-500 shadow-[0_0_10px_#f43f5e]" />
+            <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
             <h1 className="text-sm font-bold tracking-wider text-[#ededf0] uppercase">
               Vietnam 200K Stadium
             </h1>
-            <span className="rounded-md border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300">
-              LIVE 3D
+            <span className="rounded-md border border-sky-500/30 bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-sky-300">
+              BIM RC + TRUSS
             </span>
           </div>
           <p className="mt-1 text-xs text-[#a1a1aa]">
-            Kiến trúc Trống Đồng • Điều phối bởi LoopForge DevFlow
+            48 Khung BTCT (Grid A–E) • 48 Dàn kèo thép không gian 2 lớp
           </p>
           <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 font-semibold text-amber-300 border border-amber-400/20">
@@ -128,7 +123,7 @@ export function ControlPanel({
         </div>
       </header>
 
-      {/* Top-Right Artifact & Telemetry Drawer (Grasp 2-tab Drawer) */}
+      {/* Top-Right Artifact & Telemetry Drawer */}
       <aside className="fixed top-4 right-4 z-20 w-[340px] rounded-2xl border border-[#26262b] bg-[#141417]/92 backdrop-blur-md shadow-2xl overflow-hidden">
         <button
           type="button"
@@ -144,7 +139,6 @@ export function ControlPanel({
 
         {drawerOpen && (
           <div className="border-t border-[#26262b]">
-            {/* Sliding Tabs */}
             <div className="grid grid-cols-2 gap-1 bg-[#0a0a0b] p-1.5 border-b border-[#26262b]">
               <button
                 type="button"
@@ -155,7 +149,7 @@ export function ControlPanel({
                     : 'text-[#a1a1aa] hover:text-white'
                 }`}
               >
-                Kỹ thuật & Mô phỏng
+                Kỹ thuật & Kết cấu
               </button>
               <button
                 type="button"
@@ -173,7 +167,6 @@ export function ControlPanel({
 
             {activeTab === 'specs' ? (
               <div className="px-4 py-3 space-y-3 text-xs max-h-[68vh] overflow-y-auto">
-                {/* Real-time Engineering Telemetry */}
                 <div className="grid grid-cols-2 gap-2 text-[#ededf0]">
                   <div className="rounded-lg border border-[#26262b] bg-[#0a0a0b]/60 p-2">
                     <div className="text-[10px] text-[#a1a1aa] uppercase flex items-center gap-1">
@@ -194,9 +187,9 @@ export function ControlPanel({
                     </div>
                   </div>
                   <div className="rounded-lg border border-[#26262b] bg-[#0a0a0b]/60 p-2">
-                    <div className="text-[10px] text-[#a1a1aa] uppercase">Phủ bì / Đỉnh</div>
+                    <div className="text-[10px] text-[#a1a1aa] uppercase">Công-xôn thép / Gối E</div>
                     <div className="mt-0.5 font-semibold text-white">
-                      {ROOF_SPECS.outerRadiusX * 2}×{ROOF_SPECS.outerRadiusZ * 2}m · {ROOF_SPECS.peakHeight}m
+                      100m · H={ROOF_SPECS.trussRootDepth}m→{ROOF_SPECS.trussTipDepth}m
                     </div>
                   </div>
                   <div className="rounded-lg border border-[#26262b] bg-[#0a0a0b]/60 p-2">
@@ -211,7 +204,7 @@ export function ControlPanel({
                 <div className="rounded-xl border border-[#26262b] bg-[#0a0a0b]/60 p-2.5 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-semibold text-[#ededf0] uppercase">
-                      Mở mái vòm Oculus
+                      Mở mái trượt trung tâm
                     </span>
                     <span className="font-mono font-semibold text-sky-300">
                       {roofOpenPercent}%
@@ -223,7 +216,7 @@ export function ControlPanel({
                     max={100}
                     step={5}
                     value={roofOpenPercent}
-                    aria-label="Mức mở mái vòm Oculus"
+                    aria-label="Mức mở mái trượt trung tâm"
                     onChange={(e) => onRoofOpenChange(Number(e.target.value))}
                     className="w-full accent-sky-400 cursor-pointer"
                   />
@@ -271,10 +264,9 @@ export function ControlPanel({
                   </button>
                 </div>
 
-                {/* 4-Tier Breakdown */}
                 <div className="space-y-1">
                   <div className="text-[10px] font-semibold text-[#a1a1aa] uppercase">
-                    Phân bổ 4 tầng khán đài
+                    Phân bổ 4 tầng khán đài (Gối trên Grid A–E)
                   </div>
                   {STADIUM_TIERS.map((tier) => (
                     <div
@@ -333,7 +325,6 @@ export function ControlPanel({
         aria-label="Điều khiển mô hình 3D"
         className="fixed bottom-4 left-1/2 z-20 -translate-x-1/2 flex flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-[#26262b] bg-[#141417]/90 p-2 backdrop-blur-md shadow-2xl max-w-[97vw]"
       >
-        {/* Lighting Mode */}
         <div className="flex items-center gap-1 rounded-xl bg-[#0a0a0b] p-1">
           {LIGHTING_OPTIONS.map(({ mode, label, Icon }) => {
             const active = lightingMode === mode;
@@ -355,7 +346,6 @@ export function ControlPanel({
           })}
         </div>
 
-        {/* Camera Presets */}
         <div className="flex items-center gap-1 rounded-xl bg-[#0a0a0b] p-1">
           <Camera className="mx-1 h-3.5 w-3.5 text-[#a1a1aa] hidden sm:block" />
           {CAMERA_PRESETS.map((preset) => {
@@ -377,34 +367,20 @@ export function ControlPanel({
           })}
         </div>
 
-        {/* Architectural & Live Match Effects */}
+        {/* Structural BIM & Architectural Inspection Modes */}
         <div className="flex flex-wrap items-center gap-1">
           <button
             type="button"
-            onClick={onToggleCeremonyMode}
-            aria-pressed={ceremonyMode}
+            onClick={onToggleBimFrameMode}
+            aria-pressed={bimFrameMode}
             className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition border ${
-              ceremonyMode
-                ? 'border-amber-400/50 bg-amber-500/20 text-amber-300'
+              bimFrameMode
+                ? 'border-amber-400/60 bg-amber-500/20 text-amber-300'
                 : 'border-[#26262b] bg-[#0a0a0b] text-[#a1a1aa] hover:text-white'
             }`}
           >
-            <Sparkles className="h-3.5 w-3.5" />
-            Lễ Khai Mạc
-          </button>
-
-          <button
-            type="button"
-            onClick={onToggleCrowdWave}
-            aria-pressed={crowdWave}
-            className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition border ${
-              crowdWave
-                ? 'border-rose-400/50 bg-rose-500/20 text-rose-300'
-                : 'border-[#26262b] bg-[#0a0a0b] text-[#a1a1aa] hover:text-white'
-            }`}
-          >
-            <Activity className="h-3.5 w-3.5" />
-            Sóng Khán Giả
+            <Box className="h-3.5 w-3.5" />
+            Khung Kết Cấu (BIM)
           </button>
 
           <button
@@ -432,7 +408,7 @@ export function ControlPanel({
             }`}
           >
             <Scissors className="h-3.5 w-3.5" />
-            Mặt cắt
+            Mặt cắt 90°
           </button>
 
           <button

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { superEllipsePoint } from '../config/stadiumSpecs';
+import { ROOF_SPECS, superEllipsePoint } from '../config/stadiumSpecs';
 
 interface SurroundingsProps {
   halfCutaway: boolean;
@@ -8,8 +8,8 @@ interface SurroundingsProps {
 }
 
 /**
- * Creates a hollow super-ellipse stepped granite plinth ring outside the stadium wall,
- * leaving the interior pitch floor completely open at y=0.
+ * Creates a hollow super-ellipse stepped granite plinth ring outside the Grid E columns,
+ * leaving the interior pitch floor unobstructed at y=0.
  */
 function createPlinthTerraceGeometry(
   innerRx: number,
@@ -61,9 +61,9 @@ function createPlinthTerraceGeometry(
 }
 
 /**
- * Generates a 2048x2048 urban sports-complex masterplan texture with granite plaza paving,
- * inlaid Dong Son pavement motif, 4 ceremonial boulevards, manicured park lawns, and
- * a 6-lane outer ring road with lane markings & crosswalks.
+ * Generates a realistic architectural site masterplan texture (840m x 840m):
+ * neutral granite stone plazas, concrete expansion joints, pedestrian avenues,
+ * manicured park turf, and asphalt ring roads with parking stalls.
  */
 function createMasterplanGroundTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
@@ -77,92 +77,75 @@ function createMasterplanGroundTexture(): THREE.CanvasTexture {
   const size = canvas.width;
   const cx = size / 2;
   const cy = size / 2;
-  // Ground plane is 840m x 840m -> 1m ≈ 2.438 px
   const pxPerMeter = size / 840;
 
-  // Base urban park turf outside the complex
-  ctx.fillStyle = '#183428';
+  // Urban park turf
+  ctx.fillStyle = '#1e3a2a';
   ctx.fillRect(0, 0, size, size);
 
-  // Subtle park mowing grid
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
-  ctx.lineWidth = 2;
-  for (let g = 0; g < size; g += 64) {
-    ctx.beginPath();
-    ctx.moveTo(g, 0);
-    ctx.lineTo(g, size);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(0, g);
-    ctx.lineTo(size, g);
-    ctx.stroke();
-  }
-
-  // Outer 6-lane Ring Road (asphalt circle r=325m, width=32m)
+  // Outer 6-lane asphalt Ring Road (r=330m, width=30m)
   ctx.strokeStyle = '#1f2937';
-  ctx.lineWidth = 32 * pxPerMeter;
+  ctx.lineWidth = 30 * pxPerMeter;
   ctx.beginPath();
-  ctx.arc(cx, cy, 325 * pxPerMeter, 0, Math.PI * 2);
+  ctx.arc(cx, cy, 330 * pxPerMeter, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Ring road golden double center median
-  ctx.strokeStyle = '#d97706';
-  ctx.lineWidth = 2.5;
+  // Ring road double yellow center line & dashed lane lines
+  ctx.strokeStyle = '#ca8a04';
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(cx, cy, 325 * pxPerMeter, 0, Math.PI * 2);
+  ctx.arc(cx, cy, 330 * pxPerMeter, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Ring road dashed white lane lines
   ctx.strokeStyle = 'rgba(248, 250, 252, 0.55)';
   ctx.setLineDash([16, 16]);
-  ctx.lineWidth = 2;
-  for (const laneOffset of [-8, 8]) {
+  for (const laneOffset of [-7.5, 7.5]) {
     ctx.beginPath();
-    ctx.arc(cx, cy, (325 + laneOffset) * pxPerMeter, 0, Math.PI * 2);
+    ctx.arc(cx, cy, (330 + laneOffset) * pxPerMeter, 0, Math.PI * 2);
     ctx.stroke();
   }
   ctx.setLineDash([]);
 
-  // Central Ceremonial Granite Plaza Disc (r=262m)
-  ctx.fillStyle = '#334155';
+  // Granite Podium Plaza Disc (neutral architectural stone grey)
+  ctx.fillStyle = '#475569';
   ctx.beginPath();
   ctx.ellipse(cx, cy, 265 * pxPerMeter, 240 * pxPerMeter, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Concentric Granite Paving Rings & Inlaid Dong Son Rays
-  ctx.strokeStyle = 'rgba(226, 232, 240, 0.16)';
-  ctx.lineWidth = 3;
-  for (const r of [215, 235, 255]) {
+  // Concentric stone paving joints
+  ctx.strokeStyle = 'rgba(226, 232, 240, 0.14)';
+  ctx.lineWidth = 2;
+  for (const r of [212, 232, 252]) {
     ctx.beginPath();
     ctx.ellipse(cx, cy, r * pxPerMeter, (r - 24) * pxPerMeter, 0, 0, Math.PI * 2);
     ctx.stroke();
   }
 
-  // 24 subtle bronze-gold inlaid plaza sun rays
-  ctx.strokeStyle = 'rgba(245, 158, 11, 0.18)';
-  ctx.lineWidth = 4;
-  for (let i = 0; i < 24; i += 1) {
-    const a = (i / 24) * Math.PI * 2;
+  // Radial concrete expansion joints aligned with the 48 structural bays
+  ctx.strokeStyle = 'rgba(15, 23, 42, 0.25)';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 48; i += 1) {
+    const a = (i / 48) * Math.PI * 2;
     ctx.beginPath();
-    ctx.moveTo(cx + Math.cos(a) * 185 * pxPerMeter, cy + Math.sin(a) * 160 * pxPerMeter);
-    ctx.lineTo(cx + Math.cos(a) * 260 * pxPerMeter, cy + Math.sin(a) * 235 * pxPerMeter);
+    ctx.moveTo(cx + Math.cos(a) * 170 * pxPerMeter, cy + Math.sin(a) * 145 * pxPerMeter);
+    ctx.lineTo(cx + Math.cos(a) * 265 * pxPerMeter, cy + Math.sin(a) * 240 * pxPerMeter);
     ctx.stroke();
   }
 
-  // 4 Ceremonial Approach Boulevards (N, S, E, W)
-  ctx.fillStyle = '#475569';
-  const blvdW = 46 * pxPerMeter;
+  // 4 Clean Granite Pedestrian Access Boulevards (light architectural concrete)
+  ctx.fillStyle = '#64748b';
+  const blvdW = 40 * pxPerMeter;
   ctx.fillRect(cx - blvdW / 2, 0, blvdW, size);
   ctx.fillRect(0, cy - blvdW / 2, size, blvdW);
 
-  // Boulevard central red-granite carpet strips
-  ctx.fillStyle = '#7f1d1d';
-  const carpetW = 12 * pxPerMeter;
-  ctx.fillRect(cx - carpetW / 2, 0, carpetW, size);
-  ctx.fillRect(0, cy - carpetW / 2, size, carpetW);
+  // Subtle dark granite median pavers
+  ctx.fillStyle = '#334155';
+  const medianW = 8 * pxPerMeter;
+  ctx.fillRect(cx - medianW / 2, 0, medianW, size);
+  ctx.fillRect(0, cy - medianW / 2, size, medianW);
 
-  // Inner Stadium Floor Apron Base (dark slate concrete beneath pitch)
-  ctx.fillStyle = '#1e293b';
+  // Inner Stadium Concrete Sub-Base beneath the Bowl & Pitch
+  ctx.fillStyle = '#334155';
   ctx.beginPath();
   ctx.ellipse(cx, cy, 168 * pxPerMeter, 142 * pxPerMeter, 0, 0, Math.PI * 2);
   ctx.fill();
@@ -173,9 +156,6 @@ function createMasterplanGroundTexture(): THREE.CanvasTexture {
   return texture;
 }
 
-/**
- * Multi-tier lush rounded boulevard trees & plaza light columns using InstancedMesh.
- */
 function LushBoulevardLandscaping({ isNight }: { isNight: boolean }) {
   const trunkRef = useRef<THREE.InstancedMesh | null>(null);
   const lowerCanopyRef = useRef<THREE.InstancedMesh | null>(null);
@@ -185,28 +165,25 @@ function LushBoulevardLandscaping({ isNight }: { isNight: boolean }) {
 
   const trees = useMemo(() => {
     const list: Array<{ x: number; z: number; scale: number }> = [];
-    // 48 perimeter park trees
     for (let i = 0; i < 48; i += 1) {
       const a = (i / 48) * Math.PI * 2;
-      // Keep clear of the 4 main boulevards
       if (Math.abs(Math.sin(a * 2)) < 0.18) {
         continue;
       }
-      const rx = 272 + (i % 2) * 14;
-      const rz = 248 + (i % 2) * 14;
+      const rx = 276 + (i % 2) * 14;
+      const rz = 252 + (i % 2) * 14;
       list.push({
         x: Math.cos(a) * rx,
         z: Math.sin(a) * rz,
-        scale: 0.9 + (i % 3) * 0.18,
+        scale: 0.9 + (i % 3) * 0.16,
       });
     }
-    // 24 avenue trees lining the 4 ceremonial boulevards
-    for (const d of [228, 254, 282]) {
-      for (const side of [-32, 32]) {
-        list.push({ x: side, z: d, scale: 1.05 });
-        list.push({ x: side, z: -d, scale: 1.05 });
-        list.push({ x: d + 16, z: side, scale: 1.05 });
-        list.push({ x: -(d + 16), z: side, scale: 1.05 });
+    for (const d of [232, 258, 286]) {
+      for (const side of [-28, 28]) {
+        list.push({ x: side, z: d, scale: 1.0 });
+        list.push({ x: side, z: -d, scale: 1.0 });
+        list.push({ x: d + 16, z: side, scale: 1.0 });
+        list.push({ x: -(d + 16), z: side, scale: 1.0 });
       }
     }
     return list;
@@ -301,71 +278,85 @@ function LushBoulevardLandscaping({ isNight }: { isNight: boolean }) {
         <meshStandardMaterial color="#64748b" metalness={0.7} roughness={0.3} />
       </instancedMesh>
       <instancedMesh ref={lampRef} args={[undefined, undefined, 48]}>
-        <sphereGeometry args={[0.65, 8, 8]} />
+        <sphereGeometry args={[0.6, 8, 8]} />
         <meshStandardMaterial
           color="#fef3c7"
           emissive="#fbbf24"
-          emissiveIntensity={isNight ? 2.2 : 0.2}
+          emissiveIntensity={isNight ? 2.0 : 0.15}
         />
       </instancedMesh>
     </group>
   );
 }
 
-/**
- * Renders the Masterplan urban complex: stepped granite stadium plinth, granite plaza,
- * 4 ceremonial boulevards, reflecting water basins, ring road, and lush landscaping.
- */
 export function Surroundings({ halfCutaway, isNight }: SurroundingsProps) {
   const startAngle = halfCutaway ? Math.PI * 0.52 : 0;
   const endAngle = halfCutaway ? Math.PI * 1.98 : Math.PI * 2;
   const groundTexture = useMemo(() => createMasterplanGroundTexture(), []);
 
-  // 3 stepped monumental granite terraces wrapping cleanly around the outer curtain wall
+  // 3 stepped concrete/granite terraces wrapping cleanly around Grid E (166x140)
   const plinthTerraces = useMemo(
     () => [
-      createPlinthTerraceGeometry(165, 139, 204, 178, 1.1, startAngle, endAngle),
-      createPlinthTerraceGeometry(165, 139, 192, 166, 2.2, startAngle, endAngle),
-      createPlinthTerraceGeometry(165, 139, 180, 154, 3.2, startAngle, endAngle),
+      createPlinthTerraceGeometry(
+        ROOF_SPECS.supportRadiusX,
+        ROOF_SPECS.supportRadiusZ,
+        204,
+        178,
+        1.0,
+        startAngle,
+        endAngle
+      ),
+      createPlinthTerraceGeometry(
+        ROOF_SPECS.supportRadiusX,
+        ROOF_SPECS.supportRadiusZ,
+        192,
+        166,
+        2.0,
+        startAngle,
+        endAngle
+      ),
+      createPlinthTerraceGeometry(
+        ROOF_SPECS.supportRadiusX,
+        ROOF_SPECS.supportRadiusZ,
+        180,
+        154,
+        2.8,
+        startAngle,
+        endAngle
+      ),
     ],
     [startAngle, endAngle]
   );
 
   return (
     <group name="stadium-masterplan">
-      {/* Masterplan Urban Complex Ground */}
+      {/* Site Masterplan Ground */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
         <planeGeometry args={[840, 840]} />
         <meshStandardMaterial map={groundTexture} roughness={0.88} metalness={0.05} />
       </mesh>
 
-      {/* Stepped Monumental Granite Stadium Plinth */}
+      {/* Stepped Granite Podium Plinth */}
       {plinthTerraces.map((geo, idx) => (
         <mesh key={`plinth-${idx}`} geometry={geo} receiveShadow castShadow>
           <meshStandardMaterial
-            color={idx === 2 ? '#64748b' : idx === 1 ? '#475569' : '#334155'}
-            roughness={0.8}
+            color={idx === 2 ? '#94a3b8' : idx === 1 ? '#64748b' : '#475569'}
+            roughness={0.82}
           />
         </mesh>
       ))}
 
-      {/* Symmetrical Reflecting Pools along the Ceremonial Plaza */}
+      {/* Reflecting Pools */}
       {[
         [-84, 198],
         [84, 198],
         [-84, -198],
         [84, -198],
       ].map(([px, pz], idx) => (
-        <group key={idx} position={[px, 0.04, pz]}>
-          <mesh rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[68, 22]} />
-            <meshStandardMaterial color="#0284c7" metalness={0.88} roughness={0.1} />
-          </mesh>
-          <mesh position={[0, 0.08, 0]}>
-            <boxGeometry args={[70, 0.25, 24]} />
-            <meshStandardMaterial color="#475569" roughness={0.7} wireframe={false} visible={false} />
-          </mesh>
-        </group>
+        <mesh key={idx} rotation={[-Math.PI / 2, 0, 0]} position={[px, 0.04, pz]}>
+          <planeGeometry args={[68, 22]} />
+          <meshStandardMaterial color="#0369a1" metalness={0.85} roughness={0.12} />
+        </mesh>
       ))}
 
       <LushBoulevardLandscaping isNight={isNight} />

@@ -1,11 +1,10 @@
-import { useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useMemo } from 'react';
 import * as THREE from 'three';
 import { PITCH_SPECS } from '../config/stadiumSpecs';
 
 /**
  * Generates a high-resolution procedural FIFA pitch texture with alternating
- * mowing stripes, Dong Son center emblem, and regulation white field markings.
+ * mowing stripes and crisp regulation field markings.
  */
 function createPitchTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
@@ -23,7 +22,7 @@ function createPitchTexture(): THREE.CanvasTexture {
     ctx.fillRect(i * stripeWidth, 0, stripeWidth + 1, canvas.height);
   }
 
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.015)';
   for (let i = 0; i < 4000; i += 1) {
     const x = (i * 73) % canvas.width;
     const y = (i * 137) % canvas.height;
@@ -40,40 +39,7 @@ function createPitchTexture(): THREE.CanvasTexture {
   const midY = padY + fieldH / 2;
   const centerR = PITCH_SPECS.centerCircleRadius * scaleX;
 
-  ctx.save();
-  ctx.translate(midX, midY);
-  ctx.strokeStyle = 'rgba(251, 191, 36, 0.16)';
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.arc(0, 0, centerR * 0.78, 0, Math.PI * 2);
-  ctx.stroke();
-
-  for (let r = 0; r < 16; r += 1) {
-    const a = (r / 16) * Math.PI * 2;
-    ctx.beginPath();
-    ctx.moveTo(Math.cos(a) * (centerR * 0.42), Math.sin(a) * (centerR * 0.42));
-    ctx.lineTo(Math.cos(a) * (centerR * 0.76), Math.sin(a) * (centerR * 0.76));
-    ctx.stroke();
-  }
-
-  ctx.fillStyle = 'rgba(251, 191, 36, 0.16)';
-  ctx.beginPath();
-  for (let p = 0; p < 10; p += 1) {
-    const rad = p % 2 === 0 ? centerR * 0.38 : centerR * 0.16;
-    const ang = (p * Math.PI) / 5 - Math.PI / 2;
-    const px = Math.cos(ang) * rad;
-    const py = Math.sin(ang) * rad;
-    if (p === 0) {
-      ctx.moveTo(px, py);
-    } else {
-      ctx.lineTo(px, py);
-    }
-  }
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.92)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.94)';
   ctx.lineWidth = 6;
   ctx.strokeRect(padX, padY, fieldW, fieldH);
 
@@ -129,8 +95,36 @@ function GoalFrame({ positionX, flip }: { positionX: number; flip: boolean }) {
       </mesh>
       <mesh position={[dir * (d / 2), h / 2, 0]}>
         <boxGeometry args={[d, h, PITCH_SPECS.goalWidth]} />
-        <meshStandardMaterial color="#e2e8f0" transparent opacity={0.22} wireframe />
+        <meshStandardMaterial color="#e2e8f0" transparent opacity={0.25} wireframe />
       </mesh>
+    </group>
+  );
+}
+
+function CornerFlags() {
+  const halfL = PITCH_SPECS.length / 2;
+  const halfW = PITCH_SPECS.width / 2;
+  const corners: Array<[number, number]> = [
+    [-halfL, -halfW],
+    [-halfL, halfW],
+    [halfL, -halfW],
+    [halfL, halfW],
+  ];
+
+  return (
+    <group name="corner-flags">
+      {corners.map(([x, z], idx) => (
+        <group key={idx} position={[x, 0, z]}>
+          <mesh position={[0, 0.75, 0]}>
+            <cylinderGeometry args={[0.04, 0.04, 1.5, 6]} />
+            <meshStandardMaterial color="#f8fafc" />
+          </mesh>
+          <mesh position={[0.2, 1.35, 0]}>
+            <boxGeometry args={[0.4, 0.25, 0.04]} />
+            <meshStandardMaterial color="#ef4444" />
+          </mesh>
+        </group>
+      ))}
     </group>
   );
 }
@@ -139,20 +133,20 @@ function TeamDugouts() {
   return (
     <group name="team-dugouts">
       {[-18, 18].map((x) => (
-        <group key={x} position={[x, 0, 39]}>
+        <group key={x} position={[x, 0, 39.5]}>
           <mesh position={[0, 1.1, 0]} castShadow>
             <boxGeometry args={[12, 2.2, 2.4]} />
             <meshPhysicalMaterial
-              color="#38bdf8"
+              color="#94a3b8"
               transparent
-              opacity={0.45}
-              metalness={0.6}
-              roughness={0.15}
+              opacity={0.42}
+              metalness={0.5}
+              roughness={0.18}
             />
           </mesh>
           <mesh position={[0, 0.4, 0]}>
             <boxGeometry args={[11.6, 0.6, 1.8]} />
-            <meshStandardMaterial color="#dc2626" roughness={0.5} />
+            <meshStandardMaterial color="#334155" roughness={0.55} />
           </mesh>
         </group>
       ))}
@@ -160,69 +154,23 @@ function TeamDugouts() {
   );
 }
 
-function AnimatedPlayersAndBall() {
-  const playerRefs = useRef<Array<THREE.Mesh | null>>([]);
-  const ballRef = useRef<THREE.Mesh | null>(null);
-
-  const players = useMemo(() => {
-    const list: Array<{ baseX: number; baseZ: number; team: 'red' | 'white'; phase: number }> = [];
-    for (let i = 0; i < 11; i += 1) {
-      const lane = (i % 4) - 1.5;
-      const depth = Math.floor(i / 4);
-      list.push({
-        baseX: -34 + depth * 14,
-        baseZ: lane * 14,
-        team: 'red',
-        phase: i * 0.7,
-      });
-      list.push({
-        baseX: 34 - depth * 14,
-        baseZ: -lane * 14,
-        team: 'white',
-        phase: i * 0.9 + 1.4,
-      });
-    }
-    return list;
-  }, []);
-
-  useFrame(({ clock }) => {
-    const t = clock.getElapsedTime();
-    players.forEach((p, idx) => {
-      const mesh = playerRefs.current[idx];
-      if (!mesh) {
-        return;
-      }
-      mesh.position.x = p.baseX + Math.sin(t * 0.8 + p.phase) * 3.8;
-      mesh.position.z = p.baseZ + Math.cos(t * 1.0 + p.phase) * 3.0;
-    });
-
-    if (ballRef.current) {
-      ballRef.current.position.x = Math.sin(t * 1.2) * 24;
-      ballRef.current.position.z = Math.cos(t * 1.6) * 16;
-      // Low, gravity-realistic passes along the grass
-      ballRef.current.position.y = 0.28 + Math.abs(Math.sin(t * 4.2)) * 0.55;
-    }
-  });
-
+function PitchLedPerimeter() {
+  const boardDistX = 59.5;
+  const boardDistZ = 37.5;
   return (
-    <group name="live-match-players">
-      {players.map((p, idx) => (
-        <mesh
-          key={idx}
-          ref={(el) => {
-            playerRefs.current[idx] = el;
-          }}
-          position={[p.baseX, 0.95, p.baseZ]}
-          castShadow
-        >
-          <capsuleGeometry args={[0.35, 1.0, 4, 8]} />
-          <meshStandardMaterial color={p.team === 'red' ? '#ef4444' : '#f8fafc'} roughness={0.5} />
+    <group name="pitch-led-perimeter">
+      {[-boardDistZ, boardDistZ].map((z, idx) => (
+        <mesh key={`lz-${idx}`} position={[0, 0.55, z]}>
+          <boxGeometry args={[114, 0.95, 0.35]} />
+          <meshStandardMaterial color="#0f172a" emissive="#1e293b" emissiveIntensity={0.3} />
         </mesh>
       ))}
-      <mesh ref={ballRef} position={[0, 0.28, 0]} castShadow>
-        <sphereGeometry args={[0.25, 12, 12]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.35} />
-      </mesh>
+      {[-boardDistX, boardDistX].map((x, idx) => (
+        <mesh key={`lx-${idx}`} position={[x, 0.55, 0]}>
+          <boxGeometry args={[0.35, 0.95, 74]} />
+          <meshStandardMaterial color="#0f172a" emissive="#1e293b" emissiveIntensity={0.3} />
+        </mesh>
+      ))}
     </group>
   );
 }
@@ -232,19 +180,19 @@ export function Pitch() {
 
   return (
     <group name="fifa-pitch">
-      {/* Technical apron / athletics surround */}
+      {/* Concrete technical apron */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
-        <planeGeometry args={[PITCH_SPECS.apronLength + 16, PITCH_SPECS.apronWidth + 16]} />
-        <meshStandardMaterial color="#1e293b" roughness={0.85} />
+        <planeGeometry args={[PITCH_SPECS.apronLength + 20, PITCH_SPECS.apronWidth + 20]} />
+        <meshStandardMaterial color="#334155" roughness={0.85} />
       </mesh>
 
-      {/* Red track / technical perimeter */}
+      {/* Synthetic perimeter turf surround */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]} receiveShadow>
         <planeGeometry args={[PITCH_SPECS.apronLength, PITCH_SPECS.apronWidth]} />
-        <meshStandardMaterial color="#7f1d1d" roughness={0.8} />
+        <meshStandardMaterial color="#14532d" roughness={0.85} />
       </mesh>
 
-      {/* FIFA grass turf */}
+      {/* FIFA grass pitch */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.08, 0]} receiveShadow>
         <planeGeometry args={[PITCH_SPECS.length + 8, PITCH_SPECS.width + 6]} />
         <meshStandardMaterial map={pitchTexture} roughness={0.78} metalness={0.02} />
@@ -252,8 +200,9 @@ export function Pitch() {
 
       <GoalFrame positionX={-PITCH_SPECS.length / 2} flip={true} />
       <GoalFrame positionX={PITCH_SPECS.length / 2} flip={false} />
+      <CornerFlags />
       <TeamDugouts />
-      <AnimatedPlayersAndBall />
+      <PitchLedPerimeter />
     </group>
   );
 }
