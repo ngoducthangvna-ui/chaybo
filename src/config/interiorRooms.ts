@@ -624,3 +624,60 @@ export function stepExplorerAvatar(
     speedMps: Number(Math.hypot(vx, vy).toFixed(2)),
   };
 }
+
+export const FLOOR_ELEVATION_Y: Record<FloorLevelId, number> = {
+  B0: 0.25,
+  L1: 10.55,
+  L2: 17.85,
+  L3: 32.85,
+};
+
+export type Walkthrough3DCameraMode = 'follow3d' | 'fps3d' | 'cutaway3d';
+
+export interface Walkthrough3DPose {
+  readonly avatarPos: readonly [number, number, number];
+  readonly cameraPos: readonly [number, number, number];
+  readonly targetPos: readonly [number, number, number];
+}
+
+/**
+ * Computes exact 3D avatar world position and synchronized interior camera pose
+ * for 1st-person (FPS), 3rd-person follow, and architectural dollhouse cutaway views.
+ */
+export function getRoom3dWalkthroughPose(
+  room: StadiumRoomSpec,
+  avatarX: number,
+  avatarY: number,
+  heading: number,
+  mode: Walkthrough3DCameraMode
+): Walkthrough3DPose {
+  const baseY = FLOOR_ELEVATION_Y[room.floor];
+  const fwdX = Math.cos(heading);
+  const fwdZ = Math.sin(heading);
+  const avatarPos: [number, number, number] = [avatarX, baseY, avatarY];
+
+  if (mode === 'fps3d') {
+    return {
+      avatarPos,
+      cameraPos: [avatarX, baseY + 1.72, avatarY],
+      targetPos: [avatarX + fwdX * 8, baseY + 1.55, avatarY + fwdZ * 8],
+    };
+  }
+
+  if (mode === 'cutaway3d') {
+    const cx = room.bounds.x + room.bounds.w * 0.5;
+    const cz = room.bounds.y + room.bounds.h * 0.5;
+    return {
+      avatarPos,
+      cameraPos: [cx + 16, baseY + 14, cz + 18],
+      targetPos: [cx, baseY + 1.4, cz],
+    };
+  }
+
+  return {
+    avatarPos,
+    cameraPos: [avatarX - fwdX * 6.5, baseY + 3.2, avatarY - fwdZ * 6.5],
+    targetPos: [avatarX + fwdX * 5, baseY + 1.3, avatarY + fwdZ * 5],
+  };
+}
+

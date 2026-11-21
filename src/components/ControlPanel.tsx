@@ -9,6 +9,7 @@ import {
   ChevronUp,
   Compass,
   Eye,
+  Footprints,
   GitBranch,
   Layers,
   Moon,
@@ -59,6 +60,8 @@ interface ControlPanelProps {
   onToggleLiveSim: () => void;
   explorer2dOpen: boolean;
   onToggleExplorer2d: () => void;
+  walkthrough3dActive: boolean;
+  onEnterWalkthrough3d: () => void;
 }
 
 const LIGHTING_OPTIONS: Array<{
@@ -94,6 +97,8 @@ export function ControlPanel({
   onToggleLiveSim,
   explorer2dOpen,
   onToggleExplorer2d,
+  walkthrough3dActive,
+  onEnterWalkthrough3d,
 }: ControlPanelProps) {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<'specs' | 'complex' | 'sop'>('specs');
@@ -293,6 +298,14 @@ export function ControlPanel({
                   >
                     <Compass className="h-3.5 w-3.5" />
                     Mở Mặt Bằng 2D Đi Bộ Nội Khu (16 Phòng)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onEnterWalkthrough3d}
+                    className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold transition border border-emerald-400/50 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
+                  >
+                    <Footprints className="h-3.5 w-3.5" />
+                    Đi Bộ 3D Nội Khu (16 Phòng)
                   </button>
                 </div>
 
@@ -522,6 +535,16 @@ export function ControlPanel({
           >
             <Compass className="h-3.5 w-3.5" />
             Khám Phá 2D (16 Phòng Nội Khu)
+          </button>
+
+          <button
+            type="button"
+            onClick={onEnterWalkthrough3d}
+            aria-pressed={walkthrough3dActive}
+            className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition border border-emerald-400/50 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
+          >
+            <Footprints className="h-3.5 w-3.5" />
+            Đi Bộ 3D Nội Khu (16 Phòng)
           </button>
 
           <button

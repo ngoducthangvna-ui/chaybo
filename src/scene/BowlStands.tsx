@@ -18,6 +18,7 @@ interface BowlStandsProps {
   occupancyPercent: number;
   showEvacPaths: boolean;
   liveSimActive?: boolean;
+  walkthrough3dActive?: boolean;
 }
 
 /**
@@ -481,7 +482,8 @@ function RCFrameBents({
     };
 
     for (let i = 0; i < bentCount; i += 1) {
-      const angle = (i / bentCount) * Math.PI * 2;
+      // Half-bay offset keeps cardinal Players' Tunnel, VVIP Lounge, and Skywalk axes column-free
+      const angle = ((i + 0.5) / bentCount) * Math.PI * 2;
       if (angle < startAngle - 0.02 || angle > endAngle + 0.02) {
         continue;
       }
@@ -519,7 +521,7 @@ function RCFrameBents({
       addBeam(new THREE.Vector3(cx, 32.5, cz), new THREE.Vector3(ex, 32.5, ez), 0.95, 1.1);
       addBeam(new THREE.Vector3(dx, 52.5, dz), new THREE.Vector3(ex, 52.5, ez), 0.95, 1.1);
 
-      const nextAngle = ((i + 1) / bentCount) * Math.PI * 2;
+      const nextAngle = ((i + 1.5) / bentCount) * Math.PI * 2;
       if (nextAngle <= endAngle + 0.03) {
         const [ex2, ez2] = superEllipsePoint(nextAngle, STRUCTURAL_GRID_LINES[4].rx, STRUCTURAL_GRID_LINES[4].rz);
         for (const elev of [17.5, 32.5, 52.5, 68.0]) {
@@ -1300,6 +1302,7 @@ export function BowlStands({
   occupancyPercent,
   showEvacPaths,
   liveSimActive = true,
+  walkthrough3dActive = false,
 }: BowlStandsProps) {
   const startAngle = halfCutaway ? Math.PI * 0.45 : 0;
   const endAngle = halfCutaway ? Math.PI * 1.95 : Math.PI * 2;
@@ -1398,7 +1401,9 @@ export function BowlStands({
 
       <VerticalCirculationCores startAngle={startAngle} endAngle={endAngle} />
 
-      <UnderBowlInteriorRooms3D startAngle={startAngle} endAngle={endAngle} />
+      {!walkthrough3dActive && (
+        <UnderBowlInteriorRooms3D startAngle={startAngle} endAngle={endAngle} />
+      )}
 
       {!bimFrameMode && occupancyPercent > 0 && (
         <LiveSeatedSpectatorCrowd
@@ -1451,7 +1456,7 @@ export function BowlStands({
         <meshStandardMaterial color="#3f3f46" roughness={0.82} side={THREE.DoubleSide} />
       </mesh>
 
-      {!bimFrameMode &&
+      {!bimFrameMode && !walkthrough3dActive &&
         serviceVolumes.map((volGeo, idx) => (
           <mesh key={`svc-${idx}`} geometry={volGeo} receiveShadow>
             <meshStandardMaterial color="#a8a29e" roughness={0.78} side={THREE.DoubleSide} />
@@ -1463,8 +1468,8 @@ export function BowlStands({
           <meshStandardMaterial
             color="#d6d3d1"
             roughness={0.78}
-            transparent={bimFrameMode}
-            opacity={bimFrameMode ? 0.35 : 1}
+            transparent={bimFrameMode || walkthrough3dActive}
+            opacity={bimFrameMode ? 0.35 : walkthrough3dActive ? 0.22 : 1}
             side={THREE.DoubleSide}
           />
         </mesh>
@@ -1472,15 +1477,15 @@ export function BowlStands({
 
       {STADIUM_TIERS.map((tier, idx) => (
         <group key={tier.id} name={tier.id}>
-          <mesh geometry={tierGeos[idx]} castShadow={!bimFrameMode} receiveShadow>
+          <mesh geometry={tierGeos[idx]} castShadow={!bimFrameMode && !walkthrough3dActive} receiveShadow>
             <meshStandardMaterial
               map={seatingPbr.map}
               bumpMap={seatingPbr.bumpMap}
               bumpScale={0.28}
               roughness={0.68}
               metalness={0.06}
-              transparent={bimFrameMode}
-              opacity={bimFrameMode ? 0.22 : 1}
+              transparent={bimFrameMode || walkthrough3dActive}
+              opacity={bimFrameMode || walkthrough3dActive ? 0.22 : 1}
               side={THREE.DoubleSide}
             />
           </mesh>

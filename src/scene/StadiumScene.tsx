@@ -13,6 +13,14 @@ import { Pitch } from './Pitch';
 import { BowlStands } from './BowlStands';
 import { RoofStructure } from './RoofStructure';
 import { Surroundings } from './Surroundings';
+import { InteriorRooms3D } from './InteriorRooms3D';
+import {
+  type FloorLevelId,
+  STADIUM_INTERIOR_ROOMS,
+  type StadiumRoomSpec,
+  type Walkthrough3DCameraMode,
+  getRoom3dWalkthroughPose,
+} from '../config/interiorRooms';
 
 interface StadiumSceneProps {
   lightingMode: LightingMode;
@@ -25,6 +33,11 @@ interface StadiumSceneProps {
   roofOpenPercent: number;
   showEvacPaths: boolean;
   liveSimActive: boolean;
+  walkthrough3dActive?: boolean;
+  walkthroughFloor?: FloorLevelId;
+  walkthroughCameraMode?: Walkthrough3DCameraMode;
+  walkthroughAvatar?: { x: number; y: number; heading: number; speedMps: number };
+  walkthroughRoom?: StadiumRoomSpec | null;
 }
 
 interface ErrorBoundaryState {
@@ -169,9 +182,17 @@ function SkyDome({ topColor, horizonColor }: { topColor: string; horizonColor: s
 function CameraRig({
   presetId,
   autoRotate,
+  walkthrough3dActive,
+  walkthroughCameraMode,
+  walkthroughAvatar,
+  walkthroughRoom,
 }: {
   presetId: CameraPresetId;
   autoRotate: boolean;
+  walkthrough3dActive: boolean;
+  walkthroughCameraMode: Walkthrough3DCameraMode;
+  walkthroughAvatar: { x: number; y: number; heading: number; speedMps: number };
+  walkthroughRoom: StadiumRoomSpec;
 }) {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const { camera } = useThree();
@@ -180,22 +201,45 @@ function CameraRig({
   const transitioning = useRef(false);
 
   useEffect(() => {
+    if (walkthrough3dActive) return;
     const preset = getCameraPreset(presetId);
     desiredPos.current.set(...preset.position);
     desiredTarget.current.set(...preset.target);
     transitioning.current = true;
-  }, [presetId]);
+  }, [presetId, walkthrough3dActive]);
+
+  useEffect(() => {
+    if (!walkthrough3dActive) return;
+    const pose = getRoom3dWalkthroughPose(
+      walkthroughRoom,
+      walkthroughAvatar.x,
+      walkthroughAvatar.y,
+      walkthroughAvatar.heading,
+      walkthroughCameraMode
+    );
+    desiredPos.current.set(...pose.cameraPos);
+    desiredTarget.current.set(...pose.targetPos);
+    transitioning.current = true;
+  }, [
+    walkthrough3dActive,
+    walkthroughCameraMode,
+    walkthroughAvatar.x,
+    walkthroughAvatar.y,
+    walkthroughAvatar.heading,
+    walkthroughRoom,
+  ]);
 
   useFrame((_, delta) => {
     if (!transitioning.current || !controlsRef.current) {
       return;
     }
-    const step = Math.min(1, delta * 3.5);
+    const speedMult = walkthrough3dActive ? 9.5 : 3.5;
+    const step = Math.min(1, delta * speedMult);
     camera.position.lerp(desiredPos.current, step);
     controlsRef.current.target.lerp(desiredTarget.current, step);
     controlsRef.current.update();
 
-    if (camera.position.distanceTo(desiredPos.current) < 0.8) {
+    if (camera.position.distanceTo(desiredPos.current) < (walkthrough3dActive ? 0.08 : 0.8)) {
       transitioning.current = false;
     }
   });
@@ -206,11 +250,11 @@ function CameraRig({
       makeDefault
       enableDamping
       dampingFactor={0.07}
-      autoRotate={autoRotate}
+      autoRotate={autoRotate && !walkthrough3dActive}
       autoRotateSpeed={0.35}
-      minDistance={28}
+      minDistance={walkthrough3dActive ? 0.8 : 28}
       maxDistance={760}
-      maxPolarAngle={Math.PI / 2 - 0.03}
+      maxPolarAngle={walkthrough3dActive ? Math.PI - 0.15 : Math.PI / 2 - 0.03}
       onStart={() => {
         transitioning.current = false;
       }}
@@ -229,10 +273,16 @@ export function StadiumScene({
   roofOpenPercent,
   showEvacPaths,
   liveSimActive,
+  walkthrough3dActive = false,
+  walkthroughFloor = 'B0',
+  walkthroughCameraMode = 'follow3d',
+  walkthroughAvatar = { x: -110, y: -33, heading: -Math.PI / 2, speedMps: 0 },
+  walkthroughRoom = null,
 }: StadiumSceneProps) {
   const lighting = getLightingConfig(lightingMode);
-  const showSightline = cameraPreset === 'sky' || cameraPreset === 'vip';
+  const showSightline = !walkthrough3dActive && (cameraPreset === 'sky' || cameraPreset === 'vip');
   const isNight = lightingMode !== 'day';
+  const activeRoomForRig = walkthroughRoom ?? STADIUM_INTERIOR_ROOMS[0];
 
   return (
     <SceneErrorBoundary>
@@ -339,9 +389,19 @@ export function StadiumScene({
           occupancyPercent={occupancyPercent}
           showEvacPaths={showEvacPaths}
           liveSimActive={liveSimActive}
+          walkthrough3dActive={walkthrough3dActive}
+        />
+        <InteriorRooms3D
+          activeFloor={walkthroughFloor}
+          walkthrough3dActive={walkthrough3dActive}
+          avatarX={walkthroughAvatar.x}
+          avatarY={walkthroughAvatar.y}
+          avatarHeading={walkthroughAvatar.heading}
+          avatarSpeed={walkthroughAvatar.speedMps}
+          activeRoomId={activeRoomForRig.id}
         />
         <RoofStructure
-          xrayRoof={xrayRoof}
+          xrayRoof={xrayRoof || walkthrough3dActive}
           halfCutaway={halfCutaway}
           bimFrameMode={bimFrameMode}
           floodlightIntensity={lighting.floodlightIntensity}
@@ -362,7 +422,14 @@ export function StadiumScene({
           />
         )}
 
-        <CameraRig presetId={cameraPreset} autoRotate={autoRotate} />
+        <CameraRig
+          presetId={cameraPreset}
+          autoRotate={autoRotate}
+          walkthrough3dActive={walkthrough3dActive}
+          walkthroughCameraMode={walkthroughCameraMode}
+          walkthroughAvatar={walkthroughAvatar}
+          walkthroughRoom={activeRoomForRig}
+        />
       </Canvas>
     </SceneErrorBoundary>
   );

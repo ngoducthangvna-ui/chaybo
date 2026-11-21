@@ -8,6 +8,7 @@ import {
   Compass,
   Columns2,
   DoorOpen,
+  Footprints,
   Layers,
   Maximize2,
   Navigation,
@@ -37,6 +38,7 @@ interface FloorplanExplorer2DProps {
   onToggleSplitMode: () => void;
   onClose: () => void;
   onSync3dCamera: (preset: CameraPresetId, enableCutaway: boolean) => void;
+  onOpenWalkthrough3d: (room: StadiumRoomSpec) => void;
 }
 
 const CATEGORY_COLORS: Record<StadiumRoomSpec['category'], string> = {
@@ -83,6 +85,7 @@ export function FloorplanExplorer2D({
   onToggleSplitMode,
   onClose,
   onSync3dCamera,
+  onOpenWalkthrough3d,
 }: FloorplanExplorer2DProps) {
   const [activeFloor, setActiveFloor] = useState<FloorLevelId>('B0');
   const [zoomMode, setZoomMode] = useState<'follow' | 'blueprint'>('follow');
@@ -629,6 +632,15 @@ export function FloorplanExplorer2D({
 
           <button
             type="button"
+            onClick={() => onOpenWalkthrough3d(activeRoom)}
+            className="inline-flex items-center gap-1 rounded-lg border border-emerald-400/50 bg-emerald-500/20 px-2.5 py-1 text-[11px] font-semibold text-emerald-300 hover:bg-emerald-500/30"
+          >
+            <Footprints className="h-3 w-3" />
+            Lên 3D Thực Tế
+          </button>
+
+          <button
+            type="button"
             onClick={onClose}
             aria-label="Đóng khám phá 2D"
             className="inline-flex items-center gap-1 rounded-lg border border-rose-500/35 bg-rose-500/15 px-2.5 py-1 text-[11px] font-medium text-rose-300 hover:bg-rose-500/25"
@@ -788,8 +800,16 @@ export function FloorplanExplorer2D({
 
               <button
                 type="button"
+                onClick={() => onOpenWalkthrough3d(activeRoom)}
+                className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-500/20 border border-emerald-400/50 py-1.5 text-[11px] font-semibold text-emerald-300 hover:bg-emerald-500/30 transition"
+              >
+                <Footprints className="h-3.5 w-3.5" />
+                Lên 3D Thực Tế (Đi Bộ Trong Phòng 3D)
+              </button>
+              <button
+                type="button"
                 onClick={() => onSync3dCamera(activeRoom.camera3dPreset, true)}
-                className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg bg-amber-500/20 border border-amber-400/40 py-1.5 text-[11px] font-semibold text-amber-300 hover:bg-amber-500/30 transition"
+                className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg bg-amber-500/20 border border-amber-400/40 py-1.5 text-[11px] font-semibold text-amber-300 hover:bg-amber-500/30 transition"
               >
                 <Box className="h-3.5 w-3.5" />
                 Đồng Bộ Góc Nhìn 3D (Mặt Cắt)

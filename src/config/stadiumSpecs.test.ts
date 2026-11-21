@@ -1,7 +1,9 @@
 import {
+  FLOOR_ELEVATION_Y,
   FLOOR_LEVEL_SPECS,
   STADIUM_INTERIOR_ROOMS,
   findRoomAtPoint,
+  getRoom3dWalkthroughPose,
   getRoomsByFloor,
   isDoorwayOpen,
   stepExplorerAvatar,
@@ -180,5 +182,23 @@ describe('stadiumSpecs', () => {
     const clamped = stepExplorerAvatar({ x: 194.8, y: 171.8 }, { dx: 1, dy: 1 }, 0.1);
     expect(clamped.x).toBe(195);
     expect(clamped.y).toBe(172);
+  });
+
+  it('computes accurate 3D floor elevations and 3D walkthrough camera poses for all 16 rooms', () => {
+    expect(FLOOR_ELEVATION_Y.B0).toBeLessThan(FLOOR_ELEVATION_Y.L1);
+    expect(FLOOR_ELEVATION_Y.L1).toBeLessThan(FLOOR_ELEVATION_Y.L2);
+    expect(FLOOR_ELEVATION_Y.L2).toBeLessThan(FLOOR_ELEVATION_Y.L3);
+
+    for (const room of STADIUM_INTERIOR_ROOMS) {
+      const cx = room.bounds.x + room.bounds.w * 0.5;
+      const cz = room.bounds.y + room.bounds.h * 0.5;
+      const follow = getRoom3dWalkthroughPose(room, cx, cz, 0, 'follow3d');
+      const fps = getRoom3dWalkthroughPose(room, cx, cz, 0, 'fps3d');
+      const cutaway = getRoom3dWalkthroughPose(room, cx, cz, 0, 'cutaway3d');
+
+      expect(follow.avatarPos[1]).toBe(FLOOR_ELEVATION_Y[room.floor]);
+      expect(fps.cameraPos[1]).toBeCloseTo(FLOOR_ELEVATION_Y[room.floor] + 1.72, 2);
+      expect(cutaway.cameraPos[1]).toBeCloseTo(FLOOR_ELEVATION_Y[room.floor] + 14, 2);
+    }
   });
 });

@@ -1,30 +1,31 @@
 <!-- devflow-template: solo-report@1.1 -->
-# 小型任务报告 — Vietnam 200K 2D Free-Roam CAD/BIM Interior Explorer & Under-Bowl Rooms
+# 小型任务报告 — Vietnam 200K Full 3D Furnished Rooms & 3D Free-Roam Walkthrough
 
 ## 范围
 
-Xây dựng chế độ trải nghiệm **Mặt bằng CAD/BIM 2D Di Chuyển Tự Do (`FloorplanExplorer2D`)** qua **4 tầng (`B0 +0.0m`, `L1 +10.5m`, `L2 +17.8m`, `L3 +32.8m`)** với **16 phòng chức năng đầy đủ nội thất kỹ thuật** tại `d:\chaybo`, tích hợp đồng bộ chia đôi 2D + 3D và vách ngăn buồng phòng 3D dưới khán đài.
+Nâng cấp toàn bộ 16 phòng nội khu qua 4 tầng (`B0 +0.0m`, `L1 +10.5m`, `L2 +17.8m`, `L3 +32.8m`) thành không gian kiến trúc 3D thực sự (`InteriorRooms3D`) kèm chế độ **Đi Bộ 3D Nội Khu (`Walkthrough3DHud`)** với 3 góc nhìn (`Follow 3D`, `FPS 3D`, `Dollhouse`) tại `d:\chaybo`.
 
 ## 计划
 
-1. Tạo `src/config/interiorRooms.ts` định nghĩa 4 tầng (`FLOOR_LEVEL_SPECS`), 16 phòng chức năng (`STADIUM_INTERIOR_ROOMS`), công thức động học di chuyển `stepExplorerAvatar()`, phát hiện vào phòng `findRoomAtPoint()` và mở cửa trượt tự động `isDoorwayOpen()`. Thêm 3 unit tests trong `src/config/stadiumSpecs.test.ts` (`15/15` tests).
-2. Xây dựng `src/components/FloorplanExplorer2D.tsx` render mặt bằng CAD/BIM 2D thời gian thực 60 FPS với trục kết cấu A–E, lõi thang máy, từng chi tiết nội thất (25 locker, bể sục có gợn nước, bàn chiến thuật, cổng RFID, Video Wall AI/VAR, bàn tiệc VVIP, trạm biến áp), NPC di chuyển trong phòng, cửa trượt cảm biến tiệm cận và avatar kỹ sư điều khiển qua WASD / Phím mũi tên / Click-to-Walk / D-Pad (chế độ Cận cảnh đi bộ hoặc Tổng mặt bằng, chia đôi 2D+3D hoặc Toàn màn hình 2D).
-3. Thêm `UnderBowlInteriorRooms3D` (vách chia buồng 3D dưới khán đài & Cổng Đường hầm Cầu thủ phía Tây) trong `src/scene/BowlStands.tsx`, nối trạng thái 2D/3D vào `src/App.tsx` và nút `Khám Phá 2D (16 Phòng Nội Khu)` vào `src/components/ControlPanel.tsx`.
+1. Thêm `FLOOR_ELEVATION_Y` và hàm tính tọa độ camera 3D thuần `getRoom3dWalkthroughPose()` vào `src/config/interiorRooms.ts`; thêm unit test kiểm chứng trong `src/config/stadiumSpecs.test.ts` (`16/16` tests).
+2. Xây dựng `src/scene/InteriorRooms3D.tsx` dựng 3D toàn bộ 16 phòng (vách tường mở cửa thật, cửa kính trượt 3D cảm biến tự mở, tủ locker có áo đấu, bể thủy trị liệu phát sáng 8°C/39°C, bàn sa bàn chiến thuật có ghế, Video Wall VAR/BMS, bàn tiệc VVIP 24 ghế, 24 cổng RFID, máy biến áp/chiller, thảm đỏ + 5 vòm vàng Đường hầm cầu thủ, NPC và avatar kỹ sư 3D khớp tay/chân).
+3. Tạo `src/components/Walkthrough3DHud.tsx` với bộ chuyển 4 tầng, 3 chế độ camera 3D, Mini-Map Radar 2D đồng bộ thời gian thực, danh sách dịch chuyển nhanh 16 phòng và bàn phím D-Pad; tích hợp vào `StadiumScene.tsx`, `BowlStands.tsx` (làm mờ vỉa khán đài khi đi bộ nội khu), `FloorplanExplorer2D.tsx` (`Lên 3D Thực Tế`), `ControlPanel.tsx` và `App.tsx`.
 
 ## 变更
 
-- `src/config/interiorRooms.ts`, `src/config/stadiumSpecs.test.ts`: Dữ liệu 16 phòng BIM 4 tầng + động học di chuyển & cửa tự động + 15 unit tests.
-- `src/components/FloorplanExplorer2D.tsx`: Trình khám phá 2D CAD/BIM tương tác đầy đủ điều khiển đi bộ, phóng to/thu nhỏ, hồ sơ MEP/PCCC và nút đồng bộ 3D mặt cắt.
-- `src/scene/BowlStands.tsx`, `src/App.tsx`, `src/components/ControlPanel.tsx`: Vách buồng nội khu 3D, cổng đường hầm cầu thủ và giao diện chuyển đổi 2D/3D song song.
+- `src/config/interiorRooms.ts`, `src/config/stadiumSpecs.test.ts`: Cao độ sàn 3D và bộ tính pose 3 chế độ camera + 16 unit tests.
+- `src/scene/InteriorRooms3D.tsx`: Toàn bộ 16 phòng 3D đầy đủ nội thất, ánh sáng nội khu, cửa trượt kính 3D và nhân vật đi bộ 3D.
+- `src/components/Walkthrough3DHud.tsx`: Giao diện điều khiển đi bộ 3D, radar 2D mini-map và dịch chuyển nhanh 16 phòng.
+- `src/scene/StadiumScene.tsx`, `src/scene/BowlStands.tsx`, `src/components/FloorplanExplorer2D.tsx`, `src/components/ControlPanel.tsx`, `src/App.tsx`: Luồng WASD / Arrow / D-Pad 3D và chuyển đổi mượt 2D <-> 3D.
 
 ## 自审
 
 - TypeScript strict mode (`tsc -b`): 0 lỗi.
-- Mỗi phòng trong 16 phòng đều có kích thước mét thực, cửa trượt tự động, đồ đạc nội thất đặc thù và đồng bộ nút nhảy nhanh.
+- `OrbitControls minDistance` tự động giảm từ `28m` xuống `0.8m` và mở `maxPolarAngle` khi kích hoạt đi bộ 3D để camera đi xuyên vào bên trong từng phòng không bị dội ra ngoài.
 
 ## 测试
 
-- `npm.cmd test`: 15/15 unit tests pass (Vitest v3.2.7).
+- `npm.cmd test`: 16/16 unit tests pass (Vitest v3.2.7).
 - `npm.cmd run build`: `tsc -b && vite build` thành công.
 
 ## API 接口文档
@@ -33,4 +34,4 @@ Xây dựng chế độ trải nghiệm **Mặt bằng CAD/BIM 2D Di Chuyển T�
 
 ## 剩余风险
 
-Chờ kiểm chứng di chuyển 2D thực tế trên trình duyệt headless và kiểm tra ảnh chụp màn hình trước khi commit/push.
+Chờ nghiệm thu trình duyệt thực tế cho 4 phòng tiêu biểu 3D (`B0-01`, `B0-03`, `L2-01`, `L3-01`) trước khi commit/push.
