@@ -1,0 +1,205 @@
+{
+  "version": "2.0",
+  "task_slug": "vietnam-200k-masterpiece",
+  "size_class": "small",
+  "run_mode": "auto",
+  "requires_design_artifacts": false,
+  "execution_policy_version": 3,
+  "execution_mode": "single-context",
+  "host_adapter": null,
+  "executor_topology": "single-context",
+  "run_id": null,
+  "team_name": null,
+  "coordinator_id": "main",
+  "fallback_reason": null,
+  "status": "completed",
+  "project_root": "D:\\chaybo",
+  "artifacts_dir": "D:\\chaybo\\artifacts\\vietnam-200k-masterpiece",
+  "route": [
+    "SOLO",
+    "SUMMARY"
+  ],
+  "current_stage": "SUMMARY",
+  "next_stage": null,
+  "awaiting_approval": null,
+  "created_at": "2026-11-21T15:45:06+00:00",
+  "updated_at": "2026-11-21T15:45:40+00:00",
+  "stages": {
+    "PHASE-0": {
+      "status": "completed",
+      "retry_count": 0,
+      "started_at": "2026-11-21T15:45:06+00:00",
+      "completed_at": "2026-11-21T15:45:06+00:00",
+      "artifacts": []
+    },
+    "SOLO": {
+      "status": "completed",
+      "retry_count": 0,
+      "prepared_at": "2026-11-21T15:45:06+00:00",
+      "artifact_baseline": {
+        "01-solo/solo-report.md": null
+      },
+      "started_at": "2026-11-21T15:45:07+00:00",
+      "completed_at": "2026-11-21T15:45:24+00:00",
+      "artifacts": [
+        "01-solo/solo-report.md"
+      ],
+      "executor_role": null,
+      "executor_type": null,
+      "executor_id": null,
+      "helpers": []
+    },
+    "REQUIREMENT": {
+      "status": "skipped",
+      "retry_count": 0,
+      "prepared_at": null,
+      "artifact_baseline": null,
+      "started_at": null,
+      "completed_at": null,
+      "artifacts": [],
+      "executor_role": null,
+      "executor_type": null,
+      "executor_id": null,
+      "helpers": []
+    },
+    "DESIGN": {
+      "status": "skipped",
+      "retry_count": 0,
+      "prepared_at": null,
+      "artifact_baseline": null,
+      "started_at": null,
+      "completed_at": null,
+      "artifacts": [],
+      "executor_role": null,
+      "executor_type": null,
+      "executor_id": null,
+      "helpers": []
+    },
+    "IMPLEMENT": {
+      "status": "skipped",
+      "retry_count": 0,
+      "prepared_at": null,
+      "artifact_baseline": null,
+      "started_at": null,
+      "completed_at": null,
+      "artifacts": [],
+      "executor_role": null,
+      "executor_type": null,
+      "executor_id": null,
+      "helpers": []
+    },
+    "REVIEW": {
+      "status": "skipped",
+      "retry_count": 0,
+      "prepared_at": null,
+      "artifact_baseline": null,
+      "started_at": null,
+      "completed_at": null,
+      "artifacts": [],
+      "executor_role": null,
+      "executor_type": null,
+      "executor_id": null,
+      "helpers": []
+    },
+    "TEST": {
+      "status": "skipped",
+      "retry_count": 0,
+      "prepared_at": null,
+      "artifact_baseline": null,
+      "started_at": null,
+      "completed_at": null,
+      "artifacts": [],
+      "executor_role": null,
+      "executor_type": null,
+      "executor_id": null,
+      "helpers": []
+    },
+    "KNOWLEDGE": {
+      "status": "skipped",
+      "retry_count": 0,
+      "prepared_at": null,
+      "artifact_baseline": null,
+      "started_at": null,
+      "completed_at": null,
+      "artifacts": [],
+      "executor_role": null,
+      "executor_type": null,
+      "executor_id": null,
+      "helpers": [],
+      "decision": null,
+      "decision_reason": null
+    },
+    "SUMMARY": {
+      "status": "completed",
+      "retry_count": 0,
+      "prepared_at": "2026-11-21T15:45:24+00:00",
+      "artifact_baseline": {
+        "workflow-summary.md": null
+      },
+      "started_at": "2026-11-21T15:45:25+00:00",
+      "completed_at": "2026-11-21T15:45:40+00:00",
+      "artifacts": [
+        "workflow-summary.md"
+      ],
+      "executor_role": "devflow-summarizer",
+      "executor_type": "coordinator",
+      "executor_id": "main",
+      "helpers": [],
+      "executor_topology": "coordinator",
+      "dispatch_tool": "coordinator"
+    }
+  },
+  "events": [
+    {
+      "at": "2026-11-21T15:45:06+00:00",
+      "event": "workflow_initialized",
+      "size": "small",
+      "requires_design_artifacts": false,
+      "execution_mode": "single-context",
+      "host_adapter": null,
+      "executor_topology": "single-context",
+      "team_name": null,
+      "fallback_reason": null
+    },
+    {
+      "at": "2026-11-21T15:45:06+00:00",
+      "event": "stage_prepared",
+      "stage": "SOLO",
+      "templates_created": [
+        "01-solo/solo-report.md"
+      ]
+    },
+    {
+      "at": "2026-11-21T15:45:07+00:00",
+      "event": "stage_started",
+      "stage": "SOLO",
+      "executor_role": null,
+      "executor_id": null
+    },
+    {
+      "at": "2026-11-21T15:45:24+00:00",
+      "event": "stage_completed",
+      "stage": "SOLO"
+    },
+    {
+      "at": "2026-11-21T15:45:24+00:00",
+      "event": "stage_prepared",
+      "stage": "SUMMARY",
+      "templates_created": [
+        "workflow-summary.md"
+      ]
+    },
+    {
+      "at": "2026-11-21T15:45:25+00:00",
+      "event": "stage_started",
+      "stage": "SUMMARY",
+      "executor_role": "devflow-summarizer",
+      "executor_id": "main"
+    },
+    {
+      "at": "2026-11-21T15:45:40+00:00",
+      "event": "stage_completed",
+      "stage": "SUMMARY"
+    }
+  ]
+}

@@ -21,6 +21,10 @@ interface StadiumSceneProps {
   halfCutaway: boolean;
   autoRotate: boolean;
   occupancyPercent: number;
+  roofOpenPercent: number;
+  ceremonyMode: boolean;
+  crowdWave: boolean;
+  showEvacPaths: boolean;
 }
 
 interface ErrorBoundaryState {
@@ -38,7 +42,7 @@ class SceneErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundar
     if (this.state.hasError) {
       return (
         <div className="flex h-full w-full items-center justify-center bg-slate-950 p-6 text-center">
-          <div className="max-w-md rounded-2xl border border-rose-500/30 bg-slate-900/90 p-6">
+          <div className="max-w-md rounded-2xl border border-rose-500/30 bg-[#141417] p-6">
             <h2 className="text-lg font-semibold text-rose-400">Không thể khởi tạo WebGL 3D</h2>
             <p className="mt-2 text-sm text-slate-300">
               Trình duyệt hoặc thiết bị hiện tại không hỗ trợ WebGL. Vui lòng bật tăng tốc phần cứng và tải lại trang.
@@ -92,7 +96,7 @@ function CameraRig({
       enableDamping
       dampingFactor={0.07}
       autoRotate={autoRotate}
-      autoRotateSpeed={0.5}
+      autoRotateSpeed={0.45}
       minDistance={28}
       maxDistance={460}
       maxPolarAngle={Math.PI / 2 - 0.03}
@@ -110,6 +114,10 @@ export function StadiumScene({
   halfCutaway,
   autoRotate,
   occupancyPercent,
+  roofOpenPercent,
+  ceremonyMode,
+  crowdWave,
+  showEvacPaths,
 }: StadiumSceneProps) {
   const lighting = getLightingConfig(lightingMode);
   const showSightline = cameraPreset === 'sky' || cameraPreset === 'vip';
@@ -177,15 +185,18 @@ export function StadiumScene({
           ledGlowIntensity={lighting.ledGlowIntensity}
           halfCutaway={halfCutaway}
           occupancyPercent={occupancyPercent}
+          crowdWave={crowdWave}
+          showEvacPaths={showEvacPaths}
         />
         <RoofStructure
           xrayRoof={xrayRoof}
           halfCutaway={halfCutaway}
           floodlightIntensity={lighting.floodlightIntensity}
           facadeGlowColor={lighting.facadeGlowColor}
+          roofOpenPercent={roofOpenPercent}
+          ceremonyMode={ceremonyMode}
         />
 
-        {/* Sightline C-Value verification ray from Tier 4 Sky Tier to touchline */}
         {showSightline && (
           <Line
             points={[
@@ -193,7 +204,7 @@ export function StadiumScene({
               [-52.5, 0.2, 0],
             ]}
             color="#38bdf8"
-            lineWidth={2}
+            lineWidth={2.5}
             dashed
             dashSize={3}
             gapSize={1.5}

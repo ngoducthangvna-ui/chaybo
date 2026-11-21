@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { ROOF_SPECS } from '../config/stadiumSpecs';
 
@@ -7,6 +8,8 @@ interface RoofStructureProps {
   halfCutaway: boolean;
   floodlightIntensity: number;
   facadeGlowColor: string;
+  roofOpenPercent: number;
+  ceremonyMode: boolean;
 }
 
 /**
@@ -49,9 +52,6 @@ function createRoofCanopyGeometry(arcSpan: number, segments = 96): THREE.BufferG
   return geometry;
 }
 
-/**
- * Generates sweeping steel arch ribs inspired by Dong Son sun-rays & Lac bird wings.
- */
 function createRoofRibGeometries(arcSpan: number): THREE.TubeGeometry[] {
   const ribs: THREE.TubeGeometry[] = [];
   for (let i = 0; i < ROOF_SPECS.ribCount; i += 1) {
@@ -80,9 +80,6 @@ function createRoofRibGeometries(arcSpan: number): THREE.TubeGeometry[] {
   return ribs;
 }
 
-/**
- * Generates diagrid exoskeleton struts wrapping the outer stadium facade.
- */
 function createDiagridGeometries(arcSpan: number): THREE.TubeGeometry[] {
   const struts: THREE.TubeGeometry[] = [];
   const count = 24;
@@ -126,11 +123,126 @@ function createOculusRingGeometry(arcSpan: number, segments = 96): THREE.TubeGeo
   return new THREE.TubeGeometry(curve, steps, 1.15, 8, isClosed);
 }
 
+function RetractableOculusPanels({
+  roofOpenPercent,
+  xrayRoof,
+}: {
+  roofOpenPercent: number;
+  xrayRoof: boolean;
+}) {
+  const slideOffset = (roofOpenPercent / 100) * 64;
+  const halfLen = ROOF_SPECS.oculusRadiusX;
+  const width = ROOF_SPECS.oculusRadiusZ * 2;
+
+  return (
+    <group name="retractable-oculus-dome">
+      {[-1, 1].map((side) => (
+        <mesh
+          key={side}
+          position={[side * (halfLen / 2 + slideOffset), 76.2, 0]}
+          castShadow={!xrayRoof}
+        >
+          <boxGeometry args={[halfLen, 1.1, width]} />
+          <meshPhysicalMaterial
+            color="#e0f2fe"
+            transparent
+            opacity={xrayRoof ? 0.15 : 0.62}
+            wireframe={xrayRoof}
+            roughness={0.2}
+            metalness={0.15}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function CeremonyFireworks() {
+  const pointsRef = useRef<THREE.Points | null>(null);
+  const count = 360;
+
+  const { positions, colors, seeds } = useMemo(() => {
+    const pos = new Float32Array(count * 3);
+    const col = new Float32Array(count * 3);
+    const seedArr = new Float32Array(count * 4);
+    const palette = [
+      new THREE.Color('#ef4444'),
+      new THREE.Color('#fbbf24'),
+      new THREE.Color('#38bdf8'),
+      new THREE.Color('#f472b6'),
+    ];
+
+    for (let i = 0; i < count; i += 1) {
+      const burstIdx = i % 12;
+      const baseAngle = (burstIdx / 12) * Math.PI * 2;
+      const spreadA = ((i * 73) % 360) * (Math.PI / 180);
+      const spreadPhi = (((i * 37) % 180) - 90) * (Math.PI / 180);
+      seedArr[i * 4] = baseAngle;
+      seedArr[i * 4 + 1] = spreadA;
+      seedArr[i * 4 + 2] = spreadPhi;
+      seedArr[i * 4 + 3] = (burstIdx * 0.45) % 2.4;
+
+      const c = palette[burstIdx % palette.length];
+      col[i * 3] = c.r;
+      col[i * 3 + 1] = c.g;
+      col[i * 3 + 2] = c.b;
+    }
+    return { positions: pos, colors: col, seeds: seedArr };
+  }, []);
+
+  useFrame(({ clock }) => {
+    const pts = pointsRef.current;
+    if (!pts) {
+      return;
+    }
+    const attr = pts.geometry.getAttribute('position') as THREE.BufferAttribute;
+    const t = clock.getElapsedTime();
+
+    for (let i = 0; i < count; i += 1) {
+      const baseAngle = seeds[i * 4];
+      const spreadA = seeds[i * 4 + 1];
+      const spreadPhi = seeds[i * 4 + 2];
+      const delay = seeds[i * 4 + 3];
+
+      const cycle = (t + delay) % 2.8;
+      const originX = Math.cos(baseAngle) * (ROOF_SPECS.oculusRadiusX + 12);
+      const originZ = Math.sin(baseAngle) * (ROOF_SPECS.oculusRadiusZ + 12);
+      const originY = 82;
+
+      if (cycle < 0.9) {
+        const rise = cycle / 0.9;
+        attr.setXYZ(i, originX, originY + rise * 48, originZ);
+      } else {
+        const burstT = (cycle - 0.9) / 1.9;
+        const radius = burstT * 26;
+        const gravity = burstT * burstT * 18;
+        const x = originX + Math.cos(spreadA) * Math.cos(spreadPhi) * radius;
+        const y = originY + 48 + Math.sin(spreadPhi) * radius - gravity;
+        const z = originZ + Math.sin(spreadA) * Math.cos(spreadPhi) * radius;
+        attr.setXYZ(i, x, y, z);
+      }
+    }
+    attr.needsUpdate = true;
+  });
+
+  return (
+    <points ref={pointsRef} name="ceremony-fireworks">
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+        <bufferAttribute attach="attributes-color" args={[colors, 3]} />
+      </bufferGeometry>
+      <pointsMaterial size={2.6} vertexColors transparent opacity={0.95} depthWrite={false} />
+    </points>
+  );
+}
+
 export function RoofStructure({
   xrayRoof,
   halfCutaway,
   floodlightIntensity,
   facadeGlowColor,
+  roofOpenPercent,
+  ceremonyMode,
 }: RoofStructureProps) {
   const arcSpan = halfCutaway ? Math.PI * 1.15 : Math.PI * 2;
   const canopyGeo = useMemo(() => createRoofCanopyGeometry(arcSpan), [arcSpan]);
@@ -172,6 +284,11 @@ export function RoofStructure({
           side={THREE.DoubleSide}
         />
       </mesh>
+
+      {/* Retractable Inner Lotus / Oculus Panels */}
+      {!halfCutaway && (
+        <RetractableOculusPanels roofOpenPercent={roofOpenPercent} xrayRoof={xrayRoof} />
+      )}
 
       {/* 24 Sweeping Dong Son Structural Ribs */}
       {ribGeos.map((geo, idx) => (
@@ -227,6 +344,9 @@ export function RoofStructure({
           )}
         </group>
       ))}
+
+      {/* Opening Ceremony Fireworks */}
+      {ceremonyMode && <CeremonyFireworks />}
     </group>
   );
 }

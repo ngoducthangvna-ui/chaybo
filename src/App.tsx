@@ -10,6 +10,10 @@ export function App() {
   const [halfCutaway, setHalfCutaway] = useState(false);
   const [autoRotate, setAutoRotate] = useState(true);
   const [occupancyPercent, setOccupancyPercent] = useState(85);
+  const [roofOpenPercent, setRoofOpenPercent] = useState(75);
+  const [ceremonyMode, setCeremonyMode] = useState(true);
+  const [crowdWave, setCrowdWave] = useState(true);
+  const [showEvacPaths, setShowEvacPaths] = useState(false);
 
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-slate-950">
@@ -27,6 +31,10 @@ export function App() {
           halfCutaway={halfCutaway}
           autoRotate={autoRotate}
           occupancyPercent={occupancyPercent}
+          roofOpenPercent={roofOpenPercent}
+          ceremonyMode={ceremonyMode}
+          crowdWave={crowdWave}
+          showEvacPaths={showEvacPaths}
         />
       </Suspense>
 
@@ -43,6 +51,14 @@ export function App() {
         onToggleAutoRotate={() => setAutoRotate((v) => !v)}
         occupancyPercent={occupancyPercent}
         onOccupancyChange={setOccupancyPercent}
+        roofOpenPercent={roofOpenPercent}
+        onRoofOpenChange={setRoofOpenPercent}
+        ceremonyMode={ceremonyMode}
+        onToggleCeremonyMode={() => setCeremonyMode((v) => !v)}
+        crowdWave={crowdWave}
+        onToggleCrowdWave={() => setCrowdWave((v) => !v)}
+        showEvacPaths={showEvacPaths}
+        onToggleEvacPaths={() => setShowEvacPaths((v) => !v)}
       />
     </main>
   );

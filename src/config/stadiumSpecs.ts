@@ -47,6 +47,21 @@ export interface EvacuationMetrics {
   readonly cValueMm: number;
 }
 
+export interface StructuralMetrics {
+  readonly roofOpenPercent: number;
+  readonly steelTonnage: number;
+  readonly crowdDecibels: number;
+  readonly powerConsumptionMw: number;
+}
+
+export interface LoopForgeSopNode {
+  readonly id: string;
+  readonly title: string;
+  readonly role: string;
+  readonly status: 'passed' | 'active';
+  readonly artifact: string;
+}
+
 export const PITCH_SPECS = {
   length: 105,
   width: 68,
@@ -71,6 +86,7 @@ export const ROOF_SPECS = {
   peakHeight: 88,
   ribCount: 24,
   exitGates: 48,
+  steelTonnage: 28_500,
 } as const;
 
 export const STADIUM_TIERS: readonly TierSpec[] = [
@@ -211,6 +227,58 @@ export const LIGHTING_CONFIGS: Record<LightingMode, LightingConfig> = {
   },
 };
 
+export const LOOPFORGE_SOP_NODES: readonly LoopForgeSopNode[] = [
+  {
+    id: 'requirement',
+    title: '1. Requirement',
+    role: 'Requirement Owner',
+    status: 'passed',
+    artifact: 'docs/REQUIREMENTS.md',
+  },
+  {
+    id: 'clarify',
+    title: '2. Clarify',
+    role: 'Clarify Agent',
+    status: 'passed',
+    artifact: 'artifacts/vietnam-200k-masterpiece/01-solo/solo-report.md',
+  },
+  {
+    id: 'design',
+    title: '3. Design',
+    role: 'Architect (Grasp + Harness UI)',
+    status: 'passed',
+    artifact: 'design.md',
+  },
+  {
+    id: 'implement',
+    title: '4. Implement',
+    role: '3D WebGL Developer',
+    status: 'passed',
+    artifact: 'src/scene/*.tsx',
+  },
+  {
+    id: 'review',
+    title: '5. Review',
+    role: 'Code Reviewer',
+    status: 'passed',
+    artifact: 'src/components/ControlPanel.tsx',
+  },
+  {
+    id: 'test',
+    title: '6. Test (Vitest)',
+    role: 'Test Engineer',
+    status: 'passed',
+    artifact: 'src/config/stadiumSpecs.test.ts',
+  },
+  {
+    id: 'deliver',
+    title: '7. Accept & Delivery',
+    role: 'Human Gate / Summary',
+    status: 'active',
+    artifact: 'artifacts/vietnam-200k-masterpiece/workflow-summary.md',
+  },
+] as const;
+
 /**
  * Computes total seated capacity across all stadium tiers.
  */
@@ -239,6 +307,34 @@ export function calculateEvacuationMetrics(occupancyPercent: number): Evacuation
     exitGates: ROOF_SPECS.exitGates,
     estimatedEvacMinutes,
     cValueMm: 95,
+  };
+}
+
+/**
+ * Computes real-time acoustic (dB) and power (MW) engineering telemetry.
+ */
+export function calculateStructuralMetrics(
+  occupancyPercent: number,
+  roofOpenPercent: number,
+  ceremonyMode: boolean,
+  lightingMode: LightingMode = 'night'
+): StructuralMetrics {
+  const occ = Math.min(100, Math.max(0, occupancyPercent));
+  const open = Math.min(100, Math.max(0, roofOpenPercent));
+
+  // Scale crowd acoustics from 45.0 dB (empty bowl) to 118.5 dB (200k roaring spectators)
+  const crowdDecibels = Number((45 + (occ / 100) * 73.5 + (ceremonyMode ? 2.5 : 0)).toFixed(1));
+
+  const baseLightingMw = lightingMode === 'day' ? 1.8 : lightingMode === 'sunset' ? 4.6 : 7.4;
+  const occupancyHvacMw = (occ / 100) * 3.2;
+  const ceremonyMw = ceremonyMode ? 1.4 : 0;
+  const powerConsumptionMw = Number((baseLightingMw + occupancyHvacMw + ceremonyMw).toFixed(2));
+
+  return {
+    roofOpenPercent: open,
+    steelTonnage: ROOF_SPECS.steelTonnage,
+    crowdDecibels: Math.min(122, crowdDecibels),
+    powerConsumptionMw,
   };
 }
 

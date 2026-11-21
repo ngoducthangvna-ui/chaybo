@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   CAMERA_PRESETS,
   LIGHTING_CONFIGS,
+  LOOPFORGE_SOP_NODES,
   PITCH_SPECS,
   ROOF_SPECS,
   STADIUM_TIERS,
   calculateEvacuationMetrics,
+  calculateStructuralMetrics,
   calculateTotalCapacity,
   getCameraPreset,
   getLightingConfig,
@@ -45,6 +47,24 @@ describe('stadiumSpecs', () => {
     expect(full.cValueMm).toBeGreaterThanOrEqual(90);
     expect(full.estimatedEvacMinutes).toBeGreaterThan(8);
     expect(full.estimatedEvacMinutes).toBeLessThan(15);
+  });
+
+  it('calculates structural acoustics and power consumption accurately', () => {
+    const quietDay = calculateStructuralMetrics(0, 100, false, 'day');
+    expect(quietDay.steelTonnage).toBe(28_500);
+    expect(quietDay.crowdDecibels).toBe(45);
+    expect(quietDay.roofOpenPercent).toBe(100);
+
+    const fullNightCeremony = calculateStructuralMetrics(100, 0, true, 'night');
+    expect(fullNightCeremony.crowdDecibels).toBe(121);
+    expect(fullNightCeremony.powerConsumptionMw).toBeGreaterThan(10);
+    expect(fullNightCeremony.roofOpenPercent).toBe(0);
+  });
+
+  it('contains all 7 LoopForge SOP pipeline nodes', () => {
+    expect(LOOPFORGE_SOP_NODES).toHaveLength(7);
+    expect(LOOPFORGE_SOP_NODES[0].id).toBe('requirement');
+    expect(LOOPFORGE_SOP_NODES[6].id).toBe('deliver');
   });
 
   it('resolves camera presets and lighting configs', () => {

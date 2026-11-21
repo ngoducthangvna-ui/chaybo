@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
+import { Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { STADIUM_TIERS, type TierSpec } from '../config/stadiumSpecs';
 
@@ -6,6 +8,8 @@ interface BowlStandsProps {
   ledGlowIntensity: number;
   halfCutaway: boolean;
   occupancyPercent: number;
+  crowdWave: boolean;
+  showEvacPaths: boolean;
 }
 
 /**
@@ -50,9 +54,6 @@ function createTierGeometry(
   return geometry;
 }
 
-/**
- * Creates a thin elliptical ring for LED ribbon boards and VIP skybox glazing.
- */
 function createEllipticalRibbonGeometry(
   radiusX: number,
   radiusZ: number,
@@ -119,14 +120,22 @@ function createJumbotronTexture(): THREE.CanvasTexture {
 function CrowdInstances({
   arcSpan,
   occupancyPercent,
+  crowdWave,
 }: {
   arcSpan: number;
   occupancyPercent: number;
+  crowdWave: boolean;
 }) {
   const meshRef = useRef<THREE.InstancedMesh | null>(null);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
 
   const transforms = useMemo(() => {
-    const list: Array<{ pos: [number, number, number]; rotY: number; color: string }> = [];
+    const list: Array<{
+      pos: [number, number, number];
+      rotY: number;
+      angle: number;
+      color: string;
+    }> = [];
     const perTierCols = 72;
     const rowsPerTier = 6;
     const threshold = occupancyPercent / 100;
@@ -140,15 +149,16 @@ function CrowdInstances({
 
         for (let c = 0; c < perTierCols; c += 1) {
           const angle = (c / perTierCols) * arcSpan;
-          // Deterministic pseudo-random occupancy filter
           const hash = Math.abs(Math.sin((tIdx + 1) * 12.9898 + r * 78.233 + c * 37.719));
           if (hash > threshold) {
             continue;
           }
-          const color = hash < threshold * 0.18 ? '#fbbf24' : hash < threshold * 0.72 ? '#ef4444' : '#f8fafc';
+          const color =
+            hash < threshold * 0.18 ? '#fbbf24' : hash < threshold * 0.72 ? '#ef4444' : '#f8fafc';
           list.push({
             pos: [Math.cos(angle) * rx, y, Math.sin(angle) * rz],
             rotY: -angle,
+            angle,
             color,
           });
         }
@@ -162,11 +172,11 @@ function CrowdInstances({
     if (!mesh) {
       return;
     }
-    const dummy = new THREE.Object3D();
     const color = new THREE.Color();
     transforms.forEach((item, i) => {
       dummy.position.set(...item.pos);
       dummy.rotation.set(0, item.rotY, 0);
+      dummy.scale.set(1, 1, 1);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
       mesh.setColorAt(i, color.set(item.color));
@@ -176,7 +186,26 @@ function CrowdInstances({
     if (mesh.instanceColor) {
       mesh.instanceColor.needsUpdate = true;
     }
-  }, [transforms]);
+  }, [transforms, dummy]);
+
+  useFrame(({ clock }) => {
+    const mesh = meshRef.current;
+    if (!mesh || !crowdWave || transforms.length === 0) {
+      return;
+    }
+    const t = clock.getElapsedTime();
+    for (let i = 0; i < transforms.length; i += 1) {
+      const item = transforms[i];
+      const wave = Math.max(0, Math.sin(item.angle * 2 - t * 3.4));
+      const lift = wave * 0.9;
+      dummy.position.set(item.pos[0], item.pos[1] + lift, item.pos[2]);
+      dummy.rotation.set(0, item.rotY, 0);
+      dummy.scale.set(1, 1 + wave * 0.55, 1);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+  });
 
   const maxInstances = STADIUM_TIERS.length * 72 * 6;
 
@@ -185,6 +214,36 @@ function CrowdInstances({
       <boxGeometry args={[1.1, 0.85, 1.8]} />
       <meshStandardMaterial roughness={0.6} metalness={0.05} />
     </instancedMesh>
+  );
+}
+
+function EvacuationFlowPaths({ arcSpan }: { arcSpan: number }) {
+  const rays = useMemo(() => {
+    const paths: Array<Array<[number, number, number]>> = [];
+    const gateCount = 24;
+    for (let i = 0; i < gateCount; i += 1) {
+      const angle = (i / gateCount) * Math.PI * 2;
+      if (angle > arcSpan) {
+        continue;
+      }
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      paths.push([
+        [cos * 82, 5, sin * 64],
+        [cos * 124, 15, sin * 102],
+        [cos * 178, 3, sin * 152],
+        [cos * 218, 1.2, sin * 190],
+      ]);
+    }
+    return paths;
+  }, [arcSpan]);
+
+  return (
+    <group name="evacuation-flow-paths">
+      {rays.map((pts, idx) => (
+        <Line key={idx} points={pts} color="#10b981" lineWidth={2.5} dashed dashSize={4} gapSize={2} />
+      ))}
+    </group>
   );
 }
 
@@ -236,6 +295,8 @@ export function BowlStands({
   ledGlowIntensity,
   halfCutaway,
   occupancyPercent,
+  crowdWave,
+  showEvacPaths,
 }: BowlStandsProps) {
   const arcSpan = halfCutaway ? Math.PI * 1.15 : Math.PI * 2;
   const skyboxGeo = useMemo(
@@ -255,8 +316,13 @@ export function BowlStands({
         />
       ))}
 
-      {/* Instanced 200K Crowd / Seat Clusters */}
-      <CrowdInstances arcSpan={arcSpan} occupancyPercent={occupancyPercent} />
+      <CrowdInstances
+        arcSpan={arcSpan}
+        occupancyPercent={occupancyPercent}
+        crowdWave={crowdWave}
+      />
+
+      {showEvacPaths && <EvacuationFlowPaths arcSpan={arcSpan} />}
 
       {/* Glazed VIP / VVIP Skybox Concourse */}
       <mesh geometry={skyboxGeo} position={[0, 30.2, 0]}>
