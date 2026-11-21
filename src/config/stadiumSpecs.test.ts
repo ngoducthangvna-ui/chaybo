@@ -5,6 +5,7 @@ import {
   PITCH_SPECS,
   ROOF_SPECS,
   STADIUM_TIERS,
+  calculateEvacuationMetrics,
   calculateTotalCapacity,
   getCameraPreset,
   getLightingConfig,
@@ -32,13 +33,24 @@ describe('stadiumSpecs', () => {
     expect(ROOF_SPECS.outerRadiusX).toBeGreaterThan(STADIUM_TIERS[3].outerRadiusX);
   });
 
-  it('resolves camera presets and falls back safely', () => {
+  it('calculates evacuation metrics and clamps occupancy between 0 and 100', () => {
+    const empty = calculateEvacuationMetrics(-10);
+    expect(empty.occupancyPercent).toBe(0);
+    expect(empty.seatedCount).toBe(0);
+    expect(empty.estimatedEvacMinutes).toBe(0);
+
+    const full = calculateEvacuationMetrics(120);
+    expect(full.occupancyPercent).toBe(100);
+    expect(full.seatedCount).toBe(200_000);
+    expect(full.cValueMm).toBeGreaterThanOrEqual(90);
+    expect(full.estimatedEvacMinutes).toBeGreaterThan(8);
+    expect(full.estimatedEvacMinutes).toBeLessThan(15);
+  });
+
+  it('resolves camera presets and lighting configs', () => {
     for (const preset of CAMERA_PRESETS) {
       expect(getCameraPreset(preset.id).id).toBe(preset.id);
     }
-  });
-
-  it('provides valid lighting configs for day, sunset, and night', () => {
     expect(getLightingConfig('day').floodlightIntensity).toBe(0);
     expect(getLightingConfig('night').floodlightIntensity).toBeGreaterThan(0);
     expect(Object.keys(LIGHTING_CONFIGS)).toEqual(['day', 'sunset', 'night']);

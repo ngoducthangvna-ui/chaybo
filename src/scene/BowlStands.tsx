@@ -1,15 +1,21 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { STADIUM_TIERS, type TierSpec } from '../config/stadiumSpecs';
 
 interface BowlStandsProps {
   ledGlowIntensity: number;
+  halfCutaway: boolean;
+  occupancyPercent: number;
 }
 
 /**
  * Creates a hollow elliptical bowl-tier geometry with stepped seating profile.
  */
-function createTierGeometry(tier: TierSpec, segments = 96): THREE.BufferGeometry {
+function createTierGeometry(
+  tier: TierSpec,
+  arcSpan: number,
+  segments = 96
+): THREE.BufferGeometry {
   const steps = Math.min(12, Math.max(6, Math.floor(tier.rows / 3)));
   const positions: number[] = [];
   const indices: number[] = [];
@@ -21,7 +27,7 @@ function createTierGeometry(tier: TierSpec, segments = 96): THREE.BufferGeometry
     const y = THREE.MathUtils.lerp(tier.baseElevation, tier.topElevation, t);
 
     for (let i = 0; i <= segments; i += 1) {
-      const angle = (i / segments) * Math.PI * 2;
+      const angle = (i / segments) * arcSpan;
       positions.push(Math.cos(angle) * rx, y, Math.sin(angle) * rz);
     }
   }
@@ -45,19 +51,20 @@ function createTierGeometry(tier: TierSpec, segments = 96): THREE.BufferGeometry
 }
 
 /**
- * Creates a thin elliptical ring for LED ribbon boards and concourse walkways.
+ * Creates a thin elliptical ring for LED ribbon boards and VIP skybox glazing.
  */
 function createEllipticalRibbonGeometry(
   radiusX: number,
   radiusZ: number,
   height: number,
+  arcSpan: number,
   segments = 96
 ): THREE.BufferGeometry {
   const positions: number[] = [];
   const indices: number[] = [];
 
   for (let i = 0; i <= segments; i += 1) {
-    const angle = (i / segments) * Math.PI * 2;
+    const angle = (i / segments) * arcSpan;
     const x = Math.cos(angle) * radiusX;
     const z = Math.sin(angle) * radiusZ;
     positions.push(x, 0, z, x, height, z);
@@ -78,16 +85,132 @@ function createEllipticalRibbonGeometry(
   return geometry;
 }
 
-function TierMesh({ tier, ledGlowIntensity }: { tier: TierSpec; ledGlowIntensity: number }) {
-  const bowlGeo = useMemo(() => createTierGeometry(tier), [tier]);
+function createJumbotronTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 320;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#090d16';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold 42px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('VIETNAM NATIONAL STADIUM • 200,000', canvas.width / 2, 86);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 92px monospace';
+    ctx.fillText('VIE  3  :  0  ALL', canvas.width / 2, 205);
+
+    ctx.fillStyle = '#ef4444';
+    ctx.font = 'bold 30px sans-serif';
+    ctx.fillText('LIVE MATCH • 88:42', canvas.width / 2, 275);
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function CrowdInstances({
+  arcSpan,
+  occupancyPercent,
+}: {
+  arcSpan: number;
+  occupancyPercent: number;
+}) {
+  const meshRef = useRef<THREE.InstancedMesh | null>(null);
+
+  const transforms = useMemo(() => {
+    const list: Array<{ pos: [number, number, number]; rotY: number; color: string }> = [];
+    const perTierCols = 72;
+    const rowsPerTier = 6;
+    const threshold = occupancyPercent / 100;
+
+    STADIUM_TIERS.forEach((tier, tIdx) => {
+      for (let r = 0; r < rowsPerTier; r += 1) {
+        const rt = (r + 0.5) / rowsPerTier;
+        const rx = THREE.MathUtils.lerp(tier.innerRadiusX + 1.5, tier.outerRadiusX - 1.5, rt);
+        const rz = THREE.MathUtils.lerp(tier.innerRadiusZ + 1.5, tier.outerRadiusZ - 1.5, rt);
+        const y = THREE.MathUtils.lerp(tier.baseElevation, tier.topElevation, rt) + 0.55;
+
+        for (let c = 0; c < perTierCols; c += 1) {
+          const angle = (c / perTierCols) * arcSpan;
+          // Deterministic pseudo-random occupancy filter
+          const hash = Math.abs(Math.sin((tIdx + 1) * 12.9898 + r * 78.233 + c * 37.719));
+          if (hash > threshold) {
+            continue;
+          }
+          const color = hash < threshold * 0.18 ? '#fbbf24' : hash < threshold * 0.72 ? '#ef4444' : '#f8fafc';
+          list.push({
+            pos: [Math.cos(angle) * rx, y, Math.sin(angle) * rz],
+            rotY: -angle,
+            color,
+          });
+        }
+      }
+    });
+    return list;
+  }, [arcSpan, occupancyPercent]);
+
+  useEffect(() => {
+    const mesh = meshRef.current;
+    if (!mesh) {
+      return;
+    }
+    const dummy = new THREE.Object3D();
+    const color = new THREE.Color();
+    transforms.forEach((item, i) => {
+      dummy.position.set(...item.pos);
+      dummy.rotation.set(0, item.rotY, 0);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+      mesh.setColorAt(i, color.set(item.color));
+    });
+    mesh.count = transforms.length;
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) {
+      mesh.instanceColor.needsUpdate = true;
+    }
+  }, [transforms]);
+
+  const maxInstances = STADIUM_TIERS.length * 72 * 6;
+
+  return (
+    <instancedMesh ref={meshRef} args={[undefined, undefined, maxInstances]}>
+      <boxGeometry args={[1.1, 0.85, 1.8]} />
+      <meshStandardMaterial roughness={0.6} metalness={0.05} />
+    </instancedMesh>
+  );
+}
+
+function TierMesh({
+  tier,
+  arcSpan,
+  ledGlowIntensity,
+}: {
+  tier: TierSpec;
+  arcSpan: number;
+  ledGlowIntensity: number;
+}) {
+  const bowlGeo = useMemo(() => createTierGeometry(tier, arcSpan), [tier, arcSpan]);
   const ribbonGeo = useMemo(
-    () => createEllipticalRibbonGeometry(tier.innerRadiusX - 0.3, tier.innerRadiusZ - 0.3, 1.3),
-    [tier.innerRadiusX, tier.innerRadiusZ]
+    () =>
+      createEllipticalRibbonGeometry(
+        tier.innerRadiusX - 0.3,
+        tier.innerRadiusZ - 0.3,
+        1.3,
+        arcSpan
+      ),
+    [tier.innerRadiusX, tier.innerRadiusZ, arcSpan]
   );
 
   return (
     <group name={tier.id}>
-      {/* Main stepped seating bowl */}
       <mesh geometry={bowlGeo} castShadow receiveShadow>
         <meshStandardMaterial
           color={tier.seatColor}
@@ -96,8 +219,6 @@ function TierMesh({ tier, ledGlowIntensity }: { tier: TierSpec; ledGlowIntensity
           side={THREE.DoubleSide}
         />
       </mesh>
-
-      {/* Glowing LED fascia / ribbon board along inner tier edge */}
       <mesh geometry={ribbonGeo} position={[0, tier.baseElevation - 1.35, 0]}>
         <meshStandardMaterial
           color={tier.accentColor}
@@ -111,18 +232,31 @@ function TierMesh({ tier, ledGlowIntensity }: { tier: TierSpec; ledGlowIntensity
   );
 }
 
-export function BowlStands({ ledGlowIntensity }: BowlStandsProps) {
-  // VIP Skybox glass ring between Tier 2 and Tier 3
+export function BowlStands({
+  ledGlowIntensity,
+  halfCutaway,
+  occupancyPercent,
+}: BowlStandsProps) {
+  const arcSpan = halfCutaway ? Math.PI * 1.15 : Math.PI * 2;
   const skyboxGeo = useMemo(
-    () => createEllipticalRibbonGeometry(118, 96, 3.2, 96),
-    []
+    () => createEllipticalRibbonGeometry(118, 96, 3.2, arcSpan, 96),
+    [arcSpan]
   );
+  const jumbotronTex = useMemo(() => createJumbotronTexture(), []);
 
   return (
     <group name="stadium-bowl-200k">
       {STADIUM_TIERS.map((tier) => (
-        <TierMesh key={tier.id} tier={tier} ledGlowIntensity={ledGlowIntensity} />
+        <TierMesh
+          key={tier.id}
+          tier={tier}
+          arcSpan={arcSpan}
+          ledGlowIntensity={ledGlowIntensity}
+        />
       ))}
+
+      {/* Instanced 200K Crowd / Seat Clusters */}
+      <CrowdInstances arcSpan={arcSpan} occupancyPercent={occupancyPercent} />
 
       {/* Glazed VIP / VVIP Skybox Concourse */}
       <mesh geometry={skyboxGeo} position={[0, 30.2, 0]}>
@@ -137,6 +271,28 @@ export function BowlStands({ ledGlowIntensity }: BowlStandsProps) {
           side={THREE.DoubleSide}
         />
       </mesh>
+
+      {/* Twin Giant Jumbotron Scoreboards (East & West ends) */}
+      <mesh position={[92, 56, 0]} rotation={[0, -Math.PI / 2, 0]}>
+        <planeGeometry args={[36, 11]} />
+        <meshStandardMaterial
+          map={jumbotronTex}
+          emissive="#ffffff"
+          emissiveMap={jumbotronTex}
+          emissiveIntensity={0.9 + ledGlowIntensity * 0.3}
+        />
+      </mesh>
+      {!halfCutaway && (
+        <mesh position={[-92, 56, 0]} rotation={[0, Math.PI / 2, 0]}>
+          <planeGeometry args={[36, 11]} />
+          <meshStandardMaterial
+            map={jumbotronTex}
+            emissive="#ffffff"
+            emissiveMap={jumbotronTex}
+            emissiveIntensity={0.9 + ledGlowIntensity * 0.3}
+          />
+        </mesh>
+      )}
     </group>
   );
 }

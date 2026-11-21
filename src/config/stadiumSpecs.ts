@@ -1,6 +1,6 @@
 export type LightingMode = 'day' | 'sunset' | 'night';
 
-export type CameraPresetId = 'overview' | 'pitch' | 'vip' | 'roof';
+export type CameraPresetId = 'overview' | 'pitch' | 'vip' | 'sky' | 'roof';
 
 export interface TierSpec {
   readonly id: string;
@@ -36,6 +36,15 @@ export interface LightingConfig {
   readonly sunIntensity: number;
   readonly floodlightIntensity: number;
   readonly ledGlowIntensity: number;
+  readonly facadeGlowColor: string;
+}
+
+export interface EvacuationMetrics {
+  readonly occupancyPercent: number;
+  readonly seatedCount: number;
+  readonly exitGates: number;
+  readonly estimatedEvacMinutes: number;
+  readonly cValueMm: number;
 }
 
 export const PITCH_SPECS = {
@@ -61,6 +70,7 @@ export const ROOF_SPECS = {
   eaveHeight: 68,
   peakHeight: 88,
   ribCount: 24,
+  exitGates: 48,
 } as const;
 
 export const STADIUM_TIERS: readonly TierSpec[] = [
@@ -130,14 +140,14 @@ export const CAMERA_PRESETS: readonly CameraPreset[] = [
   {
     id: 'overview',
     label: 'Toàn cảnh',
-    position: [235, 145, 225],
-    target: [0, 20, 0],
+    position: [245, 150, 235],
+    target: [0, 22, 0],
   },
   {
     id: 'pitch',
     label: 'Mặt sân',
     position: [0, 8, 52],
-    target: [0, 12, -20],
+    target: [0, 14, -22],
   },
   {
     id: 'vip',
@@ -146,10 +156,16 @@ export const CAMERA_PRESETS: readonly CameraPreset[] = [
     target: [0, 4, 0],
   },
   {
+    id: 'sky',
+    label: 'Tầng 4 Sky',
+    position: [-142, 66, 0],
+    target: [0, 2, 0],
+  },
+  {
     id: 'roof',
     label: 'Mái vòm',
-    position: [155, 110, -145],
-    target: [0, 58, 0],
+    position: [160, 112, -150],
+    target: [0, 56, 0],
   },
 ] as const;
 
@@ -159,36 +175,39 @@ export const LIGHTING_CONFIGS: Record<LightingMode, LightingConfig> = {
     label: 'Ban ngày',
     skyColor: '#bae6fd',
     fogColor: '#cbd5e1',
-    ambientIntensity: 0.75,
+    ambientIntensity: 0.78,
     sunPosition: [180, 220, 140],
     sunColor: '#fffbeb',
-    sunIntensity: 2.1,
+    sunIntensity: 2.15,
     floodlightIntensity: 0,
-    ledGlowIntensity: 0.5,
+    ledGlowIntensity: 0.6,
+    facadeGlowColor: '#e2e8f0',
   },
   sunset: {
     mode: 'sunset',
     label: 'Hoàng hôn',
-    skyColor: '#7c2d12',
-    fogColor: '#431407',
-    ambientIntensity: 0.5,
-    sunPosition: [-220, 55, 110],
+    skyColor: '#451a03',
+    fogColor: '#7c2d12',
+    ambientIntensity: 0.52,
+    sunPosition: [-220, 52, 110],
     sunColor: '#fb923c',
-    sunIntensity: 1.75,
-    floodlightIntensity: 1.2,
-    ledGlowIntensity: 1.6,
+    sunIntensity: 1.8,
+    floodlightIntensity: 1.35,
+    ledGlowIntensity: 1.8,
+    facadeGlowColor: '#f59e0b',
   },
   night: {
     mode: 'night',
     label: 'Đêm thi đấu',
     skyColor: '#020617',
     fogColor: '#0f172a',
-    ambientIntensity: 0.3,
+    ambientIntensity: 0.34,
     sunPosition: [100, 180, -120],
     sunColor: '#64748b',
     sunIntensity: 0.45,
-    floodlightIntensity: 3.4,
-    ledGlowIntensity: 2.6,
+    floodlightIntensity: 3.6,
+    ledGlowIntensity: 2.8,
+    facadeGlowColor: '#ef4444',
   },
 };
 
@@ -200,6 +219,27 @@ export function calculateTotalCapacity(tiers: readonly TierSpec[] = STADIUM_TIER
     return 0;
   }
   return tiers.reduce((sum, tier) => sum + Math.max(0, tier.seats), 0);
+}
+
+/**
+ * Computes crowd occupancy, exit gate throughput, and minimum sightline C-value.
+ */
+export function calculateEvacuationMetrics(occupancyPercent: number): EvacuationMetrics {
+  const clamped = Math.min(100, Math.max(0, occupancyPercent));
+  const total = calculateTotalCapacity();
+  const seatedCount = Math.round((total * clamped) / 100);
+  // 48 wide vomitory gates @ ~420 spectators/min total throughput
+  const throughputPerMin = ROOF_SPECS.exitGates * 420;
+  const estimatedEvacMinutes =
+    seatedCount === 0 ? 0 : Number((seatedCount / throughputPerMin + 1.5).toFixed(1));
+
+  return {
+    occupancyPercent: clamped,
+    seatedCount,
+    exitGates: ROOF_SPECS.exitGates,
+    estimatedEvacMinutes,
+    cValueMm: 95,
+  };
 }
 
 /**

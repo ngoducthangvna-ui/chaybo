@@ -1,6 +1,6 @@
 import { Component, type ReactNode, useEffect, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { Line, OrbitControls, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import {
@@ -18,7 +18,9 @@ interface StadiumSceneProps {
   lightingMode: LightingMode;
   cameraPreset: CameraPresetId;
   xrayRoof: boolean;
+  halfCutaway: boolean;
   autoRotate: boolean;
+  occupancyPercent: number;
 }
 
 interface ErrorBoundaryState {
@@ -58,8 +60,8 @@ function CameraRig({
 }) {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const { camera } = useThree();
-  const desiredPos = useRef(new THREE.Vector3(235, 145, 225));
-  const desiredTarget = useRef(new THREE.Vector3(0, 20, 0));
+  const desiredPos = useRef(new THREE.Vector3(245, 150, 235));
+  const desiredTarget = useRef(new THREE.Vector3(0, 22, 0));
   const transitioning = useRef(false);
 
   useEffect(() => {
@@ -90,8 +92,8 @@ function CameraRig({
       enableDamping
       dampingFactor={0.07}
       autoRotate={autoRotate}
-      autoRotateSpeed={0.55}
-      minDistance={30}
+      autoRotateSpeed={0.5}
+      minDistance={28}
       maxDistance={460}
       maxPolarAngle={Math.PI / 2 - 0.03}
       onStart={() => {
@@ -105,20 +107,27 @@ export function StadiumScene({
   lightingMode,
   cameraPreset,
   xrayRoof,
+  halfCutaway,
   autoRotate,
+  occupancyPercent,
 }: StadiumSceneProps) {
   const lighting = getLightingConfig(lightingMode);
+  const showSightline = cameraPreset === 'sky' || cameraPreset === 'vip';
 
   return (
     <SceneErrorBoundary>
       <Canvas
         shadows
         dpr={[1, 2]}
-        camera={{ position: [235, 145, 225], fov: 45, near: 1, far: 1500 }}
+        camera={{ position: [245, 150, 235], fov: 45, near: 1, far: 1500 }}
         className="h-full w-full"
       >
         <color attach="background" args={[lighting.skyColor]} />
-        <fog attach="fog" args={[lighting.fogColor, 260, 720]} />
+        <fog attach="fog" args={[lighting.fogColor, 260, 740]} />
+
+        {lightingMode === 'night' && (
+          <Stars radius={380} depth={80} count={2500} factor={4} saturation={0.2} fade />
+        )}
 
         <ambientLight intensity={lighting.ambientIntensity} />
         <directionalLight
@@ -136,7 +145,6 @@ export function StadiumScene({
           shadow-camera-bottom={-220}
         />
 
-        {/* Stadium floodlight pools illuminating the FIFA pitch */}
         {lighting.floodlightIntensity > 0 && (
           <>
             <pointLight
@@ -165,11 +173,32 @@ export function StadiumScene({
 
         <Surroundings />
         <Pitch />
-        <BowlStands ledGlowIntensity={lighting.ledGlowIntensity} />
+        <BowlStands
+          ledGlowIntensity={lighting.ledGlowIntensity}
+          halfCutaway={halfCutaway}
+          occupancyPercent={occupancyPercent}
+        />
         <RoofStructure
           xrayRoof={xrayRoof}
+          halfCutaway={halfCutaway}
           floodlightIntensity={lighting.floodlightIntensity}
+          facadeGlowColor={lighting.facadeGlowColor}
         />
+
+        {/* Sightline C-Value verification ray from Tier 4 Sky Tier to touchline */}
+        {showSightline && (
+          <Line
+            points={[
+              [-158, 66, 0],
+              [-52.5, 0.2, 0],
+            ]}
+            color="#38bdf8"
+            lineWidth={2}
+            dashed
+            dashSize={3}
+            gapSize={1.5}
+          />
+        )}
 
         <CameraRig presetId={cameraPreset} autoRotate={autoRotate} />
       </Canvas>

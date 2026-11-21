@@ -7,6 +7,7 @@ import {
   Layers,
   Moon,
   RotateCw,
+  Scissors,
   Sun,
   Sunset,
   Users,
@@ -18,6 +19,7 @@ import {
   PITCH_SPECS,
   ROOF_SPECS,
   STADIUM_TIERS,
+  calculateEvacuationMetrics,
   calculateTotalCapacity,
 } from '../config/stadiumSpecs';
 
@@ -28,8 +30,12 @@ interface ControlPanelProps {
   onCameraPresetChange: (preset: CameraPresetId) => void;
   xrayRoof: boolean;
   onToggleXrayRoof: () => void;
+  halfCutaway: boolean;
+  onToggleHalfCutaway: () => void;
   autoRotate: boolean;
   onToggleAutoRotate: () => void;
+  occupancyPercent: number;
+  onOccupancyChange: (value: number) => void;
 }
 
 const LIGHTING_OPTIONS: Array<{
@@ -49,15 +55,20 @@ export function ControlPanel({
   onCameraPresetChange,
   xrayRoof,
   onToggleXrayRoof,
+  halfCutaway,
+  onToggleHalfCutaway,
   autoRotate,
   onToggleAutoRotate,
+  occupancyPercent,
+  onOccupancyChange,
 }: ControlPanelProps) {
   const [specsOpen, setSpecsOpen] = useState(true);
   const totalCapacity = calculateTotalCapacity();
+  const evac = calculateEvacuationMetrics(occupancyPercent);
 
   return (
     <>
-      {/* Top-Left Brand & Capacity Badge */}
+      {/* Top-Left Brand & Live Occupancy Badge */}
       <header className="pointer-events-none fixed top-4 left-4 z-20 flex flex-col gap-2">
         <div className="pointer-events-auto rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-3 backdrop-blur-md shadow-2xl">
           <div className="flex items-center gap-2.5">
@@ -69,7 +80,7 @@ export function ControlPanel({
           <p className="mt-1 text-xs text-slate-400">
             Thiết kế Kiến trúc Trống Đồng & Mô hình 3D Thời gian thực
           </p>
-          <div className="mt-2.5 flex items-center gap-3 text-xs">
+          <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 font-semibold text-amber-300 border border-amber-400/20">
               <Users className="h-3.5 w-3.5" />
               {totalCapacity.toLocaleString('en-US')} chỗ ngồi
@@ -81,8 +92,8 @@ export function ControlPanel({
         </div>
       </header>
 
-      {/* Top-Right Technical Specs Drawer */}
-      <aside className="fixed top-4 right-4 z-20 w-72 rounded-2xl border border-white/10 bg-slate-950/75 backdrop-blur-md shadow-2xl overflow-hidden">
+      {/* Top-Right Technical Specs & Evacuation Simulator Drawer */}
+      <aside className="fixed top-4 right-4 z-20 w-80 rounded-2xl border border-white/10 bg-slate-950/75 backdrop-blur-md shadow-2xl overflow-hidden">
         <button
           type="button"
           onClick={() => setSpecsOpen((v) => !v)}
@@ -90,7 +101,7 @@ export function ControlPanel({
         >
           <span className="flex items-center gap-2">
             <Layers className="h-4 w-4 text-amber-400" />
-            Thông số Kỹ thuật
+            Thông số & Mô phỏng Thoát hiểm
           </span>
           {specsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
@@ -115,19 +126,48 @@ export function ControlPanel({
                 </div>
               </div>
               <div className="rounded-lg bg-white/5 p-2">
-                <div className="text-[10px] text-slate-400 uppercase">Hệ vòm thép</div>
-                <div className="font-semibold text-white">{ROOF_SPECS.ribCount} nhịp</div>
+                <div className="text-[10px] text-slate-400 uppercase">Tầm nhìn C-Value</div>
+                <div className="font-semibold text-emerald-400">{evac.cValueMm} mm (Đạt)</div>
               </div>
             </div>
 
-            <div className="space-y-1.5">
+            {/* Crowd Occupancy & Evacuation Simulator */}
+            <div className="rounded-xl border border-white/10 bg-white/5 p-2.5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold text-slate-300 uppercase">
+                  Lấp đầy khán giả ({evac.occupancyPercent}%)
+                </span>
+                <span className="font-mono font-semibold text-amber-300">
+                  {evac.seatedCount.toLocaleString('en-US')} người
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={occupancyPercent}
+                aria-label="Tỷ lệ lấp đầy khán giả"
+                onChange={(e) => onOccupancyChange(Number(e.target.value))}
+                className="w-full accent-amber-500 cursor-pointer"
+              />
+              <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <span>{evac.exitGates} cửa thoát hiểm</span>
+                <span>
+                  Thoát hiểm:{' '}
+                  <strong className="text-sky-300">{evac.estimatedEvacMinutes} phút</strong>
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1">
               <div className="text-[10px] font-semibold text-slate-400 uppercase">
                 Phân bổ 4 tầng khán đài
               </div>
               {STADIUM_TIERS.map((tier) => (
                 <div
                   key={tier.id}
-                  className="flex items-center justify-between rounded-md bg-white/5 px-2.5 py-1.5"
+                  className="flex items-center justify-between rounded-md bg-white/5 px-2.5 py-1"
                 >
                   <span className="text-slate-300 truncate pr-2">{tier.name}</span>
                   <span className="font-mono font-semibold text-amber-300">
@@ -143,7 +183,7 @@ export function ControlPanel({
       {/* Bottom-Center Interactive Controls */}
       <nav
         aria-label="Điều khiển mô hình 3D"
-        className="fixed bottom-5 left-1/2 z-20 -translate-x-1/2 flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-white/10 bg-slate-950/80 p-2 backdrop-blur-md shadow-2xl max-w-[95vw]"
+        className="fixed bottom-4 left-1/2 z-20 -translate-x-1/2 flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-white/10 bg-slate-950/80 p-2 backdrop-blur-md shadow-2xl max-w-[96vw]"
       >
         {/* Lighting Mode */}
         <div className="flex items-center gap-1 rounded-xl bg-white/5 p-1">
@@ -193,13 +233,13 @@ export function ControlPanel({
 
         <div className="h-6 w-px bg-white/10 hidden sm:block" />
 
-        {/* Toggles */}
+        {/* Architectural Inspection Toggles */}
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={onToggleXrayRoof}
             aria-pressed={xrayRoof}
-            className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition border ${
+            className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition border ${
               xrayRoof
                 ? 'border-sky-400/50 bg-sky-500/20 text-sky-300'
                 : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
@@ -211,9 +251,23 @@ export function ControlPanel({
 
           <button
             type="button"
+            onClick={onToggleHalfCutaway}
+            aria-pressed={halfCutaway}
+            className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition border ${
+              halfCutaway
+                ? 'border-violet-400/50 bg-violet-500/20 text-violet-300'
+                : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
+            }`}
+          >
+            <Scissors className="h-3.5 w-3.5" />
+            Mặt cắt
+          </button>
+
+          <button
+            type="button"
             onClick={onToggleAutoRotate}
             aria-pressed={autoRotate}
-            className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition border ${
+            className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition border ${
               autoRotate
                 ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-300'
                 : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'

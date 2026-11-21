@@ -4,13 +4,15 @@ import { ROOF_SPECS } from '../config/stadiumSpecs';
 
 interface RoofStructureProps {
   xrayRoof: boolean;
+  halfCutaway: boolean;
   floodlightIntensity: number;
+  facadeGlowColor: string;
 }
 
 /**
  * Generates the translucent PTFE roof canopy mesh from outer eave to central oculus.
  */
-function createRoofCanopyGeometry(segments = 96): THREE.BufferGeometry {
+function createRoofCanopyGeometry(arcSpan: number, segments = 96): THREE.BufferGeometry {
   const rings = 10;
   const positions: number[] = [];
   const indices: number[] = [];
@@ -21,8 +23,7 @@ function createRoofCanopyGeometry(segments = 96): THREE.BufferGeometry {
     const rz = THREE.MathUtils.lerp(ROOF_SPECS.outerRadiusZ, ROOF_SPECS.oculusRadiusZ, t);
 
     for (let i = 0; i <= segments; i += 1) {
-      const angle = (i / segments) * Math.PI * 2;
-      // Subtle Dong Son wave undulation along the perimeter
+      const angle = (i / segments) * arcSpan;
       const wave = Math.sin(angle * 12) * 1.8 * (1 - t);
       const arch = Math.sin(t * Math.PI * 0.78) * (ROOF_SPECS.peakHeight - ROOF_SPECS.eaveHeight);
       const y = ROOF_SPECS.eaveHeight + arch + wave;
@@ -49,12 +50,15 @@ function createRoofCanopyGeometry(segments = 96): THREE.BufferGeometry {
 }
 
 /**
- * Generates 24 sweeping steel arch ribs inspired by Dong Son sun-rays & Lac bird wings.
+ * Generates sweeping steel arch ribs inspired by Dong Son sun-rays & Lac bird wings.
  */
-function createRoofRibGeometries(): THREE.TubeGeometry[] {
+function createRoofRibGeometries(arcSpan: number): THREE.TubeGeometry[] {
   const ribs: THREE.TubeGeometry[] = [];
   for (let i = 0; i < ROOF_SPECS.ribCount; i += 1) {
     const angle = (i / ROOF_SPECS.ribCount) * Math.PI * 2;
+    if (angle > arcSpan + 0.05) {
+      continue;
+    }
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
 
@@ -77,12 +81,39 @@ function createRoofRibGeometries(): THREE.TubeGeometry[] {
 }
 
 /**
- * Generates the elliptical oculus tension ring geometry.
+ * Generates diagrid exoskeleton struts wrapping the outer stadium facade.
  */
-function createOculusRingGeometry(segments = 96): THREE.TubeGeometry {
+function createDiagridGeometries(arcSpan: number): THREE.TubeGeometry[] {
+  const struts: THREE.TubeGeometry[] = [];
+  const count = 24;
+  for (let i = 0; i < count; i += 1) {
+    const a1 = (i / count) * Math.PI * 2;
+    const a2 = ((i + 1) / count) * Math.PI * 2;
+    if (a1 > arcSpan || a2 > arcSpan + 0.1) {
+      continue;
+    }
+    const p1 = new THREE.Vector3(
+      Math.cos(a1) * (ROOF_SPECS.outerRadiusX + 4),
+      2,
+      Math.sin(a1) * (ROOF_SPECS.outerRadiusZ + 4)
+    );
+    const p2 = new THREE.Vector3(
+      Math.cos(a2) * ROOF_SPECS.outerRadiusX,
+      ROOF_SPECS.eaveHeight,
+      Math.sin(a2) * ROOF_SPECS.outerRadiusZ
+    );
+    struts.push(new THREE.TubeGeometry(new THREE.LineCurve3(p1, p2), 4, 0.55, 6, false));
+  }
+  return struts;
+}
+
+function createOculusRingGeometry(arcSpan: number, segments = 96): THREE.TubeGeometry {
   const pts: THREE.Vector3[] = [];
-  for (let i = 0; i < segments; i += 1) {
-    const angle = (i / segments) * Math.PI * 2;
+  const isClosed = arcSpan >= Math.PI * 1.99;
+  const steps = isClosed ? segments : Math.max(12, Math.round((arcSpan / (Math.PI * 2)) * segments));
+
+  for (let i = 0; i <= steps; i += 1) {
+    const angle = (i / steps) * arcSpan;
     pts.push(
       new THREE.Vector3(
         Math.cos(angle) * ROOF_SPECS.oculusRadiusX,
@@ -91,28 +122,41 @@ function createOculusRingGeometry(segments = 96): THREE.TubeGeometry {
       )
     );
   }
-  const curve = new THREE.CatmullRomCurve3(pts, true);
-  return new THREE.TubeGeometry(curve, 96, 1.15, 8, true);
+  const curve = new THREE.CatmullRomCurve3(pts, isClosed);
+  return new THREE.TubeGeometry(curve, steps, 1.15, 8, isClosed);
 }
 
-export function RoofStructure({ xrayRoof, floodlightIntensity }: RoofStructureProps) {
-  const canopyGeo = useMemo(() => createRoofCanopyGeometry(), []);
-  const ribGeos = useMemo(() => createRoofRibGeometries(), []);
-  const oculusGeo = useMemo(() => createOculusRingGeometry(), []);
+export function RoofStructure({
+  xrayRoof,
+  halfCutaway,
+  floodlightIntensity,
+  facadeGlowColor,
+}: RoofStructureProps) {
+  const arcSpan = halfCutaway ? Math.PI * 1.15 : Math.PI * 2;
+  const canopyGeo = useMemo(() => createRoofCanopyGeometry(arcSpan), [arcSpan]);
+  const ribGeos = useMemo(() => createRoofRibGeometries(arcSpan), [arcSpan]);
+  const diagridGeos = useMemo(() => createDiagridGeometries(arcSpan), [arcSpan]);
+  const oculusGeo = useMemo(() => createOculusRingGeometry(arcSpan), [arcSpan]);
 
   const floodlightPositions = useMemo(() => {
-    const items: Array<[number, number, number]> = [];
+    const items: Array<{ pos: [number, number, number]; angle: number }> = [];
     const count = 16;
     for (let i = 0; i < count; i += 1) {
       const angle = (i / count) * Math.PI * 2;
-      items.push([
-        Math.cos(angle) * (ROOF_SPECS.oculusRadiusX + 3),
-        73.5,
-        Math.sin(angle) * (ROOF_SPECS.oculusRadiusZ + 3),
-      ]);
+      if (angle > arcSpan) {
+        continue;
+      }
+      items.push({
+        pos: [
+          Math.cos(angle) * (ROOF_SPECS.oculusRadiusX + 3),
+          73.5,
+          Math.sin(angle) * (ROOF_SPECS.oculusRadiusZ + 3),
+        ],
+        angle,
+      });
     }
     return items;
-  }, []);
+  }, [arcSpan]);
 
   return (
     <group name="dong-son-roof">
@@ -129,7 +173,7 @@ export function RoofStructure({ xrayRoof, floodlightIntensity }: RoofStructurePr
         />
       </mesh>
 
-      {/* 24 Sweeping Structural Ribs */}
+      {/* 24 Sweeping Dong Son Structural Ribs */}
       {ribGeos.map((geo, idx) => (
         <mesh key={idx} geometry={geo} castShadow>
           <meshStandardMaterial
@@ -140,21 +184,48 @@ export function RoofStructure({ xrayRoof, floodlightIntensity }: RoofStructurePr
         </mesh>
       ))}
 
-      {/* Central Oculus Compression/Tension Ring */}
+      {/* Outer Diagrid Exoskeleton Facade */}
+      {diagridGeos.map((geo, idx) => (
+        <mesh key={`diag-${idx}`} geometry={geo}>
+          <meshStandardMaterial
+            color="#cbd5e1"
+            emissive={facadeGlowColor}
+            emissiveIntensity={floodlightIntensity > 0 ? 0.35 : 0.05}
+            metalness={0.75}
+            roughness={0.25}
+          />
+        </mesh>
+      ))}
+
+      {/* Central Oculus Tension Ring */}
       <mesh geometry={oculusGeo} castShadow>
         <meshStandardMaterial color="#f59e0b" metalness={0.8} roughness={0.22} />
       </mesh>
 
-      {/* Stadium Floodlights along the Oculus */}
-      {floodlightPositions.map((pos, idx) => (
-        <mesh key={idx} position={pos}>
-          <boxGeometry args={[3.8, 1.4, 2.0]} />
-          <meshStandardMaterial
-            color="#ffffff"
-            emissive="#fef08a"
-            emissiveIntensity={floodlightIntensity > 0 ? floodlightIntensity * 1.4 : 0.15}
-          />
-        </mesh>
+      {/* Stadium Floodlights & Night Volumetric Beams */}
+      {floodlightPositions.map(({ pos, angle }, idx) => (
+        <group key={idx} position={pos} rotation={[0, -angle, 0]}>
+          <mesh>
+            <boxGeometry args={[3.8, 1.4, 2.0]} />
+            <meshStandardMaterial
+              color="#ffffff"
+              emissive="#fef08a"
+              emissiveIntensity={floodlightIntensity > 0 ? floodlightIntensity * 1.4 : 0.15}
+            />
+          </mesh>
+          {floodlightIntensity > 1 && (
+            <mesh position={[-22, -34, 0]} rotation={[0, 0, -0.55]}>
+              <coneGeometry args={[18, 76, 12, 1, true]} />
+              <meshBasicMaterial
+                color="#fef9c3"
+                transparent
+                opacity={0.045}
+                depthWrite={false}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
+          )}
+        </group>
       ))}
     </group>
   );
