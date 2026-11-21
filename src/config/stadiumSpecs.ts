@@ -97,24 +97,18 @@ export const ROOF_SPECS = {
   supportRadiusX: 166,
   supportRadiusZ: 140,
   supportHeight: 68.5,
-  outerRadiusX: 174,
-  outerRadiusZ: 148,
+  outerRadiusX: 176,
+  outerRadiusZ: 150,
   oculusRadiusX: 66,
   oculusRadiusZ: 46,
-  eaveHeight: 67.5,
-  peakHeight: 75.5,
+  eaveHeight: 68.5,
+  peakHeight: 77.5,
   ribCount: 48,
   trussBays: 10,
-  trussRootDepth: 6.5,
-  trussTipDepth: 2.7,
-  archSpanM: 390,
-  archPeakHeightM: 124,
-  pylonCount: 24,
-  pylonHeightM: 102,
-  helicalRampTowers: 8,
-  grandStaircases: 8,
+  trussRootDepth: 6.2,
+  trussTipDepth: 2.6,
   exitGates: 48,
-  steelTonnage: 42_800,
+  steelTonnage: 34_600,
   superEllipsePower: 2.4,
 } as const;
 
@@ -138,8 +132,8 @@ export const STADIUM_TIERS: readonly TierSpec[] = [
     outerRadiusZ: 78,
     baseElevation: 2.2,
     topElevation: 16.5,
-    seatColor: '#b91c1c',
-    accentColor: '#f59e0b',
+    seatColor: '#be123c',
+    accentColor: '#fbbf24',
     slopeDeg: 24,
   },
   {
@@ -153,7 +147,7 @@ export const STADIUM_TIERS: readonly TierSpec[] = [
     outerRadiusZ: 98,
     baseElevation: 18.8,
     topElevation: 32.0,
-    seatColor: '#991b1b',
+    seatColor: '#9f1239',
     accentColor: '#fbbf24',
     slopeDeg: 28,
   },
@@ -168,7 +162,7 @@ export const STADIUM_TIERS: readonly TierSpec[] = [
     outerRadiusZ: 120,
     baseElevation: 34.5,
     topElevation: 52.0,
-    seatColor: '#dc2626',
+    seatColor: '#e11d48',
     accentColor: '#f8fafc',
     slopeDeg: 33,
   },
@@ -183,7 +177,7 @@ export const STADIUM_TIERS: readonly TierSpec[] = [
     outerRadiusZ: 140,
     baseElevation: 54.5,
     topElevation: 68.5,
-    seatColor: '#7f1d1d',
+    seatColor: '#881337',
     accentColor: '#fbbf24',
     slopeDeg: 35,
   },
@@ -192,33 +186,33 @@ export const STADIUM_TIERS: readonly TierSpec[] = [
 export const MASTERPLAN_ZONES: readonly MasterplanZoneSpec[] = [
   {
     id: 'podium-mall',
-    name: '1. Khối Đế Thương Mại & F&B 2 Tầng',
+    name: '1. Khối Đế Travertine & 36 Cổng Vòm',
     location: 'Bao quanh chân SVĐ (+10.5m)',
-    spec: '36 Cổng soát vé • Quảng trường trên cao • VIP Lounge',
+    spec: 'Quảng trường đá sáng • F&B Mall • VIP Lounge',
   },
   {
     id: 'metro-hub',
-    name: '2. Nhà Ga Metro & Cầu Cạn Skywalk',
+    name: '2. Nhà Ga Metro Cánh Chim & Skywalk',
     location: 'Phía Nam (z = +265m)',
-    spec: '2 Đường ray trên cao • Cầu vượt nối thẳng Sảnh Nam',
+    spec: 'Mái vòm trắng thanh thoát • Cầu vượt kính nối thẳng Sảnh Nam',
   },
   {
     id: 'hotel-ibc',
-    name: '3. Khách Sạn 5★ & Trung Tâm Báo Chí IBC',
-    location: 'Phía Đông (x = +290m)',
-    spec: 'Tháp đôi 85m & 68m • Trung tâm Hội nghị 4 tầng',
+    name: '3. Tháp Đôi Khách Sạn 5★ & Hội Nghị IBC',
+    location: 'Phía Đông (x = +295m)',
+    spec: 'Tháp cánh buồm kính Sapphire 86m & 70m • Vườn mái xanh',
   },
   {
     id: 'indoor-aquatics',
-    name: '4. Nhà Thi Đấu 15K & Cung Dưới Nước',
-    location: 'Phía Tây (x = -290m)',
-    spec: '2 Tổ hợp mái vòm nhịp lớn đa năng',
+    name: '4. Cung Thể Thao 15K & Bơi Lội Ngọc Trai',
+    location: 'Phía Tây (x = -295m)',
+    spec: '2 Tổ hợp mái vòm elip Trắng Ngọc Trai & Vàng Champagne',
   },
   {
     id: 'training-parking',
-    name: '5. Sân Tập FIFA & 4 Nhà Xe Cao Tầng',
-    location: 'Phía Bắc (z = -280m)',
-    spec: 'Sân tập 105×68m + 4 nhà xe 5 tầng (12.000 chỗ)',
+    name: '5. Sân Tập FIFA & Eco Parking Mái Xanh',
+    location: 'Phía Bắc (z = -285m)',
+    spec: 'Sân tập 105×68m mái cong • Tổ hợp đỗ xe mái vườn sinh thái',
   },
 ] as const;
 
@@ -226,13 +220,13 @@ export const CAMERA_PRESETS: readonly CameraPreset[] = [
   {
     id: 'masterplan',
     label: 'Quy hoạch',
-    position: [385, 225, 375],
-    target: [0, 15, 0],
+    position: [365, 205, 355],
+    target: [0, 14, 0],
   },
   {
     id: 'overview',
     label: 'Toàn cảnh SVĐ',
-    position: [255, 145, 245],
+    position: [248, 132, 238],
     target: [0, 26, 0],
   },
   {
@@ -255,9 +249,9 @@ export const CAMERA_PRESETS: readonly CameraPreset[] = [
   },
   {
     id: 'roof',
-    label: 'Vòm & Dây văng',
-    position: [195, 138, -185],
-    target: [0, 72, 0],
+    label: 'Vòm Ngọc Trai',
+    position: [185, 118, -175],
+    target: [0, 56, 0],
   },
 ] as const;
 
@@ -265,29 +259,29 @@ export const LIGHTING_CONFIGS: Record<LightingMode, LightingConfig> = {
   day: {
     mode: 'day',
     label: 'Ban ngày',
-    skyColor: '#60a5fa',
-    horizonColor: '#dbeafe',
-    fogColor: '#cbd5e1',
-    ambientIntensity: 0.72,
-    sunPosition: [240, 260, 180],
+    skyColor: '#38bdf8',
+    horizonColor: '#e0f2fe',
+    fogColor: '#dbeafe',
+    ambientIntensity: 0.88,
+    sunPosition: [240, 270, 190],
     sunColor: '#fffbeb',
-    sunIntensity: 2.35,
+    sunIntensity: 2.55,
     floodlightIntensity: 0,
     ledGlowIntensity: 0.55,
-    facadeGlowColor: '#94a3b8',
+    facadeGlowColor: '#fbbf24',
   },
   sunset: {
     mode: 'sunset',
     label: 'Hoàng hôn',
     skyColor: '#1e1b4b',
-    horizonColor: '#fb923c',
-    fogColor: '#7c2d12',
-    ambientIntensity: 0.48,
+    horizonColor: '#fdba74',
+    fogColor: '#9a3412',
+    ambientIntensity: 0.56,
     sunPosition: [-260, 52, 130],
     sunColor: '#fb923c',
-    sunIntensity: 1.9,
-    floodlightIntensity: 1.4,
-    ledGlowIntensity: 1.6,
+    sunIntensity: 2.1,
+    floodlightIntensity: 1.3,
+    ledGlowIntensity: 1.5,
     facadeGlowColor: '#f59e0b',
   },
   night: {
@@ -296,13 +290,13 @@ export const LIGHTING_CONFIGS: Record<LightingMode, LightingConfig> = {
     skyColor: '#020617',
     horizonColor: '#0f172a',
     fogColor: '#0f172a',
-    ambientIntensity: 0.34,
+    ambientIntensity: 0.42,
     sunPosition: [100, 180, -120],
-    sunColor: '#64748b',
-    sunIntensity: 0.45,
+    sunColor: '#94a3b8',
+    sunIntensity: 0.55,
     floodlightIntensity: 3.6,
-    ledGlowIntensity: 2.4,
-    facadeGlowColor: '#38bdf8',
+    ledGlowIntensity: 2.2,
+    facadeGlowColor: '#fbbf24',
   },
 };
 
@@ -310,35 +304,35 @@ export const LOOPFORGE_SOP_NODES: readonly LoopForgeSopNode[] = [
   {
     id: 'requirement',
     title: '1. Requirement',
-    role: 'Investor & Masterplan Scope',
+    role: 'Resort Sports Park & 200K Scope',
     status: 'passed',
     artifact: 'docs/REQUIREMENTS.md',
   },
   {
     id: 'clarify',
     title: '2. Clarify',
-    role: 'Crowd Flow & Structural Loads',
+    role: 'Circulation & Aesthetic Standards',
     status: 'passed',
     artifact: 'artifacts/vietnam-200k-masterpiece/01-solo/solo-report.md',
   },
   {
     id: 'design',
     title: '3. Design',
-    role: 'Chief Structural & Urban Architect',
+    role: 'Iconic Lusail/SoFi Sculptural Design',
     status: 'passed',
     artifact: 'design.md',
   },
   {
     id: 'implement',
     title: '4. Implement',
-    role: 'BIM RC + Cable-Stayed Arch Engineer',
+    role: 'Architectural Facade + Hidden BIM Frame',
     status: 'passed',
     artifact: 'src/scene/*.tsx',
   },
   {
     id: 'review',
     title: '5. Review',
-    role: 'Code & Structural Equilibrium Audit',
+    role: 'Visual Quality & Equilibrium Audit',
     status: 'passed',
     artifact: 'src/components/ControlPanel.tsx',
   },
@@ -352,7 +346,7 @@ export const LOOPFORGE_SOP_NODES: readonly LoopForgeSopNode[] = [
   {
     id: 'deliver',
     title: '7. Accept & Delivery',
-    role: 'Investor Sign-off / Summary',
+    role: 'Investor Presentation / Summary',
     status: 'active',
     artifact: 'artifacts/vietnam-200k-masterpiece/workflow-summary.md',
   },
@@ -373,6 +367,14 @@ export function superEllipsePoint(
   const x = Math.sign(cos) * Math.pow(Math.abs(cos), exp) * radiusX;
   const z = Math.sign(sin) * Math.pow(Math.abs(sin), exp) * radiusZ;
   return [x, z];
+}
+
+/**
+ * Computes the aerodynamic undulating saddle-roof rim elevation at a given perimeter angle:
+ * rises gracefully to ~73.5m above East/West main stands and sweeps down to ~63.5m at North/South ends.
+ */
+export function getUndulatingRimHeight(angle: number): number {
+  return ROOF_SPECS.eaveHeight + Math.cos(angle * 2) * 5.0;
 }
 
 /**

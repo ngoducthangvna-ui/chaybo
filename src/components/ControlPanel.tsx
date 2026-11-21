@@ -106,13 +106,12 @@ export function ControlPanel({
             <h1 className="text-sm font-bold tracking-wider text-[#ededf0] uppercase">
               Vietnam 200K National Complex
             </h1>
-            <span className="rounded-md border border-sky-500/30 bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-sky-300">
-              BIM ARCH + CABLE
+            <span className="rounded-md border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300">
+              DONG SON ICONIC
             </span>
           </div>
           <p className="mt-1 text-xs text-[#a1a1aa]">
-            Đôi Vòm Thép {ROOF_SPECS.archPeakHeightM}m • {ROOF_SPECS.pylonCount} Tháp Dây Văng •{' '}
-            {ROOF_SPECS.helicalRampTowers} Tháp Xoắn Ốc & 5 Khu Phức Hợp
+            Mái ETFE Ngọc Trai • Mặt dựng Vàng Champagne • 5 Khu Phức Hợp
           </p>
           <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 font-semibold text-amber-300 border border-amber-400/20">
@@ -202,15 +201,15 @@ export function ControlPanel({
                     </div>
                   </div>
                   <div className="rounded-lg border border-[#26262b] bg-[#0a0a0b]/60 p-2">
-                    <div className="text-[10px] text-[#a1a1aa] uppercase">Đôi Vòm Thép</div>
+                    <div className="text-[10px] text-[#a1a1aa] uppercase">Mái Yên Ngựa ETFE</div>
                     <div className="mt-0.5 font-semibold text-white">
-                      Nhịp {ROOF_SPECS.archSpanM}m · Cao {ROOF_SPECS.archPeakHeightM}m
+                      {ROOF_SPECS.outerRadiusX * 2}×{ROOF_SPECS.outerRadiusZ * 2}m · H=63–74m
                     </div>
                   </div>
                   <div className="rounded-lg border border-[#26262b] bg-[#0a0a0b]/60 p-2">
-                    <div className="text-[10px] text-[#a1a1aa] uppercase">Cân bằng Lật ΣM=0</div>
+                    <div className="text-[10px] text-[#a1a1aa] uppercase">Kết cấu BIM ngầm</div>
                     <div className="mt-0.5 font-semibold text-emerald-400">
-                      24 Dây văng + 48 Chữ A
+                      48 Khung RC + 48 Dàn Kèo
                     </div>
                   </div>
                 </div>
@@ -256,7 +255,7 @@ export function ControlPanel({
                     className="w-full accent-amber-500 cursor-pointer"
                   />
                   <div className="flex items-center justify-between text-[11px] text-[#a1a1aa]">
-                    <span>8 Tháp xoắn + 8 Đại sảnh</span>
+                    <span>36 Cổng vòm + 4 Đại sảnh Travertine</span>
                     <span>
                       Thoát hiểm:{' '}
                       <strong className="text-emerald-400">{evac.estimatedEvacMinutes} phút</strong>

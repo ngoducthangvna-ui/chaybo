@@ -9,9 +9,10 @@ interface SurroundingsProps {
 }
 
 /**
- * Generates an architectural retail/turnstile commercial facade texture for the 2-story Podium.
+ * Generates an upscale Travertine & Champagne-Gold 36-Arch Commercial Arcade texture
+ * for the stadium's 2-story Concourse Podium (+10.5m).
  */
-function createPodiumFacadeTexture(isNight: boolean): THREE.CanvasTexture {
+function createTravertineArcadeTexture(isNight: boolean): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 2048;
   canvas.height = 256;
@@ -20,34 +21,45 @@ function createPodiumFacadeTexture(isNight: boolean): THREE.CanvasTexture {
     return new THREE.CanvasTexture(canvas);
   }
 
-  ctx.fillStyle = '#475569';
+  // Bright cream Travertine limestone base
+  ctx.fillStyle = '#e2e8f0';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Upper level mall glazing + aluminum mullions
-  ctx.fillStyle = isNight ? 'rgba(251, 191, 36, 0.35)' : '#1e293b';
-  ctx.fillRect(0, 26, canvas.width, 96);
+  // Upper level sapphire/warm gallery glazing
+  ctx.fillStyle = isNight ? 'rgba(251, 191, 36, 0.55)' : '#0f2942';
+  ctx.fillRect(0, 24, canvas.width, 84);
 
-  // Concrete horizontal spandrel beam between Level 1 & Level 2
-  ctx.fillStyle = '#64748b';
-  ctx.fillRect(0, 122, canvas.width, 18);
+  // Champagne-Gold cornice band separating Level 1 & Level 2
+  ctx.fillStyle = '#d97706';
+  ctx.fillRect(0, 108, canvas.width, 8);
+  ctx.fillStyle = '#f1f5f9';
+  ctx.fillRect(0, 116, canvas.width, 16);
 
-  // Ground level retail / 36 turnstile entrance portals
-  ctx.fillStyle = isNight ? 'rgba(248, 250, 252, 0.25)' : '#334155';
-  ctx.fillRect(0, 140, canvas.width, 116);
+  // Ground arcade with 36 Champagne-Gold arched turnstile portals
+  ctx.fillStyle = '#cbd5e1';
+  ctx.fillRect(0, 132, canvas.width, 124);
 
   const portalCount = 36;
   const step = canvas.width / portalCount;
   for (let i = 0; i < portalCount; i += 1) {
     const px = i * step + step * 0.5;
-    // Recessed dark entrance gate
-    ctx.fillStyle = '#09090b';
-    ctx.fillRect(px - 14, 152, 28, 104);
-    // Gate signage header
+    // Champagne-gold arch trim
     ctx.fillStyle = '#f59e0b';
-    ctx.fillRect(px - 16, 144, 32, 6);
-    // Mullions
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(i * step, 26, 4, 230);
+    ctx.beginPath();
+    ctx.arc(px, 178, 16, Math.PI, 0);
+    ctx.lineTo(px + 16, 256);
+    ctx.lineTo(px - 16, 256);
+    ctx.closePath();
+    ctx.fill();
+
+    // Recessed warm-lit / dark glass entrance portal
+    ctx.fillStyle = isNight ? '#fbbf24' : '#0f172a';
+    ctx.beginPath();
+    ctx.arc(px, 180, 12, Math.PI, 0);
+    ctx.lineTo(px + 12, 256);
+    ctx.lineTo(px - 12, 256);
+    ctx.closePath();
+    ctx.fill();
   }
 
   const tex = new THREE.CanvasTexture(canvas);
@@ -58,9 +70,10 @@ function createPodiumFacadeTexture(isNight: boolean): THREE.CanvasTexture {
 }
 
 /**
- * Generates an architectural high-rise curtain wall texture for the 5-star Hotels, IBC & Garages.
+ * Generates an upscale Sapphire Glass & Pearl Aluminum Mullion facade texture
+ * for the 5-star elliptical Sail Hotel Towers and Convention Center.
  */
-function createBuildingFacadeTexture(isNight: boolean, floors: number): THREE.CanvasTexture {
+function createSapphireGlassTexture(isNight: boolean, floors: number): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 512;
@@ -69,19 +82,20 @@ function createBuildingFacadeTexture(isNight: boolean, floors: number): THREE.Ca
     return new THREE.CanvasTexture(canvas);
   }
 
-  ctx.fillStyle = '#1e293b';
+  ctx.fillStyle = isNight ? '#0c192c' : '#0369a1';
   ctx.fillRect(0, 0, 512, 512);
 
   const rowH = 512 / floors;
   for (let f = 0; f < floors; f += 1) {
     const y = f * rowH;
-    ctx.fillStyle = '#475569';
-    ctx.fillRect(0, y, 512, Math.max(4, rowH * 0.28));
+    // Pearl aluminum spandrel band
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fillRect(0, y, 512, Math.max(4, rowH * 0.24));
 
     for (let w = 0; w < 16; w += 1) {
-      const lit = isNight && Math.abs(Math.sin(f * 13.7 + w * 7.3)) > 0.45;
-      ctx.fillStyle = lit ? 'rgba(253, 224, 71, 0.72)' : 'rgba(56, 189, 248, 0.22)';
-      ctx.fillRect(w * 32 + 3, y + rowH * 0.32, 26, rowH * 0.62);
+      const lit = isNight && Math.abs(Math.sin(f * 13.7 + w * 7.3)) > 0.4;
+      ctx.fillStyle = lit ? 'rgba(253, 224, 71, 0.8)' : 'rgba(125, 211, 252, 0.55)';
+      ctx.fillRect(w * 32 + 2, y + rowH * 0.28, 28, rowH * 0.68);
     }
   }
 
@@ -92,9 +106,6 @@ function createBuildingFacadeTexture(isNight: boolean, floors: number): THREE.Ca
   return tex;
 }
 
-/**
- * Generates a miniature FIFA training pitch texture (105m x 68m) for the North Training Complex.
- */
 function createTrainingPitchTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 1024;
@@ -102,7 +113,7 @@ function createTrainingPitchTexture(): THREE.CanvasTexture {
   const ctx = canvas.getContext('2d');
   if (ctx) {
     for (let i = 0; i < 14; i += 1) {
-      ctx.fillStyle = i % 2 === 0 ? '#1e6b34' : '#247c3d';
+      ctx.fillStyle = i % 2 === 0 ? '#16a34a' : '#22c55e';
       ctx.fillRect((i * canvas.width) / 14, 0, canvas.width / 14 + 1, canvas.height);
     }
     ctx.strokeStyle = '#ffffff';
@@ -122,7 +133,9 @@ function createTrainingPitchTexture(): THREE.CanvasTexture {
 }
 
 /**
- * Generates a realistic 1000m x 1000m National Sports Complex site masterplan texture.
+ * Generates a bright, resort-grade 1000m x 1000m Sports Park Masterplan ground texture:
+ * vibrant emerald green eco-park lawns, cream Travertine stone plazas, Champagne-Gold Dong Son rings,
+ * pearl stone pedestrian boulevards, and clean urban ring roads.
  */
 function createMasterplanGroundTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
@@ -138,63 +151,89 @@ function createMasterplanGroundTexture(): THREE.CanvasTexture {
   const cy = size / 2;
   const pxPerMeter = size / 1000;
 
-  // Landscaped park turf
-  ctx.fillStyle = '#1e3a2a';
+  // Lush resort emerald park turf
+  ctx.fillStyle = '#15803d';
   ctx.fillRect(0, 0, size, size);
 
-  // Outer Asphalt Arterial Ring Road (r=380m, width=28m)
-  ctx.strokeStyle = '#1f2937';
+  // Alternating soft lawn mowing rings for depth
+  ctx.strokeStyle = 'rgba(74, 222, 128, 0.14)';
   ctx.lineWidth = 28 * pxPerMeter;
+  for (const r of [295, 445]) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * pxPerMeter, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Outer Urban Boulevard Ring Road (r=385m)
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 26 * pxPerMeter;
   ctx.beginPath();
-  ctx.arc(cx, cy, 380 * pxPerMeter, 0, Math.PI * 2);
+  ctx.arc(cx, cy, 385 * pxPerMeter, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Ring Road painted lanes
-  ctx.strokeStyle = '#ca8a04';
+  ctx.strokeStyle = '#f59e0b';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(cx, cy, 380 * pxPerMeter, 0, Math.PI * 2);
+  ctx.arc(cx, cy, 385 * pxPerMeter, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.strokeStyle = 'rgba(248, 250, 252, 0.55)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
   ctx.setLineDash([14, 14]);
-  for (const off of [-7, 7]) {
+  for (const off of [-6.5, 6.5]) {
     ctx.beginPath();
-    ctx.arc(cx, cy, (380 + off) * pxPerMeter, 0, Math.PI * 2);
+    ctx.arc(cx, cy, (385 + off) * pxPerMeter, 0, Math.PI * 2);
     ctx.stroke();
   }
   ctx.setLineDash([]);
 
-  // Central Granite Ceremonial Plaza around Stadium
-  ctx.fillStyle = '#475569';
+  // Bright Cream Travertine Ceremonial Plaza around Stadium
+  ctx.fillStyle = '#cbd5e1';
   ctx.beginPath();
-  ctx.ellipse(cx, cy, 245 * pxPerMeter, 225 * pxPerMeter, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy, 255 * pxPerMeter, 232 * pxPerMeter, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // 4 Wide Granite Pedestrian Boulevards linking Stadium to all 4 Service Zones
-  ctx.fillStyle = '#64748b';
+  // Inner Pearl Stone Terrace Ring
+  ctx.fillStyle = '#e2e8f0';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, 232 * pxPerMeter, 208 * pxPerMeter, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Delicate Champagne-Gold Dong Son Lotus Rings inlaid into the Travertine Plaza
+  ctx.strokeStyle = 'rgba(217, 119, 6, 0.35)';
+  ctx.lineWidth = 3;
+  for (const r of [218, 240]) {
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, r * pxPerMeter, (r - 22) * pxPerMeter, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // 4 Sweeping Pearl-White Travertine Pedestrian Boulevards
+  ctx.fillStyle = '#f1f5f9';
   const blvdW = 42 * pxPerMeter;
   ctx.fillRect(cx - blvdW / 2, 0, blvdW, size);
   ctx.fillRect(0, cy - blvdW / 2, size, blvdW);
 
-  // Paved Concrete Service Pads under East Hotel/IBC, West Arena/Aquatics, South Metro, North Garages
-  ctx.fillStyle = '#334155';
-  ctx.fillRect(cx + 225 * pxPerMeter, cy - 110 * pxPerMeter, 140 * pxPerMeter, 220 * pxPerMeter);
-  ctx.fillRect(cx - 365 * pxPerMeter, cy - 110 * pxPerMeter, 140 * pxPerMeter, 220 * pxPerMeter);
-  ctx.fillRect(cx - 180 * pxPerMeter, cy - 355 * pxPerMeter, 360 * pxPerMeter, 140 * pxPerMeter);
-  ctx.fillRect(cx - 140 * pxPerMeter, cy + 215 * pxPerMeter, 280 * pxPerMeter, 110 * pxPerMeter);
+  // Subtle green planted boulevard medians
+  ctx.fillStyle = '#16a34a';
+  const medW = 6 * pxPerMeter;
+  ctx.fillRect(cx - medW / 2, 0, medW, cy - 235 * pxPerMeter);
+  ctx.fillRect(cx - medW / 2, cy + 235 * pxPerMeter, medW, cy - 235 * pxPerMeter);
+  ctx.fillRect(0, cy - medW / 2, cx - 255 * pxPerMeter, medW);
+  ctx.fillRect(cx + 255 * pxPerMeter, cy - medW / 2, cx - 255 * pxPerMeter, medW);
 
-  // Painted parking stalls around North Garages & East/West drop-off bays
-  ctx.strokeStyle = 'rgba(226, 232, 240, 0.35)';
-  ctx.lineWidth = 1.5;
-  for (let px = -165; px <= 165; px += 10) {
-    ctx.beginPath();
-    ctx.moveTo(cx + px * pxPerMeter, cy - 242 * pxPerMeter);
-    ctx.lineTo(cx + px * pxPerMeter, cy - 226 * pxPerMeter);
-    ctx.stroke();
-  }
+  // Bright Limestone Plaza Pads under surrounding Complex Zones
+  ctx.fillStyle = '#cbd5e1';
+  ctx.beginPath();
+  ctx.ellipse(cx + 295 * pxPerMeter, cy, 75 * pxPerMeter, 110 * pxPerMeter, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx - 295 * pxPerMeter, cy, 75 * pxPerMeter, 110 * pxPerMeter, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - 285 * pxPerMeter, 175 * pxPerMeter, 65 * pxPerMeter, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Inner Stadium Concrete Floor Sub-Base
-  ctx.fillStyle = '#334155';
+  // Inner Stadium Sub-Base
+  ctx.fillStyle = '#475569';
   ctx.beginPath();
   ctx.ellipse(cx, cy, 168 * pxPerMeter, 142 * pxPerMeter, 0, 0, Math.PI * 2);
   ctx.fill();
@@ -205,9 +244,6 @@ function createMasterplanGroundTexture(): THREE.CanvasTexture {
   return texture;
 }
 
-/**
- * Generates the 2-story Commercial & Turnstile Podium Ring geometry (y=0..10.5m, r=166..204m).
- */
 function createCommercialPodiumGeometry(
   startAngle: number,
   endAngle: number,
@@ -215,8 +251,8 @@ function createCommercialPodiumGeometry(
 ): THREE.BufferGeometry {
   const innerRx = ROOF_SPECS.supportRadiusX;
   const innerRz = ROOF_SPECS.supportRadiusZ;
-  const outerRx = 204;
-  const outerRz = 178;
+  const outerRx = 196;
+  const outerRz = 170;
   const height = 10.5;
 
   const profile: Array<[number, number, number]> = [
@@ -262,11 +298,7 @@ function createCommercialPodiumGeometry(
   return geometry;
 }
 
-/**
- * 8 Monumental Exterior Grand Approach Staircases connecting ground plaza (y=0)
- * up onto the Elevated Concourse Podium (+10.5m).
- */
-function GrandApproachStaircases({
+function GrandTravertineStairways({
   startAngle,
   endAngle,
 }: {
@@ -275,44 +307,42 @@ function GrandApproachStaircases({
 }) {
   const stairs = useMemo(() => {
     const list: Array<{ x: number; z: number; rotY: number; length: number }> = [];
-    for (let i = 0; i < ROOF_SPECS.grandStaircases; i += 1) {
-      const angle = (i / ROOF_SPECS.grandStaircases) * Math.PI * 2;
+    for (let i = 0; i < 4; i += 1) {
+      const angle = (i / 4) * Math.PI * 2;
       if (angle < startAngle - 0.05 || angle > endAngle + 0.05) {
         continue;
       }
-      const [topX, topZ] = superEllipsePoint(angle, 204, 178);
-      const [botX, botZ] = superEllipsePoint(angle, 232, 206);
-      const midX = (topX + botX) / 2;
-      const midZ = (topZ + botZ) / 2;
-      const length = Math.hypot(botX - topX, botZ - topZ);
-      const rotY = Math.atan2(botX - topX, botZ - topZ);
-      list.push({ x: midX, z: midZ, rotY, length });
+      const [topX, topZ] = superEllipsePoint(angle, 196, 170);
+      const [botX, botZ] = superEllipsePoint(angle, 224, 198);
+      list.push({
+        x: (topX + botX) / 2,
+        z: (topZ + botZ) / 2,
+        rotY: Math.atan2(botX - topX, botZ - topZ),
+        length: Math.hypot(botX - topX, botZ - topZ),
+      });
     }
     return list;
   }, [startAngle, endAngle]);
 
   return (
-    <group name="grand-approach-staircases">
+    <group name="grand-travertine-stairways">
       {stairs.map((s, idx) => {
         const pitch = Math.atan2(10.5, s.length);
         const hyp = Math.hypot(s.length, 10.5);
         return (
           <group key={idx} position={[s.x, 5.25, s.z]} rotation={[0, s.rotY, 0]}>
-            {/* Sloped Stair Flight */}
             <mesh rotation={[pitch, 0, 0]} castShadow receiveShadow>
-              <boxGeometry args={[24, 1.4, hyp]} />
-              <meshStandardMaterial color="#94a3b8" roughness={0.78} />
+              <boxGeometry args={[28, 1.4, hyp]} />
+              <meshStandardMaterial color="#f1f5f9" roughness={0.65} />
             </mesh>
-            {/* Concrete Support Wedge beneath Staircase */}
-            <mesh position={[0, -2.6, -s.length * 0.22]} castShadow receiveShadow>
-              <boxGeometry args={[23, 5.2, s.length * 0.5]} />
-              <meshStandardMaterial color="#475569" roughness={0.85} />
+            <mesh position={[0, -2.6, -s.length * 0.22]} receiveShadow>
+              <boxGeometry args={[27, 5.2, s.length * 0.5]} />
+              <meshStandardMaterial color="#cbd5e1" roughness={0.75} />
             </mesh>
-            {/* Left & Right Parapet Walls */}
-            {[-12.2, 12.2].map((bx) => (
+            {[-14.2, 14.2].map((bx) => (
               <mesh key={bx} position={[bx, 0.8, 0]} rotation={[pitch, 0, 0]} castShadow>
-                <boxGeometry args={[0.9, 2.2, hyp]} />
-                <meshStandardMaterial color="#cbd5e1" roughness={0.75} />
+                <boxGeometry args={[0.8, 2.0, hyp]} />
+                <meshStandardMaterial color="#f8fafc" roughness={0.5} />
               </mesh>
             ))}
           </group>
@@ -323,128 +353,151 @@ function GrandApproachStaircases({
 }
 
 /**
- * 5 Real-World Surrounding Service, Transit, Hospitality & Training Complexes:
- * - Zone 2 (South): Central Metro Station + Elevated Viaduct + Skywalk to Stadium Podium
- * - Zone 3 (East): 5-Star Twin Hotel Towers & International Broadcast/Convention Center (IBC)
- * - Zone 4 (West): 15,000-Seat Indoor Arena & National Aquatics Center
- * - Zone 5 (North): FIFA Training Stadium (105x68m) & 4 Multi-Story Parking Garages
+ * 5 Sculptural, Modern Aerodynamic Surrounding Complexes (ZERO ugly dark boxes):
+ * - South: Winged Pearl-White Metro Terminal + Glass Skywalk
+ * - East: Curved Elliptical Sapphire-Glass 5-Star Sail Hotel Towers + Green-Roof Convention Center
+ * - West: Pearl-White & Gold Dome Indoor Arena + Wave-Vaulted Aquatics Pavilion
+ * - North: FIFA Training Pitch with Curved Canopy + Green-Roof Eco Parking Pavilions
  */
-function ServiceComplexBuildings({ isNight }: { isNight: boolean }) {
-  const towerTex = useMemo(() => createBuildingFacadeTexture(isNight, 20), [isNight]);
-  const podiumBuildingTex = useMemo(() => createBuildingFacadeTexture(isNight, 5), [isNight]);
+function SculpturalServiceComplexes({ isNight }: { isNight: boolean }) {
+  const towerGlassTex = useMemo(() => createSapphireGlassTexture(isNight, 22), [isNight]);
+  const lowGlassTex = useMemo(() => createSapphireGlassTexture(isNight, 5), [isNight]);
   const trainingPitchTex = useMemo(() => createTrainingPitchTexture(), []);
 
   return (
-    <group name="national-sports-service-complex">
-      {/* ZONE 2 (SOUTH): Central Metro Station + Elevated Rail Viaduct + Pedestrian Skywalk */}
-      <group name="zone-2-metro-transit-hub">
-        {/* Elevated Rail Viaduct Deck along z=+296m */}
-        <mesh position={[0, 14.0, 296]} castShadow receiveShadow>
-          <boxGeometry args={[520, 1.8, 14]} />
-          <meshStandardMaterial color="#64748b" roughness={0.8} />
+    <group name="sculptural-service-complexes">
+      {/* ZONE 2 (SOUTH): Winged Pearl-White Metro Hub & Glass Skywalk */}
+      <group name="zone-2-metro-hub">
+        {/* Elevated Pearl Concrete Rail Viaduct */}
+        <mesh position={[0, 13.5, 298]} castShadow receiveShadow>
+          <boxGeometry args={[520, 1.6, 12]} />
+          <meshStandardMaterial color="#e2e8f0" roughness={0.65} />
         </mesh>
-        {/* Viaduct T-Piers */}
         {[-210, -140, -70, 0, 70, 140, 210].map((px) => (
-          <mesh key={px} position={[px, 6.8, 296]} castShadow receiveShadow>
-            <boxGeometry args={[4.5, 13.6, 5.5]} />
-            <meshStandardMaterial color="#475569" roughness={0.85} />
+          <mesh key={px} position={[px, 6.5, 298]} castShadow>
+            <cylinderGeometry args={[1.8, 2.4, 13.0, 12]} />
+            <meshStandardMaterial color="#cbd5e1" roughness={0.7} />
           </mesh>
         ))}
-        {/* Central Metro Station Hall */}
-        <mesh position={[0, 8.5, 268]} castShadow receiveShadow>
-          <boxGeometry args={[112, 17, 38]} />
-          <meshStandardMaterial map={podiumBuildingTex} roughness={0.5} metalness={0.3} />
+
+        {/* Elliptical Glazed Metro Concourse & Pearl Shell Roof */}
+        <mesh position={[0, 7.5, 268]} scale={[2.4, 1, 0.9]} castShadow receiveShadow>
+          <cylinderGeometry args={[22, 24, 15, 32]} />
+          <meshStandardMaterial map={lowGlassTex} roughness={0.3} metalness={0.45} />
         </mesh>
-        {/* Vaulted Station Roof */}
-        <mesh position={[0, 18.5, 268]} rotation={[0, 0, Math.PI / 2]} castShadow>
-          <cylinderGeometry args={[20, 20, 118, 16, 1, false, 0, Math.PI]} />
-          <meshStandardMaterial color="#cbd5e1" metalness={0.6} roughness={0.3} />
+        <mesh position={[0, 15.5, 268]} scale={[2.55, 0.35, 1.05]} castShadow>
+          <sphereGeometry args={[24, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
+          <meshStandardMaterial color="#f8fafc" metalness={0.35} roughness={0.25} />
         </mesh>
-        {/* Elevated Pedestrian Skywalk linking Metro Mezzanine (+10.5m) straight to Stadium Podium */}
-        <mesh position={[0, 10.5, 214]} castShadow receiveShadow>
-          <boxGeometry args={[18, 1.6, 74]} />
-          <meshStandardMaterial color="#94a3b8" roughness={0.75} />
+
+        {/* Sleek Pearl-White & Glass Skywalk Bridge linking Metro to South Podium */}
+        <mesh position={[0, 10.5, 212]} castShadow receiveShadow>
+          <boxGeometry args={[16, 1.2, 82]} />
+          <meshStandardMaterial color="#f1f5f9" roughness={0.55} />
         </mesh>
-        <mesh position={[0, 12.6, 214]}>
-          <boxGeometry args={[17.2, 2.8, 72]} />
-          <meshPhysicalMaterial color="#38bdf8" transparent opacity={0.35} metalness={0.5} roughness={0.15} />
+        <mesh position={[0, 12.4, 212]}>
+          <boxGeometry args={[15.2, 2.6, 80]} />
+          <meshPhysicalMaterial color="#38bdf8" transparent opacity={0.38} metalness={0.5} roughness={0.12} />
         </mesh>
         {[196, 228].map((sz) => (
           <mesh key={sz} position={[0, 5.0, sz]} castShadow>
-            <boxGeometry args={[14, 10.0, 2.8]} />
-            <meshStandardMaterial color="#475569" roughness={0.85} />
+            <cylinderGeometry args={[1.6, 2.2, 10.0, 12]} />
+            <meshStandardMaterial color="#e2e8f0" roughness={0.65} />
           </mesh>
         ))}
       </group>
 
-      {/* ZONE 3 (EAST): 5-Star Twin Hotel Towers & International Broadcast/Convention Center (IBC) */}
-      <group name="zone-3-hotel-ibc-complex" position={[295, 0, 0]}>
-        {/* 4-Story Convention & IBC Podium */}
-        <mesh position={[0, 9.0, 0]} castShadow receiveShadow>
-          <boxGeometry args={[64, 18, 140]} />
-          <meshStandardMaterial map={podiumBuildingTex} roughness={0.45} metalness={0.35} />
+      {/* ZONE 3 (EAST): Elliptical 5-Star Sapphire Sail Hotel Towers & Green-Roof IBC */}
+      <group name="zone-3-hotel-ibc" position={[295, 0, 0]}>
+        {/* Rounded Travertine & Glass Convention Podium with Green Eco-Terrace Roof */}
+        <mesh position={[0, 7.5, 0]} scale={[0.78, 1, 1.45]} castShadow receiveShadow>
+          <cylinderGeometry args={[46, 48, 15, 36]} />
+          <meshStandardMaterial map={lowGlassTex} roughness={0.3} metalness={0.45} />
         </mesh>
-        {/* Hotel Tower North (86m) */}
-        <mesh position={[0, 52, -36]} castShadow receiveShadow>
-          <boxGeometry args={[34, 68, 34]} />
-          <meshStandardMaterial map={towerTex} roughness={0.35} metalness={0.55} />
+        <mesh position={[0, 15.1, 0]} scale={[0.74, 1, 1.38]}>
+          <cylinderGeometry args={[46, 46, 0.5, 36]} />
+          <meshStandardMaterial color="#16a34a" roughness={0.85} />
         </mesh>
-        {/* Hotel Tower South (70m) */}
-        <mesh position={[0, 44, 36]} castShadow receiveShadow>
-          <boxGeometry args={[32, 52, 32]} />
-          <meshStandardMaterial map={towerTex} roughness={0.35} metalness={0.55} />
-        </mesh>
+
+        {/* Sail Tower North (Elliptical Sapphire Glass + Champagne Crown) */}
+        <group position={[0, 0, -34]}>
+          <mesh position={[0, 48, 0]} scale={[1.25, 1, 0.78]} castShadow receiveShadow>
+            <cylinderGeometry args={[16, 19, 68, 28]} />
+            <meshStandardMaterial map={towerGlassTex} roughness={0.25} metalness={0.6} />
+          </mesh>
+          <mesh position={[0, 82.8, 0]} scale={[1.25, 1, 0.78]}>
+            <cylinderGeometry args={[16.4, 16.4, 1.8, 28]} />
+            <meshStandardMaterial color="#f59e0b" metalness={0.8} roughness={0.22} />
+          </mesh>
+        </group>
+
+        {/* Sail Tower South */}
+        <group position={[0, 0, 34]}>
+          <mesh position={[0, 40, 0]} scale={[1.2, 1, 0.78]} castShadow receiveShadow>
+            <cylinderGeometry args={[15, 17.5, 52, 28]} />
+            <meshStandardMaterial map={towerGlassTex} roughness={0.25} metalness={0.6} />
+          </mesh>
+          <mesh position={[0, 66.8, 0]} scale={[1.2, 1, 0.78]}>
+            <cylinderGeometry args={[15.4, 15.4, 1.6, 28]} />
+            <meshStandardMaterial color="#f59e0b" metalness={0.8} roughness={0.22} />
+          </mesh>
+        </group>
       </group>
 
-      {/* ZONE 4 (WEST): 15,000-Seat Indoor Arena & National Aquatics Center */}
-      <group name="zone-4-arena-aquatics-complex" position={[-295, 0, 0]}>
-        {/* Indoor Multi-Sport Arena */}
+      {/* ZONE 4 (WEST): Pearl-White Dome 15K Indoor Arena & Aquatics Center */}
+      <group name="zone-4-arena-aquatics" position={[-295, 0, 0]}>
         <group position={[0, 0, -52]}>
-          <mesh position={[0, 13, 0]} castShadow receiveShadow>
-            <cylinderGeometry args={[38, 42, 26, 32]} />
-            <meshStandardMaterial map={podiumBuildingTex} roughness={0.5} metalness={0.3} />
+          <mesh position={[0, 11, 0]} castShadow receiveShadow>
+            <cylinderGeometry args={[36, 40, 22, 36]} />
+            <meshStandardMaterial map={lowGlassTex} roughness={0.3} metalness={0.45} />
           </mesh>
-          <mesh position={[0, 26, 0]} scale={[1, 0.35, 1]} castShadow>
-            <sphereGeometry args={[39, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
-            <meshStandardMaterial color="#cbd5e1" metalness={0.7} roughness={0.28} />
+          <mesh position={[0, 22, 0]} scale={[1, 0.38, 1]} castShadow>
+            <sphereGeometry args={[37, 36, 18, 0, Math.PI * 2, 0, Math.PI / 2]} />
+            <meshStandardMaterial color="#f8fafc" metalness={0.4} roughness={0.24} />
+          </mesh>
+          <mesh position={[0, 22.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[36.8, 0.7, 8, 36]} />
+            <meshStandardMaterial color="#f59e0b" metalness={0.8} roughness={0.22} />
           </mesh>
         </group>
-        {/* National Aquatics Center */}
+
         <group position={[0, 0, 52]}>
-          <mesh position={[0, 10, 0]} castShadow receiveShadow>
-            <boxGeometry args={[56, 20, 76]} />
-            <meshStandardMaterial map={podiumBuildingTex} roughness={0.45} metalness={0.35} />
+          <mesh position={[0, 9, 0]} scale={[0.9, 1, 1.3]} castShadow receiveShadow>
+            <cylinderGeometry args={[30, 33, 18, 32]} />
+            <meshStandardMaterial map={lowGlassTex} roughness={0.3} metalness={0.45} />
           </mesh>
-          <mesh position={[0, 20, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[1.25, 1, 0.4]} castShadow>
-            <cylinderGeometry args={[23, 23, 78, 24, 1, false, -Math.PI / 2, Math.PI]} />
-            <meshPhysicalMaterial color="#bae6fd" transparent opacity={0.75} metalness={0.3} roughness={0.2} />
+          <mesh position={[0, 18, 0]} scale={[0.92, 0.35, 1.32]} castShadow>
+            <sphereGeometry args={[31, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
+            <meshPhysicalMaterial color="#e0f2fe" transparent opacity={0.85} metalness={0.25} roughness={0.18} />
           </mesh>
         </group>
       </group>
 
-      {/* ZONE 5 (NORTH): FIFA Training Stadium & 4 Five-Story Parking Garages */}
+      {/* ZONE 5 (NORTH): FIFA Training Stadium & Green-Roof Eco Parking Pavilions */}
       <group name="zone-5-training-and-parking" position={[0, 0, -285]}>
-        {/* FIFA Standard Training Pitch (105m x 68m) */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.08, 0]} receiveShadow>
           <planeGeometry args={[105, 68]} />
           <meshStandardMaterial map={trainingPitchTex} roughness={0.8} />
         </mesh>
-        {/* 5,000-Seat Training Grandstand */}
-        <mesh position={[0, 6.5, -44]} castShadow receiveShadow>
-          <boxGeometry args={[104, 13, 18]} />
-          <meshStandardMaterial color="#64748b" roughness={0.8} />
+        <mesh position={[0, 5.5, -42]} castShadow receiveShadow>
+          <boxGeometry args={[100, 11, 16]} />
+          <meshStandardMaterial color="#cbd5e1" roughness={0.75} />
         </mesh>
-        <mesh position={[0, 14.5, -41]} rotation={[0.14, 0, 0]} castShadow>
-          <boxGeometry args={[108, 1.0, 24]} />
-          <meshStandardMaterial color="#e2e8f0" metalness={0.6} roughness={0.3} />
+        <mesh position={[0, 12.5, -39]} rotation={[0.14, 0, 0]} castShadow>
+          <boxGeometry args={[106, 1.0, 22]} />
+          <meshStandardMaterial color="#f8fafc" metalness={0.4} roughness={0.25} />
         </mesh>
 
-        {/* 4 Five-Story Multi-Level Concrete Parking Garages (East & West flanks) */}
-        {[-125, -80, 80, 125].map((gx) => (
-          <group key={gx} position={[gx, 0, 8]}>
-            <mesh position={[0, 8.5, 0]} castShadow receiveShadow>
-              <boxGeometry args={[36, 17, 58]} />
-              <meshStandardMaterial map={podiumBuildingTex} roughness={0.78} />
+        {/* Rounded-corner Green-Roof Eco Parking Pavilions */}
+        {[-112, 112].map((gx) => (
+          <group key={gx} position={[gx, 0, 4]}>
+            <mesh position={[0, 7.5, 0]} scale={[1.35, 1, 0.9]} castShadow receiveShadow>
+              <cylinderGeometry args={[30, 32, 15, 24]} />
+              <meshStandardMaterial color="#e2e8f0" roughness={0.7} />
+            </mesh>
+            <mesh position={[0, 15.2, 0]} scale={[1.3, 1, 0.86]}>
+              <cylinderGeometry args={[30, 30, 0.6, 24]} />
+              <meshStandardMaterial color="#16a34a" roughness={0.85} />
             </mesh>
           </group>
         ))}
@@ -453,7 +506,7 @@ function ServiceComplexBuildings({ isNight }: { isNight: boolean }) {
   );
 }
 
-function LushBoulevardLandscaping({ isNight }: { isNight: boolean }) {
+function LushParkLandscaping({ isNight }: { isNight: boolean }) {
   const trunkRef = useRef<THREE.InstancedMesh | null>(null);
   const lowerCanopyRef = useRef<THREE.InstancedMesh | null>(null);
   const upperCanopyRef = useRef<THREE.InstancedMesh | null>(null);
@@ -462,18 +515,26 @@ function LushBoulevardLandscaping({ isNight }: { isNight: boolean }) {
 
   const trees = useMemo(() => {
     const list: Array<{ x: number; z: number; scale: number }> = [];
-    for (let i = 0; i < 48; i += 1) {
-      const a = (i / 48) * Math.PI * 2;
-      if (Math.abs(Math.sin(a * 2)) < 0.25) {
+    for (let i = 0; i < 64; i += 1) {
+      const a = (i / 64) * Math.PI * 2;
+      if (Math.abs(Math.sin(a * 2)) < 0.2) {
         continue;
       }
-      const rx = 342;
-      const rz = 335;
+      const rx = 248 + (i % 2) * 105;
+      const rz = 228 + (i % 2) * 112;
       list.push({
         x: Math.cos(a) * rx,
         z: Math.sin(a) * rz,
-        scale: 0.95 + (i % 3) * 0.14,
+        scale: 0.95 + (i % 3) * 0.16,
       });
+    }
+    for (const d of [236, 264, 294]) {
+      for (const side of [-26, 26]) {
+        list.push({ x: side, z: d, scale: 1.0 });
+        list.push({ x: side, z: -d, scale: 1.0 });
+        list.push({ x: d + 12, z: side, scale: 1.0 });
+        list.push({ x: -(d + 12), z: side, scale: 1.0 });
+      }
     }
     return list;
   }, []);
@@ -482,7 +543,7 @@ function LushBoulevardLandscaping({ isNight }: { isNight: boolean }) {
     const list: Array<{ x: number; z: number }> = [];
     for (let i = 0; i < 48; i += 1) {
       const a = (i / 48) * Math.PI * 2;
-      const [x, z] = superEllipsePoint(a, 224, 198);
+      const [x, z] = superEllipsePoint(a, 218, 192);
       list.push({ x, z });
     }
     return list;
@@ -548,30 +609,30 @@ function LushBoulevardLandscaping({ isNight }: { isNight: boolean }) {
   }, [trees, lightPoles]);
 
   return (
-    <group name="boulevard-landscaping">
-      <instancedMesh ref={trunkRef} args={[undefined, undefined, 96]} castShadow>
+    <group name="resort-park-landscaping">
+      <instancedMesh ref={trunkRef} args={[undefined, undefined, 120]} castShadow>
         <cylinderGeometry args={[0.32, 0.5, 4.4, 8]} />
-        <meshStandardMaterial color="#5c3a21" roughness={0.9} />
+        <meshStandardMaterial color="#78350f" roughness={0.9} />
       </instancedMesh>
-      <instancedMesh ref={lowerCanopyRef} args={[undefined, undefined, 96]} castShadow>
-        <sphereGeometry args={[3.1, 12, 10]} />
-        <meshStandardMaterial color="#166534" roughness={0.85} />
+      <instancedMesh ref={lowerCanopyRef} args={[undefined, undefined, 120]} castShadow>
+        <sphereGeometry args={[3.2, 12, 10]} />
+        <meshStandardMaterial color="#15803d" roughness={0.85} />
       </instancedMesh>
-      <instancedMesh ref={upperCanopyRef} args={[undefined, undefined, 96]} castShadow>
-        <sphereGeometry args={[2.5, 12, 10]} />
-        <meshStandardMaterial color="#15803d" roughness={0.82} />
+      <instancedMesh ref={upperCanopyRef} args={[undefined, undefined, 120]} castShadow>
+        <sphereGeometry args={[2.6, 12, 10]} />
+        <meshStandardMaterial color="#22c55e" roughness={0.8} />
       </instancedMesh>
 
       <instancedMesh ref={poleRef} args={[undefined, undefined, 48]}>
         <cylinderGeometry args={[0.18, 0.25, 9.0, 6]} />
-        <meshStandardMaterial color="#64748b" metalness={0.7} roughness={0.3} />
+        <meshStandardMaterial color="#e2e8f0" metalness={0.65} roughness={0.3} />
       </instancedMesh>
       <instancedMesh ref={lampRef} args={[undefined, undefined, 48]}>
-        <sphereGeometry args={[0.6, 8, 8]} />
+        <sphereGeometry args={[0.65, 8, 8]} />
         <meshStandardMaterial
           color="#fef3c7"
           emissive="#fbbf24"
-          emissiveIntensity={isNight ? 2.0 : 0.15}
+          emissiveIntensity={isNight ? 2.2 : 0.15}
         />
       </instancedMesh>
     </group>
@@ -582,7 +643,7 @@ export function Surroundings({ halfCutaway, isNight, bimFrameMode }: Surrounding
   const startAngle = halfCutaway ? Math.PI * 0.52 : 0;
   const endAngle = halfCutaway ? Math.PI * 1.98 : Math.PI * 2;
   const groundTexture = useMemo(() => createMasterplanGroundTexture(), []);
-  const podiumTexture = useMemo(() => createPodiumFacadeTexture(isNight), [isNight]);
+  const podiumTexture = useMemo(() => createTravertineArcadeTexture(isNight), [isNight]);
 
   const commercialPodiumGeo = useMemo(
     () => createCommercialPodiumGeometry(startAngle, endAngle),
@@ -590,34 +651,43 @@ export function Surroundings({ halfCutaway, isNight, bimFrameMode }: Surrounding
   );
 
   return (
-    <group name="stadium-masterplan">
-      {/* 1000m x 1000m National Sports Complex Site Ground */}
+    <group name="resort-sports-park-masterplan">
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
         <planeGeometry args={[1000, 1000]} />
-        <meshStandardMaterial map={groundTexture} roughness={0.88} metalness={0.05} />
+        <meshStandardMaterial map={groundTexture} roughness={0.85} metalness={0.05} />
       </mesh>
 
-      {/* 2-Story Commercial, F&B & Turnstile Podium Ring (+10.5m Elevated Plaza) */}
       {!bimFrameMode && (
         <mesh geometry={commercialPodiumGeo} receiveShadow castShadow>
           <meshStandardMaterial
             map={podiumTexture}
             emissive="#ffffff"
             emissiveMap={podiumTexture}
-            emissiveIntensity={isNight ? 0.35 : 0.08}
-            roughness={0.75}
+            emissiveIntensity={isNight ? 0.45 : 0.08}
+            roughness={0.62}
             side={THREE.DoubleSide}
           />
         </mesh>
       )}
 
-      {/* 8 Monumental Exterior Grand Approach Staircases */}
-      <GrandApproachStaircases startAngle={startAngle} endAngle={endAngle} />
+      <GrandTravertineStairways startAngle={startAngle} endAngle={endAngle} />
 
-      {/* 5 Surrounding Service, Transit, Hospitality & Training Complexes */}
-      <ServiceComplexBuildings isNight={isNight} />
+      {/* Turquoise Reflecting Lagoons flanking North & South Approaches */}
+      {[
+        [-84, 198],
+        [84, 198],
+        [-84, -198],
+        [84, -198],
+      ].map(([px, pz], idx) => (
+        <mesh key={idx} rotation={[-Math.PI / 2, 0, 0]} position={[px, 0.06, pz]}>
+          <planeGeometry args={[76, 26]} />
+          <meshStandardMaterial color="#0284c7" metalness={0.85} roughness={0.08} />
+        </mesh>
+      ))}
 
-      <LushBoulevardLandscaping isNight={isNight} />
+      <SculpturalServiceComplexes isNight={isNight} />
+
+      <LushParkLandscaping isNight={isNight} />
     </group>
   );
 }

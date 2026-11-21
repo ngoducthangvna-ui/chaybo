@@ -18,8 +18,7 @@ interface BowlStandsProps {
 }
 
 /**
- * Generates a realistic architectural precast-concrete & stadium seating texture:
- * individual seat rows, grey concrete vomitory stairs with yellow nosing, and dark portal tunnels.
+ * Generates a bright, realistic precast-concrete & Royal Ruby / Gold stadium seating texture.
  */
 function createSeatingBowlTexture(occupancyPercent: number): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
@@ -30,7 +29,7 @@ function createSeatingBowlTexture(occupancyPercent: number): THREE.CanvasTexture
     return new THREE.CanvasTexture(canvas);
   }
 
-  ctx.fillStyle = '#3f3f46';
+  ctx.fillStyle = '#52525b';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const rowCount = 32;
@@ -41,37 +40,37 @@ function createSeatingBowlTexture(occupancyPercent: number): THREE.CanvasTexture
 
   for (let r = 0; r < rowCount; r += 1) {
     const y = r * rowH;
-    ctx.fillStyle = '#27272a';
+    ctx.fillStyle = '#3f3f46';
     ctx.fillRect(0, y, canvas.width, 4);
 
     for (let c = 0; c < seatCols; c += 1) {
       const x = c * colW;
       if (c === 0 || c === seatCols - 1) {
-        ctx.fillStyle = '#71717a';
+        ctx.fillStyle = '#d4d4d8';
         ctx.fillRect(x, y + 4, colW, rowH - 4);
-        ctx.fillStyle = '#eab308';
+        ctx.fillStyle = '#f59e0b';
         ctx.fillRect(x + 2, y + 4, colW - 4, 3);
         continue;
       }
 
       if (r >= 13 && r <= 17 && c >= 10 && c <= 13) {
-        ctx.fillStyle = '#09090b';
+        ctx.fillStyle = '#18181b';
         ctx.fillRect(x, y, colW, rowH);
         if (r === 13) {
-          ctx.fillStyle = '#a1a1aa';
+          ctx.fillStyle = '#e4e4e7';
           ctx.fillRect(x, y, colW, 5);
         }
         continue;
       }
 
       const isGoldRow = r === 0 || r === rowCount - 1;
-      ctx.fillStyle = isGoldRow ? '#b45309' : r % 2 === 0 ? '#991b1b' : '#b91c1c';
+      ctx.fillStyle = isGoldRow ? '#d97706' : r % 2 === 0 ? '#9f1239' : '#be123c';
       ctx.fillRect(x + 2, y + 6, colW - 4, rowH - 8);
 
       const hash = Math.abs(Math.sin(r * 78.233 + c * 37.719));
       if (hash < fillThreshold) {
         ctx.fillStyle =
-          hash < fillThreshold * 0.2 ? '#fbbf24' : hash < fillThreshold * 0.65 ? '#dc2626' : '#f1f5f9';
+          hash < fillThreshold * 0.2 ? '#fde047' : hash < fillThreshold * 0.65 ? '#f43f5e' : '#f8fafc';
         ctx.fillRect(x + 4, y + 8, colW - 8, rowH - 12);
       }
     }
@@ -95,24 +94,24 @@ function createHaloLedTexture(): THREE.CanvasTexture {
     ctx.fillStyle = '#090d16';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = '#e2e8f0';
+    ctx.fillStyle = '#fbbf24';
     ctx.fillRect(0, 0, canvas.width, 10);
     ctx.fillRect(0, canvas.height - 10, canvas.width, 10);
 
     for (let k = 0; k < 4; k += 1) {
       const cx = k * 512 + 256;
-      ctx.fillStyle = '#fbbf24';
+      ctx.fillStyle = '#fcd34d';
       ctx.font = 'bold 26px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('VIETNAM NATIONAL STADIUM • 200,000 SEATS', cx, 66);
 
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 72px monospace';
-      ctx.fillText('VIE  0 : 0  ALL', cx, 152);
+      ctx.fillText('VIE  3 : 0  ALL', cx, 152);
 
-      ctx.fillStyle = '#94a3b8';
+      ctx.fillStyle = '#e2e8f0';
       ctx.font = 'bold 22px sans-serif';
-      ctx.fillText('FIFA REGULATION 105×68M • C-VALUE 95MM', cx, 206);
+      ctx.fillText('DONG SON SPORTS PARK • FIFA WORLD STANDARD', cx, 206);
     }
   }
   const tex = new THREE.CanvasTexture(canvas);
@@ -130,7 +129,7 @@ function createRibbonTexture(): THREE.CanvasTexture {
   if (ctx) {
     ctx.fillStyle = '#18181b';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#f59e0b';
+    ctx.fillStyle = '#fbbf24';
     ctx.font = 'bold 28px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('VIETNAM NATIONAL STADIUM  •  200,000 CAPACITY  •  C-VALUE 95MM', canvas.width / 2, 42);
@@ -241,11 +240,6 @@ function createConcourseSlabGeometry(
   return geometry;
 }
 
-/**
- * Generates solid enclosed architectural box-ring geometry for Concourse Service Cores
- * (F&B concessions, restrooms, VIP hospitality suites, locker rooms, MEP plant rooms)
- * filling the under-bowl structural bays so the bowl is solid & functional.
- */
 function createServiceVolumeRingGeometry(
   innerRx: number,
   innerRz: number,
@@ -335,10 +329,8 @@ function createSuperEllipseBandGeometry(
 }
 
 /**
- * Renders 48 Heavy Reinforced-Concrete A-Frame Buttressed Portal Frames (Grid A-E):
- * - Deep wall-piers at Grid E (2.0m x 4.6m) + heavy RC columns at Grid A-D
- * - Inclined external concrete A-frame buttress struts bracing Grid E down to outer footing (r=190)
- * - 4 individual Tier Raker Beams flush beneath Tiers 1-4 + horizontal floor beams + 8 RC shear cores
+ * 48 Internal Reinforced-Concrete Portal Frames (Grid A-E) tucked neatly INSIDE
+ * the sculpted architectural vessel envelope (r <= 166m), visible in Cutaway or BIM Frame mode.
  */
 function RCFrameBents({
   startAngle,
@@ -375,11 +367,10 @@ function RCFrameBents({
         continue;
       }
 
-      // 1. 5 RC Columns / Wall-Piers per radial axis (Grid A..E)
       for (const grid of STRUCTURAL_GRID_LINES) {
         const [gx, gz] = superEllipsePoint(angle, grid.rx, grid.rz);
-        const colW = grid.id === 'E' ? 2.0 : 1.4;
-        const colD = grid.id === 'E' ? 4.4 : 1.8;
+        const colW = grid.id === 'E' ? 1.8 : 1.3;
+        const colD = grid.id === 'E' ? 3.0 : 1.6;
         colList.push({
           pos: [gx, grid.topElevation / 2, gz],
           rotY: -angle,
@@ -387,15 +378,14 @@ function RCFrameBents({
         });
       }
 
-      // 2. 4 Sloped Tier Raker Beams seated flush beneath Tiers 1-4
       for (const tier of STADIUM_TIERS) {
         const [xIn, zIn] = superEllipsePoint(angle, tier.innerRadiusX, tier.innerRadiusZ);
         const [xOut, zOut] = superEllipsePoint(angle, tier.outerRadiusX, tier.outerRadiusZ);
         addBeam(
           new THREE.Vector3(xIn, tier.baseElevation - 1.3, zIn),
           new THREE.Vector3(xOut, tier.topElevation - 1.3, zOut),
-          1.1,
-          1.4
+          1.0,
+          1.3
         );
       }
 
@@ -405,28 +395,20 @@ function RCFrameBents({
       const [dx, dz] = superEllipsePoint(angle, STRUCTURAL_GRID_LINES[3].rx, STRUCTURAL_GRID_LINES[3].rz);
       const [ex, ez] = superEllipsePoint(angle, STRUCTURAL_GRID_LINES[4].rx, STRUCTURAL_GRID_LINES[4].rz);
 
-      // 3. Horizontal Transfer Floor Beams
-      addBeam(new THREE.Vector3(ax, 5.8, az), new THREE.Vector3(bx, 5.8, bz), 0.9, 1.0);
-      addBeam(new THREE.Vector3(bx, 17.5, bz), new THREE.Vector3(ex, 17.5, ez), 1.0, 1.2);
-      addBeam(new THREE.Vector3(cx, 32.5, cz), new THREE.Vector3(ex, 32.5, ez), 1.0, 1.2);
-      addBeam(new THREE.Vector3(dx, 52.5, dz), new THREE.Vector3(ex, 52.5, ez), 1.0, 1.2);
+      addBeam(new THREE.Vector3(ax, 5.8, az), new THREE.Vector3(bx, 5.8, bz), 0.85, 0.95);
+      addBeam(new THREE.Vector3(bx, 17.5, bz), new THREE.Vector3(ex, 17.5, ez), 0.95, 1.1);
+      addBeam(new THREE.Vector3(cx, 32.5, cz), new THREE.Vector3(ex, 32.5, ez), 0.95, 1.1);
+      addBeam(new THREE.Vector3(dx, 52.5, dz), new THREE.Vector3(ex, 52.5, ez), 0.95, 1.1);
 
-      // 4. Inclined A-Frame Concrete Buttress Struts bracing Grid E outward onto the Podium Ring (r=190)
-      const [footX, footZ] = superEllipsePoint(angle, 190, 164);
-      const [midButtX, midButtZ] = superEllipsePoint(angle, 184, 158);
-      addBeam(new THREE.Vector3(footX, 0.5, footZ), new THREE.Vector3(ex, 33.0, ez), 1.4, 2.0);
-      addBeam(new THREE.Vector3(midButtX, 10.5, midButtZ), new THREE.Vector3(ex, 67.5, ez), 1.3, 1.8);
-
-      // 5. Circumferential Ring Tie Girders at Grid E
       const nextAngle = ((i + 1) / bentCount) * Math.PI * 2;
       if (nextAngle <= endAngle + 0.03) {
         const [ex2, ez2] = superEllipsePoint(nextAngle, STRUCTURAL_GRID_LINES[4].rx, STRUCTURAL_GRID_LINES[4].rz);
         for (const elev of [17.5, 32.5, 52.5, 68.0]) {
-          addBeam(new THREE.Vector3(ex, elev, ez), new THREE.Vector3(ex2, elev, ez2), 1.0, 1.4);
+          addBeam(new THREE.Vector3(ex, elev, ez), new THREE.Vector3(ex2, elev, ez2), 0.9, 1.2);
         }
       }
 
-      // 6. 8 RC Shear-Wall Elevator/Stair Cores
+      // 8 Internal RC Shear-Wall Cores for circulation ramps, elevators & lateral seismic resistance
       if (i % 6 === 3) {
         const [coreX, coreZ] = superEllipsePoint(angle, 155, 129);
         coreList.push({ pos: [coreX, 34.0, coreZ], rotY: -angle });
@@ -477,114 +459,19 @@ function RCFrameBents({
   }, [columns, beams, cores]);
 
   return (
-    <group name="rc-buttressed-a-frame-bents">
+    <group name="internal-rc-portal-frames">
       <instancedMesh ref={columnsRef} args={[undefined, undefined, bentCount * 5]} castShadow receiveShadow>
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="#cbd5e1" roughness={0.85} metalness={0.05} />
+        <meshStandardMaterial color="#e2e8f0" roughness={0.82} metalness={0.05} />
       </instancedMesh>
-      <instancedMesh ref={beamsRef} args={[undefined, undefined, bentCount * 18]} castShadow receiveShadow>
+      <instancedMesh ref={beamsRef} args={[undefined, undefined, bentCount * 16]} castShadow receiveShadow>
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="#94a3b8" roughness={0.82} metalness={0.08} />
+        <meshStandardMaterial color="#cbd5e1" roughness={0.8} metalness={0.08} />
       </instancedMesh>
       <instancedMesh ref={coresRef} args={[undefined, undefined, 12]} castShadow receiveShadow>
-        <boxGeometry args={[10.5, 68.0, 6.2]} />
-        <meshStandardMaterial color="#64748b" roughness={0.88} metalness={0.05} />
+        <boxGeometry args={[10.0, 68.0, 5.8]} />
+        <meshStandardMaterial color="#94a3b8" roughness={0.85} metalness={0.05} />
       </instancedMesh>
-    </group>
-  );
-}
-
-/**
- * Renders 8 Monumental Exterior Helical Pedestrian Ramp Towers (like San Siro / Lusail)
- * allowing 90,000+ upper-tier spectators safe vertical circulation from ground y=0 up to Tier 4 (+53m).
- */
-function HelicalRampTowers({
-  startAngle,
-  endAngle,
-}: {
-  startAngle: number;
-  endAngle: number;
-}) {
-  const towers = useMemo(() => {
-    const list: Array<{
-      x: number;
-      z: number;
-      angle: number;
-      spiralGeo: THREE.TubeGeometry;
-      bridgeInX: number;
-      bridgeInZ: number;
-    }> = [];
-
-    for (let k = 0; k < ROOF_SPECS.helicalRampTowers; k += 1) {
-      const angle = ((k * 2 + 1) / 16) * Math.PI * 2;
-      if (angle < startAngle - 0.05 || angle > endAngle + 0.05) {
-        continue;
-      }
-      const [tx, tz] = superEllipsePoint(angle, 194, 168);
-      const [bx, bz] = superEllipsePoint(angle, 166, 140);
-
-      // 3.5-turn helical ramp climbing from ground y=1.5m to y=53.0m
-      const pts: THREE.Vector3[] = [];
-      const turns = 3.5;
-      const steps = 42;
-      for (let s = 0; s <= steps; s += 1) {
-        const u = s / steps;
-        const theta = u * turns * Math.PI * 2;
-        const radius = 8.4;
-        pts.push(new THREE.Vector3(Math.cos(theta) * radius, 1.5 + u * 51.5, Math.sin(theta) * radius));
-      }
-      const curve = new THREE.CatmullRomCurve3(pts);
-      const spiralGeo = new THREE.TubeGeometry(curve, 48, 1.8, 6, false);
-
-      list.push({
-        x: tx,
-        z: tz,
-        angle,
-        spiralGeo,
-        bridgeInX: bx - tx,
-        bridgeInZ: bz - tz,
-      });
-    }
-    return list;
-  }, [startAngle, endAngle]);
-
-  return (
-    <group name="helical-pedestrian-ramp-towers">
-      {towers.map((t, idx) => {
-        const bridgeDist = Math.hypot(t.bridgeInX, t.bridgeInZ);
-        const bridgeRotY = Math.atan2(t.bridgeInX, t.bridgeInZ);
-        return (
-          <group key={idx} position={[t.x, 0, t.z]}>
-            {/* Central RC Elevator/Stair Core */}
-            <mesh position={[0, 28, 0]} castShadow receiveShadow>
-              <cylinderGeometry args={[4.0, 4.4, 56, 16]} />
-              <meshStandardMaterial color="#64748b" roughness={0.85} />
-            </mesh>
-            {/* Outer Helical Pedestrian Ramp */}
-            <mesh geometry={t.spiralGeo} castShadow receiveShadow>
-              <meshStandardMaterial color="#cbd5e1" roughness={0.78} />
-            </mesh>
-            {/* Top Architectural Cap */}
-            <mesh position={[0, 56.5, 0]} castShadow>
-              <cylinderGeometry args={[10.5, 10.5, 1.4, 24]} />
-              <meshStandardMaterial color="#94a3b8" roughness={0.7} />
-            </mesh>
-            {/* Horizontal Sky-Bridges connecting tower into stadium concourses at +10.5m, +18m, +33m, +53m */}
-            {[10.5, 18.0, 33.0, 53.0].map((elev) => (
-              <mesh
-                key={elev}
-                position={[t.bridgeInX / 2, elev, t.bridgeInZ / 2]}
-                rotation={[0, bridgeRotY, 0]}
-                castShadow
-                receiveShadow
-              >
-                <boxGeometry args={[7.5, 1.4, bridgeDist]} />
-                <meshStandardMaterial color="#94a3b8" roughness={0.8} />
-              </mesh>
-            ))}
-          </group>
-        );
-      })}
     </group>
   );
 }
@@ -643,8 +530,8 @@ function HaloLedRing({
       </mesh>
       {hangers.map((pos, idx) => (
         <mesh key={idx} position={pos}>
-          <cylinderGeometry args={[0.22, 0.22, 4.8, 6]} />
-          <meshStandardMaterial color="#cbd5e1" metalness={0.85} roughness={0.2} />
+          <cylinderGeometry args={[0.2, 0.2, 5.2, 6]} />
+          <meshStandardMaterial color="#e2e8f0" metalness={0.85} roughness={0.2} />
         </mesh>
       ))}
     </group>
@@ -706,7 +593,7 @@ export function BowlStands({
     [startAngle, endAngle]
   );
 
-  // Enclosed under-bowl service cores (F&B concessions, restrooms, VIP Lounges, MEP plant)
+  // Enclosed under-bowl service cores (light architectural limestone & glass concourses)
   const serviceVolumes = useMemo(
     () => [
       createServiceVolumeRingGeometry(102, 80, 163, 137, 0.2, 17.5, startAngle, endAngle),
@@ -774,27 +661,22 @@ export function BowlStands({
     <group name="stadium-bowl-200k">
       <RCFrameBents startAngle={startAngle} endAngle={endAngle} />
 
-      <HelicalRampTowers startAngle={startAngle} endAngle={endAngle} />
-
-      {/* Solid RC Pitch Perimeter Retaining Wall */}
       <mesh geometry={pitchRetainingWallGeo} position={[0, 0, 0]} receiveShadow>
-        <meshStandardMaterial color="#475569" roughness={0.85} side={THREE.DoubleSide} />
+        <meshStandardMaterial color="#64748b" roughness={0.82} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Enclosed Concourse Service Volumes (Concessions, Lounges, MEP, Locker Rooms) */}
       {!bimFrameMode &&
         serviceVolumes.map((volGeo, idx) => (
           <mesh key={`svc-${idx}`} geometry={volGeo} receiveShadow>
-            <meshStandardMaterial color="#334155" roughness={0.82} side={THREE.DoubleSide} />
+            <meshStandardMaterial color="#cbd5e1" roughness={0.78} side={THREE.DoubleSide} />
           </mesh>
         ))}
 
-      {/* Reinforced Concrete Concourse Floor Slabs */}
       {concourseSlabs.map((slabGeo, idx) => (
         <mesh key={`slab-${idx}`} geometry={slabGeo} receiveShadow>
           <meshStandardMaterial
-            color="#64748b"
-            roughness={0.85}
+            color="#e2e8f0"
+            roughness={0.82}
             transparent={bimFrameMode}
             opacity={bimFrameMode ? 0.35 : 1}
             side={THREE.DoubleSide}
@@ -802,13 +684,12 @@ export function BowlStands({
         </mesh>
       ))}
 
-      {/* 4 Precast Stepped Super-Ellipse Seating Tiers */}
       {STADIUM_TIERS.map((tier, idx) => (
         <group key={tier.id} name={tier.id}>
           <mesh geometry={tierGeos[idx]} castShadow={!bimFrameMode} receiveShadow>
             <meshStandardMaterial
               map={seatingTexture}
-              roughness={0.7}
+              roughness={0.68}
               metalness={0.05}
               transparent={bimFrameMode}
               opacity={bimFrameMode ? 0.22 : 1}
@@ -833,10 +714,10 @@ export function BowlStands({
         STADIUM_TIERS.slice(1).map((tier, idx) => (
           <mesh key={`rail-${tier.id}`} geometry={glassRails[idx]} position={[0, tier.baseElevation, 0]}>
             <meshPhysicalMaterial
-              color="#bae6fd"
+              color="#e0f2fe"
               transparent
-              opacity={0.32}
-              metalness={0.5}
+              opacity={0.35}
+              metalness={0.4}
               roughness={0.1}
               side={THREE.DoubleSide}
             />

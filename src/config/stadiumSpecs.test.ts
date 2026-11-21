@@ -13,6 +13,7 @@ import {
   calculateTotalCapacity,
   getCameraPreset,
   getLightingConfig,
+  getUndulatingRimHeight,
   superEllipsePoint,
 } from './stadiumSpecs';
 
@@ -40,11 +41,9 @@ describe('stadiumSpecs', () => {
     expect(ROOF_SPECS.supportHeight).toBe(STADIUM_TIERS[3].topElevation);
   });
 
-  it('includes 5 masterplan service complex zones and cable-stayed mega-arch specs', () => {
+  it('includes 5 masterplan service complex zones and saddle roof geometry', () => {
     expect(MASTERPLAN_ZONES).toHaveLength(5);
-    expect(ROOF_SPECS.archSpanM).toBe(390);
-    expect(ROOF_SPECS.pylonCount).toBe(24);
-    expect(ROOF_SPECS.helicalRampTowers).toBe(8);
+    expect(getUndulatingRimHeight(0)).toBeGreaterThan(getUndulatingRimHeight(Math.PI / 2));
   });
 
   it('computes accurate super-ellipse boundary points at cardinal angles', () => {
@@ -79,7 +78,7 @@ describe('stadiumSpecs', () => {
 
   it('calculates structural acoustics and power consumption accurately', () => {
     const quietDay = calculateStructuralMetrics(0, 100, false, 'day');
-    expect(quietDay.steelTonnage).toBe(42_800);
+    expect(quietDay.steelTonnage).toBe(34_600);
     expect(quietDay.crowdDecibels).toBe(45);
     expect(quietDay.roofOpenPercent).toBe(100);
 

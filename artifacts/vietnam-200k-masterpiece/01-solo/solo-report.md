@@ -1,30 +1,29 @@
 <!-- devflow-template: solo-report@1.1 -->
-# 小型任务报告 — Vietnam 200K National Complex (Investor Masterplan & Equilibrium BIM)
+# 小型任务报告 — Vietnam 200K Sculptural Iconic Stadium & Resort Sports Park
 
 ## 范围
 
-Hoàn thiện đồ án tổng thể Khu Liên hợp Thể thao Quốc gia 200.000 chỗ ngồi tại `d:\chaybo` đạt tiêu chuẩn trình Chủ đầu tư: giải quyết triệt để bài toán cân bằng lực kết cấu (`ΣM = 0`), bài toán giao thông tiếp cận/thoát hiểm cho 200.000 khán giả và quy hoạch 5 khu phức hợp dịch vụ đi kèm trên khu đất `1000m × 1000m`.
+Tái thiết kế toàn diện ngôn ngữ thẩm mỹ, chất liệu PBR và quy hoạch cảnh quan của `d:\chaybo` theo chuẩn các siêu công trình quốc tế (Lusail + SoFi + Kai Tak), đưa toàn bộ kết cấu thô vào bên trong lớp vỏ điêu khắc tinh tế và nâng cấp 5 khu phức hợp xung quanh thành các công trình bo cong hiện đại trên công viên sinh thái.
 
 ## 计划
 
-1. Mở rộng `src/config/stadiumSpecs.ts` & `src/config/stadiumSpecs.test.ts` với thông số `MASTERPLAN_ZONES`, camera `Quy hoạch` (`[385, 225, 375]`), thông số đôi vòm thép `390m / 124m`, `24` tháp dây văng và `8` tháp xoắn ốc.
-2. Nâng cấp `src/scene/BowlStands.tsx`: bổ sung chân chống xiên chữ A (`Inclined Buttress Struts`) cho 48 mố trụ `Grid E`, lấp đầy gầm khán đài bằng `ConcourseServiceVolumes` (F&B, VIP Lounge, phòng thay đồ, MEP), và dựng **8 Tháp đường dốc xoắn ốc (`HelicalRampTowers`)** nối vào các tầng `+10.5m, +18m, +33m, +53m`.
-3. Nâng cấp `src/scene/RoofStructure.tsx`: dựng **24 Cột tháp dây văng (`CableStayedPylonSystem`)** với cáp treo trước & cáp neo đối trọng xuống 24 mố neo bê tông (`r=196m`), và **Đôi Vòm Thép Giàn Không Gian Siêu Trường (`TwinMegaArches`, nhịp 390m, cao 124m)**.
-4. Nâng cấp `src/scene/Surroundings.tsx`: dựng Khối đế Thương mại 2 tầng (`36` cổng soát vé + Quảng trường trên cao `+10.5m`), **8 Cầu thang đại sảnh**, **Nhà ga Metro + Cầu vượt Skywalk**, **Tháp đôi Khách sạn 5★ + IBC**, **Nhà thi đấu 15K + Cung dưới nước**, và **Sân tập FIFA + 4 Nhà để xe 5 tầng**.
-5. Cập nhật `src/components/ControlPanel.tsx` (3 tab `Kết cấu` | `5 Khu Dịch vụ` | `DevFlow SOP`), `src/scene/StadiumScene.tsx` và `src/App.tsx`.
+1. Tinh chỉnh `LIGHTING_CONFIGS.day` và thêm `getUndulatingRimHeight(angle)` trong `src/config/stadiumSpecs.ts` & `stadiumSpecs.test.ts`.
+2. Thu gọn khung `RCFrameBents` (`Grid A–E`) vào bên trong lòng sân và phối màu ghế Đỏ Ruby – Vàng Hoàng Kim trong `src/scene/BowlStands.tsx`.
+3. Dựng vỏ mặt dựng điêu khắc `SculptedDiagridFacade` (Vàng Champagne & Trắng Ngọc Trai trên kính Low-E) kết hợp mái đệm khí ETFE Trắng Ngọc Trai lượn sóng yên ngựa (`63m–74m`) trong `src/scene/RoofStructure.tsx`; ẩn dàn kèo thép 48 trục bên dưới (mở khi bật `Khung Kết Cấu (BIM)` hoặc `X-Ray Mái`).
+4. Thiết kế lại `src/scene/Surroundings.tsx`: Quảng trường đá Travertine sáng, 36 cổng vòm viền vàng Champagne, thảm cỏ công viên xanh tươi, hồ cảnh quan xanh ngọc, và 5 phân khu phức hợp bo cong (Tháp đôi Khách sạn kính Sapphire, Cung Thể thao vòm ngọc trai, Nhà ga Metro cánh chim, Sân tập & Eco Parking mái xanh).
 
 ## 变更
 
-- `src/config/stadiumSpecs.ts` & `src/config/stadiumSpecs.test.ts`: Thêm `MASTERPLAN_ZONES`, preset `masterplan` và 9/9 unit tests.
-- `src/scene/BowlStands.tsx`: Thêm chân chống xiên chữ A, `serviceVolumes` dưới gầm khán đài và `HelicalRampTowers`.
-- `src/scene/RoofStructure.tsx`: Thêm `CableStayedPylonSystem` và `TwinMegaArches`.
-- `src/scene/Surroundings.tsx`: Thêm `CommercialPodium`, `GrandApproachStaircases` và `ServiceComplexBuildings` (5 phân khu phức hợp).
-- `src/components/ControlPanel.tsx`, `src/scene/StadiumScene.tsx`, `src/App.tsx`: Thêm tab `5 Khu Dịch vụ`, mở rộng tầm nhìn `1000m × 1000m` và mặc định góc `Quy hoạch`.
+- `src/config/stadiumSpecs.ts` & `src/config/stadiumSpecs.test.ts`: Bổ sung `getUndulatingRimHeight`, bảng màu ban ngày rực rỡ và 9/9 unit tests.
+- `src/scene/BowlStands.tsx`: Loại bỏ cấu kiện thò ra ngoài; tinh chỉnh ghế Đỏ Ruby – Vàng và sảnh nội bộ sáng sạch.
+- `src/scene/RoofStructure.tsx`: Dựng `SculptedVesselFacade`, `SculptedDiagridFacade` Vàng Champagne & Trắng Ngọc Trai và mái đệm khí ETFE lượn sóng yên ngựa.
+- `src/scene/Surroundings.tsx`: Dựng quảng trường đá Travertine, hồ nước xanh ngọc và 5 khu phức hợp kiến trúc bo cong hiện đại.
+- `src/components/ControlPanel.tsx`: Cập nhật thông số & mô tả kiến trúc mới.
 
 ## 自审
 
-- TypeScript strict mode (`tsc -b`): 0 lỗi, 0 cảnh báo.
-- Toàn bộ kết cấu chịu lực bảo đảm nguyên lý cân bằng mô-men: mái công-xôn 100m được treo đồng thời bởi 24 tháp dây văng có mố neo đối trọng sau và đôi vòm thép 390m, đặt trên 48 mố trụ vách cứng chữ A.
+- TypeScript strict mode (`tsc -b`): 0 lỗi, 0 biến dư thừa.
+- Kết cấu chịu lực 48 khung RC + 48 dàn kèo thép vẫn liên kết đầy đủ bên trong vỏ kiến trúc, có thể kiểm tra bất kỳ lúc nào qua nút `Khung Kết Cấu (BIM)` và `Mặt cắt 90°`.
 
 ## 测试
 
