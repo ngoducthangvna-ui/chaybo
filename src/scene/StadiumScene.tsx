@@ -1,8 +1,7 @@
 import { Component, type ReactNode, useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Line, OrbitControls, Stars } from '@react-three/drei';
+import { Environment, Lightformer, Line, OrbitControls, Sky, Stars } from '@react-three/drei';
 import * as THREE from 'three';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import {
   type CameraPresetId,
@@ -56,28 +55,70 @@ class SceneErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundar
 }
 
 /**
- * Generates an accurate PMREM PBR reflection environment so architectural glass,
- * brushed steel, anodized gold, and water basins render with realistic specular depth.
+ * Custom architectural HDRI studio environment built from positioned Lightformer panels
+ * so metallic diagrids, dark obsidian glazing, and PTFE membranes catch crisp directional speculars.
  */
-function PbrEnvironment({ intensity }: { intensity: number }) {
-  const { gl, scene } = useThree();
+function CustomStudioEnvironment({
+  lightingMode,
+  sunColor,
+}: {
+  lightingMode: LightingMode;
+  sunColor: string;
+}) {
+  const { gl } = useThree();
+  const isNight = lightingMode === 'night';
+  const isSunset = lightingMode === 'sunset';
 
   useEffect(() => {
-    const pmrem = new THREE.PMREMGenerator(gl);
-    const roomEnv = new RoomEnvironment();
-    const renderTarget = pmrem.fromScene(roomEnv, 0.04);
-    scene.environment = renderTarget.texture;
-    scene.environmentIntensity = intensity;
+    gl.toneMappingExposure = isNight ? 1.12 : 0.98;
+  }, [gl, isNight]);
+  const envIntensity = isNight ? 0.55 : isSunset ? 0.78 : 0.92;
+  const zenithColor = isNight ? '#1e293b' : isSunset ? '#1e3a5f' : '#bae6fd';
+  const keyColor = isNight ? '#fde68a' : sunColor;
+  const fillColor = isNight ? '#38bdf8' : isSunset ? '#fbbf24' : '#e0f2fe';
 
-    return () => {
-      scene.environment = null;
-      renderTarget.dispose();
-      roomEnv.dispose();
-      pmrem.dispose();
-    };
-  }, [gl, scene, intensity]);
-
-  return null;
+  return (
+    <Environment key={lightingMode} resolution={512} frames={2} environmentIntensity={envIntensity}>
+      <group rotation={[-Math.PI / 3, 0, 0.35]}>
+        {/* Overhead zenith sky softbox */}
+        <Lightformer
+          form="circle"
+          intensity={isNight ? 0.9 : 1.7}
+          color={zenithColor}
+          position={[0, 12, -2]}
+          rotation={[Math.PI / 2, 0, 0]}
+          scale={24}
+        />
+        {/* High-energy solar specular key panel */}
+        <Lightformer
+          form="circle"
+          intensity={isNight ? 2.6 : isSunset ? 7.5 : 8.5}
+          color={keyColor}
+          position={[14, 9, 10]}
+          scale={12}
+          target={[0, 0, 0]}
+        />
+        {/* Cool architectural sky rim strip */}
+        <Lightformer
+          form="rect"
+          intensity={isNight ? 1.5 : 2.3}
+          color={fillColor}
+          position={[-16, 6, -12]}
+          scale={[22, 6, 1]}
+          target={[0, 0, 0]}
+        />
+        {/* Warm travertine & floodlight horizon bounce ring */}
+        <Lightformer
+          form="ring"
+          intensity={isNight ? 1.15 : 0.75}
+          color={isNight || isSunset ? '#fbbf24' : '#d6d3d1'}
+          position={[0, -6, 0]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          scale={28}
+        />
+      </group>
+    </Environment>
+  );
 }
 
 function SkyDome({ topColor, horizonColor }: { topColor: string; horizonColor: string }) {
@@ -199,24 +240,45 @@ export function StadiumScene({
         gl={{
           antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.08,
+          toneMappingExposure: isNight ? 1.12 : 0.98,
         }}
-        camera={{ position: [365, 205, 355], fov: 45, near: 1, far: 2500 }}
+        camera={{ position: [365, 205, 355], fov: 45, near: 2, far: 12000 }}
         className="h-full w-full"
       >
         <color attach="background" args={[lighting.skyColor]} />
-        <fog attach="fog" args={[lighting.fogColor, 580, 1300]} />
+        <fog attach="fog" args={[lighting.fogColor, 720, 1950]} />
 
-        <PbrEnvironment intensity={isNight ? 0.38 : 0.72} />
+        <CustomStudioEnvironment lightingMode={lightingMode} sunColor={lighting.sunColor} />
 
-        <SkyDome topColor={lighting.skyColor} horizonColor={lighting.horizonColor} />
-
-        {lightingMode === 'night' && (
-          <Stars radius={520} depth={90} count={2500} factor={4} saturation={0.2} fade />
+        {lightingMode === 'night' ? (
+          <>
+            <SkyDome topColor={lighting.skyColor} horizonColor={lighting.horizonColor} />
+            <Stars radius={520} depth={90} count={2500} factor={4} saturation={0.2} fade />
+          </>
+        ) : (
+          <Sky
+            distance={4800}
+            sunPosition={[...lighting.sunPosition]}
+            turbidity={lightingMode === 'sunset' ? 7.5 : 3.2}
+            rayleigh={lightingMode === 'sunset' ? 3.4 : 2.1}
+            mieCoefficient={lightingMode === 'sunset' ? 0.008 : 0.004}
+            mieDirectionalG={0.86}
+          />
         )}
 
-        <hemisphereLight args={[lighting.skyColor, '#475569', 0.75]} />
-        <ambientLight intensity={lighting.ambientIntensity * 0.65} />
+        <hemisphereLight
+          args={[
+            lighting.skyColor,
+            lightingMode === 'night' ? '#0f172a' : '#292524',
+            lightingMode === 'day' ? 0.28 : 0.22,
+          ]}
+        />
+        <ambientLight intensity={lighting.ambientIntensity * 0.45} />
+        <directionalLight
+          position={[-220, 115, -185]}
+          color={lightingMode === 'sunset' ? '#60a5fa' : '#cbd5e1'}
+          intensity={lightingMode === 'night' ? 0.35 : 0.48}
+        />
         <directionalLight
           position={[...lighting.sunPosition]}
           color={lighting.sunColor}
@@ -225,12 +287,13 @@ export function StadiumScene({
           shadow-mapSize-width={2048}
           shadow-mapSize-height={2048}
           shadow-camera-near={10}
-          shadow-camera-far={950}
-          shadow-camera-left={-380}
-          shadow-camera-right={380}
-          shadow-camera-top={380}
-          shadow-camera-bottom={-380}
-          shadow-bias={-0.0004}
+          shadow-camera-far={1100}
+          shadow-camera-left={-420}
+          shadow-camera-right={420}
+          shadow-camera-top={420}
+          shadow-camera-bottom={-420}
+          shadow-bias={-0.0003}
+          shadow-normalBias={0.04}
         />
 
         {lighting.floodlightIntensity > 0 && (

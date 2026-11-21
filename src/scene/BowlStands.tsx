@@ -18,71 +18,187 @@ interface BowlStandsProps {
 }
 
 /**
- * Generates a bright, realistic precast-concrete & Royal Ruby / Gold stadium seating texture.
+ * Generates realistic precast-concrete, champagne-gold VIP, and ruby stadium seating PBR maps.
  */
-function createSeatingBowlTexture(occupancyPercent: number): THREE.CanvasTexture {
+function createSeatingBowlPbrTextures(occupancyPercent: number): {
+  map: THREE.CanvasTexture;
+  bumpMap: THREE.CanvasTexture;
+} {
+  const w = 512;
+  const h = 1024;
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 1024;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    return new THREE.CanvasTexture(canvas);
+
+  const bumpCanvas = document.createElement('canvas');
+  bumpCanvas.width = w;
+  bumpCanvas.height = h;
+  const bCtx = bumpCanvas.getContext('2d');
+
+  if (!ctx || !bCtx) {
+    return {
+      map: new THREE.CanvasTexture(canvas),
+      bumpMap: new THREE.CanvasTexture(bumpCanvas),
+    };
   }
 
-  ctx.fillStyle = '#52525b';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#3f3f46';
+  ctx.fillRect(0, 0, w, h);
+  bCtx.fillStyle = '#757575';
+  bCtx.fillRect(0, 0, w, h);
 
   const rowCount = 32;
   const seatCols = 24;
-  const rowH = canvas.height / rowCount;
-  const colW = canvas.width / seatCols;
+  const rowH = h / rowCount;
+  const colW = w / seatCols;
   const fillThreshold = occupancyPercent / 100;
 
   for (let r = 0; r < rowCount; r += 1) {
     const y = r * rowH;
-    ctx.fillStyle = '#3f3f46';
-    ctx.fillRect(0, y, canvas.width, 4);
+    ctx.fillStyle = '#27272a';
+    ctx.fillRect(0, y, w, 4);
+    bCtx.fillStyle = '#282828';
+    bCtx.fillRect(0, y, w, 5);
 
     for (let c = 0; c < seatCols; c += 1) {
       const x = c * colW;
       if (c === 0 || c === seatCols - 1) {
-        ctx.fillStyle = '#d4d4d8';
+        ctx.fillStyle = '#c8c2b8';
         ctx.fillRect(x, y + 4, colW, rowH - 4);
-        ctx.fillStyle = '#f59e0b';
+        ctx.fillStyle = '#c5a059';
         ctx.fillRect(x + 2, y + 4, colW - 4, 3);
+        bCtx.fillStyle = '#a0a0a0';
+        bCtx.fillRect(x, y + 4, colW, rowH - 4);
         continue;
       }
 
       if (r >= 13 && r <= 17 && c >= 10 && c <= 13) {
         ctx.fillStyle = '#18181b';
         ctx.fillRect(x, y, colW, rowH);
+        bCtx.fillStyle = '#323232';
+        bCtx.fillRect(x, y, colW, rowH);
         if (r === 13) {
-          ctx.fillStyle = '#e4e4e7';
+          ctx.fillStyle = '#d6d3d1';
           ctx.fillRect(x, y, colW, 5);
         }
         continue;
       }
 
       const isGoldRow = r === 0 || r === rowCount - 1;
-      ctx.fillStyle = isGoldRow ? '#d97706' : r % 2 === 0 ? '#9f1239' : '#be123c';
+      ctx.fillStyle = isGoldRow ? '#c5a059' : r % 2 === 0 ? '#881337' : '#9f1239';
       ctx.fillRect(x + 2, y + 6, colW - 4, rowH - 8);
+      bCtx.fillStyle = '#dcdcdc';
+      bCtx.fillRect(x + 2, y + 6, colW - 4, rowH - 8);
 
       const hash = Math.abs(Math.sin(r * 78.233 + c * 37.719));
       if (hash < fillThreshold) {
         ctx.fillStyle =
-          hash < fillThreshold * 0.2 ? '#fde047' : hash < fillThreshold * 0.65 ? '#f43f5e' : '#f8fafc';
+          hash < fillThreshold * 0.2 ? '#e5c158' : hash < fillThreshold * 0.65 ? '#be123c' : '#e7e5e4';
         ctx.fillRect(x + 4, y + 8, colW - 8, rowH - 12);
+        bCtx.fillStyle = '#f5f5f5';
+        bCtx.fillRect(x + 4, y + 8, colW - 8, rowH - 12);
       }
     }
   }
 
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.ClampToEdgeWrapping;
-  texture.repeat.set(48, 1);
-  texture.anisotropy = 8;
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
+  const configureTex = (target: HTMLCanvasElement, isColor: boolean) => {
+    const tex = new THREE.CanvasTexture(target);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.repeat.set(48, 1);
+    tex.anisotropy = 8;
+    if (isColor) {
+      tex.colorSpace = THREE.SRGBColorSpace;
+    }
+    return tex;
+  };
+
+  return {
+    map: configureTex(canvas, true),
+    bumpMap: configureTex(bumpCanvas, false),
+  };
+}
+
+/**
+ * Generates an architectural BIM structural section texture with concrete formwork strata,
+ * slab edges, and expansion joints for the 90-degree cutaway end-caps.
+ */
+function createCutawaySectionPbrTextures(): {
+  map: THREE.CanvasTexture;
+  bumpMap: THREE.CanvasTexture;
+} {
+  const size = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+
+  const bumpCanvas = document.createElement('canvas');
+  bumpCanvas.width = size;
+  bumpCanvas.height = size;
+  const bCtx = bumpCanvas.getContext('2d');
+
+  if (ctx && bCtx) {
+    ctx.fillStyle = '#9ca3af';
+    ctx.fillRect(0, 0, size, size);
+    bCtx.fillStyle = '#8a8a8a';
+    bCtx.fillRect(0, 0, size, size);
+
+    // Concrete horizontal lift pours & slab band lines
+    for (let y = 0; y < size; y += 64) {
+      ctx.fillStyle = '#78716c';
+      ctx.fillRect(0, y, size, 8);
+      ctx.fillStyle = '#d6d3d1';
+      ctx.fillRect(0, y + 8, size, 6);
+
+      bCtx.fillStyle = '#484848';
+      bCtx.fillRect(0, y, size, 8);
+      bCtx.fillStyle = '#d0d0d0';
+      bCtx.fillRect(0, y + 8, size, 6);
+    }
+
+    // Vertical structural bay joints + subtle section hatching
+    ctx.strokeStyle = 'rgba(39, 39, 42, 0.22)';
+    bCtx.strokeStyle = '#555555';
+    ctx.lineWidth = 2;
+    bCtx.lineWidth = 2;
+    for (let x = 0; x < size; x += 128) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, size);
+      ctx.stroke();
+
+      bCtx.beginPath();
+      bCtx.moveTo(x, 0);
+      bCtx.lineTo(x, size);
+      bCtx.stroke();
+    }
+
+    // Subtle aggregate micro-noise
+    for (let i = 0; i < 6000; i += 1) {
+      const h = ((i * 2654435761) >>> 0) % (size * size);
+      const px = h % size;
+      const py = Math.floor(h / size);
+      ctx.fillStyle = (i & 1) === 0 ? 'rgba(255,255,255,0.04)' : 'rgba(24,24,27,0.05)';
+      ctx.fillRect(px, py, 2, 2);
+      bCtx.fillStyle = (i & 1) === 0 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+      bCtx.fillRect(px, py, 2, 2);
+    }
+  }
+
+  const map = new THREE.CanvasTexture(canvas);
+  map.wrapS = THREE.RepeatWrapping;
+  map.wrapT = THREE.RepeatWrapping;
+  map.anisotropy = 8;
+  map.colorSpace = THREE.SRGBColorSpace;
+
+  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+  bumpMap.wrapS = THREE.RepeatWrapping;
+  bumpMap.wrapT = THREE.RepeatWrapping;
+  bumpMap.anisotropy = 8;
+
+  return { map, bumpMap };
 }
 
 function createHaloLedTexture(): THREE.CanvasTexture {
@@ -540,6 +656,7 @@ function HaloLedRing({
 
 function createSectionCapQuad(
   positions: number[],
+  uvs: number[],
   indices: number[],
   p0: [number, number, number],
   p1: [number, number, number],
@@ -548,15 +665,20 @@ function createSectionCapQuad(
 ) {
   const base = positions.length / 3;
   positions.push(...p0, ...p1, ...p2, ...p3);
+  for (const pt of [p0, p1, p2, p3]) {
+    const radialDist = Math.hypot(pt[0], pt[2]);
+    uvs.push(radialDist / 24, pt[1] / 18);
+  }
   indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
 }
 
 /**
  * Generates solid architectural cross-section end-cap faces at cutAngle so 90° cutaway
- * reveals clean, solid concrete section fills with zero hollow polygon voids.
+ * reveals clean, solid concrete section fills with planar UVs for structural slab stratification.
  */
 function createCutawaySectionCapGeometry(cutAngle: number): THREE.BufferGeometry {
   const positions: number[] = [];
+  const uvs: number[] = [];
   const indices: number[] = [];
 
   // 1. Precast seating tier section wedges (Tiers 1..4)
@@ -565,6 +687,7 @@ function createCutawaySectionCapGeometry(cutAngle: number): THREE.BufferGeometry
     const [ox, oz] = superEllipsePoint(cutAngle, tier.outerRadiusX, tier.outerRadiusZ);
     createSectionCapQuad(
       positions,
+      uvs,
       indices,
       [ix, tier.baseElevation - 0.9, iz],
       [ix, tier.baseElevation, iz],
@@ -585,6 +708,7 @@ function createCutawaySectionCapGeometry(cutAngle: number): THREE.BufferGeometry
     const [ox, oz] = superEllipsePoint(cutAngle, orx, orz);
     createSectionCapQuad(
       positions,
+      uvs,
       indices,
       [ix, botY, iz],
       [ix, topY, iz],
@@ -598,6 +722,7 @@ function createCutawaySectionCapGeometry(cutAngle: number): THREE.BufferGeometry
   const [f2x, f2z] = superEllipsePoint(cutAngle, 102, 80);
   createSectionCapQuad(
     positions,
+    uvs,
     indices,
     [f1x, 0.0, f1z],
     [f1x, 2.2, f1z],
@@ -607,6 +732,7 @@ function createCutawaySectionCapGeometry(cutAngle: number): THREE.BufferGeometry
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   return geometry;
@@ -659,7 +785,8 @@ export function BowlStands({
   const startAngle = halfCutaway ? Math.PI * 0.52 : 0;
   const endAngle = halfCutaway ? Math.PI * 1.98 : Math.PI * 2;
 
-  const seatingTexture = useMemo(() => createSeatingBowlTexture(occupancyPercent), [occupancyPercent]);
+  const seatingPbr = useMemo(() => createSeatingBowlPbrTextures(occupancyPercent), [occupancyPercent]);
+  const sectionCapPbr = useMemo(() => createCutawaySectionPbrTextures(), []);
   const ribbonTexture = useMemo(() => createRibbonTexture(), []);
 
   const tierGeos = useMemo(
@@ -751,37 +878,49 @@ export function BowlStands({
 
       {/* Solid Sub-Bowl Foundation Slab closing ground floor under Tier 1 */}
       <mesh geometry={foundationSlabGeo} receiveShadow>
-        <meshStandardMaterial color="#94a3b8" roughness={0.85} side={THREE.DoubleSide} />
+        <meshStandardMaterial color="#57534e" roughness={0.86} side={THREE.DoubleSide} />
       </mesh>
 
       {/* Solid Architectural Cross-Section End-Caps when 90° Cutaway is enabled */}
       {halfCutaway && !bimFrameMode && sectionCapStartGeo && sectionCapEndGeo && (
         <group name="cutaway-section-endcaps">
           <mesh geometry={sectionCapStartGeo} receiveShadow>
-            <meshStandardMaterial color="#cbd5e1" roughness={0.82} side={THREE.DoubleSide} />
+            <meshStandardMaterial
+              map={sectionCapPbr.map}
+              bumpMap={sectionCapPbr.bumpMap}
+              bumpScale={0.22}
+              roughness={0.82}
+              side={THREE.DoubleSide}
+            />
           </mesh>
           <mesh geometry={sectionCapEndGeo} receiveShadow>
-            <meshStandardMaterial color="#cbd5e1" roughness={0.82} side={THREE.DoubleSide} />
+            <meshStandardMaterial
+              map={sectionCapPbr.map}
+              bumpMap={sectionCapPbr.bumpMap}
+              bumpScale={0.22}
+              roughness={0.82}
+              side={THREE.DoubleSide}
+            />
           </mesh>
         </group>
       )}
 
       <mesh geometry={pitchRetainingWallGeo} position={[0, 0, 0]} receiveShadow>
-        <meshStandardMaterial color="#64748b" roughness={0.82} side={THREE.DoubleSide} />
+        <meshStandardMaterial color="#3f3f46" roughness={0.82} side={THREE.DoubleSide} />
       </mesh>
 
       {!bimFrameMode &&
         serviceVolumes.map((volGeo, idx) => (
           <mesh key={`svc-${idx}`} geometry={volGeo} receiveShadow>
-            <meshStandardMaterial color="#cbd5e1" roughness={0.78} side={THREE.DoubleSide} />
+            <meshStandardMaterial color="#a8a29e" roughness={0.78} side={THREE.DoubleSide} />
           </mesh>
         ))}
 
       {concourseSlabs.map((slabGeo, idx) => (
         <mesh key={`slab-${idx}`} geometry={slabGeo} receiveShadow>
           <meshStandardMaterial
-            color="#e2e8f0"
-            roughness={0.82}
+            color="#d6d3d1"
+            roughness={0.78}
             transparent={bimFrameMode}
             opacity={bimFrameMode ? 0.35 : 1}
             side={THREE.DoubleSide}
@@ -793,9 +932,11 @@ export function BowlStands({
         <group key={tier.id} name={tier.id}>
           <mesh geometry={tierGeos[idx]} castShadow={!bimFrameMode} receiveShadow>
             <meshStandardMaterial
-              map={seatingTexture}
+              map={seatingPbr.map}
+              bumpMap={seatingPbr.bumpMap}
+              bumpScale={0.28}
               roughness={0.68}
-              metalness={0.05}
+              metalness={0.06}
               transparent={bimFrameMode}
               opacity={bimFrameMode ? 0.22 : 1}
               side={THREE.DoubleSide}
@@ -832,13 +973,13 @@ export function BowlStands({
       {!bimFrameMode && (
         <mesh geometry={skyboxGeo} position={[0, 31.6, 0]}>
           <meshPhysicalMaterial
-            color="#38bdf8"
-            emissive="#0284c7"
-            emissiveIntensity={ledGlowIntensity * 0.25}
+            color="#0b1324"
+            emissive="#fbbf24"
+            emissiveIntensity={ledGlowIntensity * 0.28}
             transparent
-            opacity={0.45}
-            metalness={0.78}
-            roughness={0.15}
+            opacity={0.75}
+            metalness={0.9}
+            roughness={0.08}
             side={THREE.DoubleSide}
           />
         </mesh>

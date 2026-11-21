@@ -1,33 +1,35 @@
 <!-- devflow-template: solo-report@1.1 -->
-# 小型任务报告 — Vietnam 200K Stadium Self-Audit & Architectural Realism Fix
+# 小型任务报告 — Vietnam 200K Stadium Cinematic PBR & Architectural Visualization Overhaul
 
 ## 范围
 
-Tự rà soát và khắc phục các lỗi về vật liệu PBR, độ chi tiết gân mái, khép kín vết cắt 90° và kiến trúc thực tế của 5 khu phức hợp xung quanh tại `d:\chaybo`.
+Nâng cấp toàn diện chất lượng đồ họa WebGL 3D tại `d:\chaybo` từ vật liệu phẳng sang tiêu chuẩn diễn họa kiến trúc (HDRI Lightformer studio, bầu trời vật lý `<Sky />`, tương phản sáng-tối, đa bản đồ PBR `map + bumpMap + roughnessMap`, phản chiếu mặt nước `<MeshReflectorMaterial />`, vật liệu đá/cỏ hạt mịn và đồng bộ bảng màu kính obsidian - đá travertine - đồng champagne cho 5 khu phức hợp).
 
 ## 计划
 
-1. Thêm `PbrEnvironment` (`RoomEnvironment` + `PMREMGenerator`) trong `src/scene/StadiumScene.tsx`.
-2. Thêm 48 sườn hộp thép nổi + 5 vòng xà gồ (`ExposedUpperRoofRibs`), texture múi màng `createRoofMembraneTexture` và 4 mái đón `GrandEntranceCanopies` trong `src/scene/RoofStructure.tsx`.
-3. Thêm `foundationSlabGeo` và tường đầu hồi khép kín vết cắt (`createCutawaySectionCapGeometry`) trong `src/scene/BowlStands.tsx`.
-4. Xây dựng lại 5 khu phức hợp theo kiến trúc thật trong `src/scene/Surroundings.tsx` (Tháp khách sạn 5★ phân sàn thật 18/14 tầng, Nhà ga Metro giàn thép có tàu điện, cầu Skywalk không đâm cầu thang, Nhà thi đấu vòm thép lộ thiên, 2 Nhà xe 5 sàn hở thông gió + 112 ô tô tỷ lệ thật, hồ nước bờ kè đá granite và cây phân cụm tán tự nhiên).
+1. Điều chỉnh tỷ lệ tương phản nắng/bóng (`ambientIntensity`, `sunIntensity`, `sunPosition`, `fogColor`) trong `src/config/stadiumSpecs.ts`.
+2. Thay `RoomEnvironment` và shader vòm đơn giản bằng `CustomStudioEnvironment` (`<Environment resolution={512} frames={2}>` + `<Lightformer />`) và `<Sky />` cho ngày/hoàng hôn trong `src/scene/StadiumScene.tsx`.
+3. Nâng cấp mái PTFE với `createRoofMembranePbrTextures()` (`map`, `bumpMap`, `roughnessMap`), đổi 48 gân sườn mái sang thép graphite `#27272a`, đồng champagne `#c5a059` và kính obsidian phản xạ cao trong `src/scene/RoofStructure.tsx`.
+4. Loại bỏ vòng lặp cỏ chấm bi (`1800` `ctx.arc`) và thay bằng hạt pixel địa hình + `bumpMap` (`bumpScale: 0.35`), nâng cấp 4 hồ phản chiếu bằng `<MeshReflectorMaterial />`, đồng bộ bảng màu Foster+Partners và loại bỏ các ô tô hộp màu rực trong `src/scene/Surroundings.tsx`.
+5. Bổ sung `bumpMap` thảm cỏ sân FIFA (`src/scene/Pitch.tsx`) và `bumpMap` bậc ghế + vỉa kết cấu bê tông mặt cắt 90° có tọa độ UV (`src/scene/BowlStands.tsx`).
 
 ## 变更
 
-- `src/scene/StadiumScene.tsx`: Thêm `PbrEnvironment` (`RoomEnvironment`).
-- `src/scene/RoofStructure.tsx`: Thêm `ExposedUpperRoofRibs`, `createRoofMembraneTexture`, `GrandEntranceCanopies` và 48 lam đứng mặt tiền.
-- `src/scene/BowlStands.tsx`: Thêm `foundationSlabGeo` và `createCutawaySectionCapGeometry` cho mặt cắt 90°.
-- `src/scene/Surroundings.tsx` & `src/config/stadiumSpecs.ts`: Tái xây dựng `RealFloorPlateTower`, `OpenDeckParkingGarage`, `GraniteReflectingBasins`, `NaturalParkLandscaping` và tách cầu thang đôi ở sảnh Nam.
+- `src/config/stadiumSpecs.ts`: Tối ưu `LIGHTING_CONFIGS` (`day`, `sunset`, `night`) tạo tương phản khối 3D rõ nét.
+- `src/scene/StadiumScene.tsx`: Thay `PbrEnvironment` bằng `CustomStudioEnvironment` (`Lightformer`) + `<Sky />` + `shadow-normalBias={0.04}` + đồng bộ `toneMappingExposure`.
+- `src/scene/RoofStructure.tsx`: Thêm `createRoofMembranePbrTextures()`, tăng độ tương phản sườn graphite `#27272a` / đồng `#c5a059` / kính obsidian.
+- `src/scene/Surroundings.tsx`: Nâng cấp `createMasterplanGroundPbrTextures()`, thay mặt nước bằng `<MeshReflectorMaterial resolution={512} />`, đồng bộ vật liệu kiến trúc 5 khu phức hợp.
+- `src/scene/Pitch.tsx` & `src/scene/BowlStands.tsx`: Thêm `createPitchPbrTextures()`, `createSeatingBowlPbrTextures()` và `createCutawaySectionPbrTextures()` với planar UVs cho mặt cắt 90°.
 
 ## 自审
 
-- TypeScript strict mode (`tsc -b`): 0 lỗi, 0 biến dư thừa.
-- Đã loại bỏ hoàn toàn các khối trụ đơn giản, khối cầu bánh bao, cầu thang giao cắt cầu đi bộ, khoảng rỗng đen dưới mặt cắt và thiếu môi trường phản xạ PBR.
+- TypeScript strict mode (`tsc -b`): 0 lỗi.
+- Không còn cỏ chấm bi hoạt hình, khối màu Lego hay mái trắng bệch thiếu chiều sâu.
 
 ## 测试
 
 - `npm.cmd test`: 9/9 unit tests pass (Vitest v3.2.7).
-- `npm.cmd run build`: `tsc -b && vite build` thành công.
+- `npm.cmd run build`: `tsc -b && vite build` thành công (2158 modules).
 
 ## API 接口文档
 
@@ -35,4 +37,4 @@ Tự rà soát và khắc phục các lỗi về vật liệu PBR, độ chi ti�
 
 ## 剩余风险
 
-无
+Cần nghiệm thu thị giác thực tế trên trình duyệt headless và kiểm tra WebGL performance của `<MeshReflectorMaterial />`.

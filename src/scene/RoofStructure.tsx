@@ -29,40 +29,96 @@ function getSaddleTrussHeights(u: number, angle: number): { yBot: number; yTop: 
 }
 
 /**
- * Generates a pleated ETFE/PTFE architectural roof cushion texture (tiled 48 times around the bays)
- * with seam valleys, cushion pillow shading, and concentric tension clamp bands.
+ * Generates coherent PBR textures (albedo map, pillow bumpMap, satin roughnessMap)
+ * for the 48 pleated PTFE architectural roof bays with seam valleys and woven micro-grain.
  */
-function createRoofMembraneTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 512;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    return new THREE.CanvasTexture(canvas);
+function createRoofMembranePbrTextures(): {
+  map: THREE.CanvasTexture;
+  bumpMap: THREE.CanvasTexture;
+  roughnessMap: THREE.CanvasTexture;
+} {
+  const w = 256;
+  const h = 512;
+
+  const albedoCanvas = document.createElement('canvas');
+  albedoCanvas.width = w;
+  albedoCanvas.height = h;
+  const aCtx = albedoCanvas.getContext('2d');
+
+  const bumpCanvas = document.createElement('canvas');
+  bumpCanvas.width = w;
+  bumpCanvas.height = h;
+  const bCtx = bumpCanvas.getContext('2d');
+
+  const roughCanvas = document.createElement('canvas');
+  roughCanvas.width = w;
+  roughCanvas.height = h;
+  const rCtx = roughCanvas.getContext('2d');
+
+  if (aCtx && bCtx && rCtx) {
+    // Warm architectural ivory PTFE membrane gradient across each cushion bay
+    const grad = aCtx.createLinearGradient(0, 0, w, 0);
+    grad.addColorStop(0, '#78716c');
+    grad.addColorStop(0.08, '#d6d3d1');
+    grad.addColorStop(0.5, '#ebe8e3');
+    grad.addColorStop(0.92, '#d6d3d1');
+    grad.addColorStop(1, '#78716c');
+    aCtx.fillStyle = grad;
+    aCtx.fillRect(0, 0, w, h);
+
+    // Physical pillow profile height for bumpMap (convex dome between rib seams)
+    const bGrad = bCtx.createLinearGradient(0, 0, w, 0);
+    bGrad.addColorStop(0, '#5a5a5a');
+    bGrad.addColorStop(0.12, '#bdbdbd');
+    bGrad.addColorStop(0.5, '#f2f2f2');
+    bGrad.addColorStop(0.88, '#bdbdbd');
+    bGrad.addColorStop(1, '#5a5a5a');
+    bCtx.fillStyle = bGrad;
+    bCtx.fillRect(0, 0, w, h);
+
+    // Satin PTFE roughness gradient (more reflective sheen along smooth crown slopes)
+    const rGrad = rCtx.createLinearGradient(0, 0, w, 0);
+    rGrad.addColorStop(0, '#6b6b6b');
+    rGrad.addColorStop(0.5, '#8e8e8e');
+    rGrad.addColorStop(1, '#6b6b6b');
+    rCtx.fillStyle = rGrad;
+    rCtx.fillRect(0, 0, w, h);
+
+    // Subtle woven PTFE micro-grain (deterministic hash so zero external assets needed)
+    for (let i = 0; i < 6500; i += 1) {
+      const gx = (i * 73 + Math.floor(i / 64) * 19) % w;
+      const gy = (i * 137) % h;
+      aCtx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.025)' : 'rgba(28,25,23,0.03)';
+      aCtx.fillRect(gx, gy, 2, 2);
+      bCtx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+      bCtx.fillRect(gx, gy, 2, 2);
+    }
+
+    // Welded radial seam clamp bands
+    for (let y = 0; y < h; y += 64) {
+      aCtx.fillStyle = 'rgba(41, 37, 36, 0.42)';
+      aCtx.fillRect(0, y, w, 4);
+      bCtx.fillStyle = '#383838';
+      bCtx.fillRect(0, y, w, 4);
+    }
   }
 
-  // Horizontal cushion pillow gradient across each of the 48 radial bays
-  const grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
-  grad.addColorStop(0, '#94a3b8');
-  grad.addColorStop(0.1, '#e2e8f0');
-  grad.addColorStop(0.5, '#f8fafc');
-  grad.addColorStop(0.9, '#e2e8f0');
-  grad.addColorStop(1, '#94a3b8');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const configureTex = (canvas: HTMLCanvasElement, isColor: boolean) => {
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.anisotropy = 8;
+    if (isColor) {
+      tex.colorSpace = THREE.SRGBColorSpace;
+    }
+    return tex;
+  };
 
-  // Subtle concentric welded membrane seam joints along radial span
-  ctx.fillStyle = 'rgba(71, 85, 105, 0.35)';
-  for (let y = 0; y < canvas.height; y += 64) {
-    ctx.fillRect(0, y, canvas.width, 4);
-  }
-
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.ClampToEdgeWrapping;
-  tex.anisotropy = 8;
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
+  return {
+    map: configureTex(albedoCanvas, true),
+    bumpMap: configureTex(bumpCanvas, false),
+    roughnessMap: configureTex(roughCanvas, false),
+  };
 }
 
 function createLuxuryCurtainWallTexture(isNight: boolean): THREE.CanvasTexture {
@@ -74,29 +130,29 @@ function createLuxuryCurtainWallTexture(isNight: boolean): THREE.CanvasTexture {
     return new THREE.CanvasTexture(canvas);
   }
 
-  ctx.fillStyle = isNight ? '#0a1628' : '#0f2942';
+  ctx.fillStyle = isNight ? '#060c18' : '#09111f';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const floorBands = [
-    { y: 382, h: 100, glow: isNight ? 'rgba(251, 191, 36, 0.65)' : 'rgba(56, 189, 248, 0.38)' },
-    { y: 266, h: 94, glow: isNight ? 'rgba(245, 158, 11, 0.52)' : 'rgba(186, 230, 253, 0.34)' },
-    { y: 152, h: 94, glow: isNight ? 'rgba(56, 189, 248, 0.38)' : 'rgba(125, 211, 252, 0.30)' },
-    { y: 42, h: 90, glow: isNight ? 'rgba(251, 191, 36, 0.42)' : 'rgba(224, 242, 254, 0.28)' },
+    { y: 382, h: 100, glow: isNight ? 'rgba(251, 191, 36, 0.68)' : 'rgba(56, 189, 248, 0.2)' },
+    { y: 266, h: 94, glow: isNight ? 'rgba(245, 158, 11, 0.56)' : 'rgba(186, 230, 253, 0.16)' },
+    { y: 152, h: 94, glow: isNight ? 'rgba(56, 189, 248, 0.42)' : 'rgba(125, 211, 252, 0.14)' },
+    { y: 42, h: 90, glow: isNight ? 'rgba(251, 191, 36, 0.46)' : 'rgba(224, 242, 254, 0.14)' },
   ];
 
   for (const band of floorBands) {
     const grad = ctx.createLinearGradient(0, band.y, 0, band.y + band.h);
-    grad.addColorStop(0, isNight ? 'rgba(15, 23, 42, 0.85)' : 'rgba(14, 116, 144, 0.42)');
+    grad.addColorStop(0, isNight ? 'rgba(15, 23, 42, 0.9)' : 'rgba(15, 23, 42, 0.72)');
     grad.addColorStop(0.55, band.glow);
-    grad.addColorStop(1, isNight ? '#0f172a' : '#164e63');
+    grad.addColorStop(1, isNight ? '#090e1a' : '#0b1628');
     ctx.fillStyle = grad;
     ctx.fillRect(0, band.y, canvas.width, band.h);
 
-    ctx.fillStyle = '#cbd5e1';
-    ctx.fillRect(0, band.y + band.h - 8, canvas.width, 8);
+    ctx.fillStyle = '#a8a29e';
+    ctx.fillRect(0, band.y + band.h - 7, canvas.width, 7);
   }
 
-  ctx.fillStyle = 'rgba(226, 232, 240, 0.35)';
+  ctx.fillStyle = 'rgba(197, 160, 89, 0.42)';
   for (let x = 0; x < canvas.width; x += 20) {
     ctx.fillRect(x, 0, 2, canvas.height);
   }
@@ -304,7 +360,7 @@ function ExposedUpperRoofRibs({
   return (
     <instancedMesh ref={meshRef} name="exposed-upper-roof-ribs" args={[undefined, undefined, 900]} castShadow>
       <cylinderGeometry args={[1, 1, 1, 6]} />
-      <meshStandardMaterial color="#cbd5e1" metalness={0.78} roughness={0.28} />
+      <meshStandardMaterial color="#27272a" metalness={0.88} roughness={0.24} />
     </instancedMesh>
   );
 }
@@ -413,16 +469,16 @@ function SculptedDiagridFacade({
       <instancedMesh ref={goldRef} args={[undefined, undefined, 700]} castShadow>
         <cylinderGeometry args={[1, 1, 1, 6]} />
         <meshStandardMaterial
-          color="#eab308"
-          emissive="#d97706"
-          emissiveIntensity={isNight ? 0.35 : 0.04}
-          metalness={0.86}
-          roughness={0.22}
+          color="#c5a059"
+          emissive="#b45309"
+          emissiveIntensity={isNight ? 0.38 : 0.03}
+          metalness={0.9}
+          roughness={0.2}
         />
       </instancedMesh>
       <instancedMesh ref={finRef} args={[undefined, undefined, 64]} castShadow>
         <cylinderGeometry args={[1, 1, 1, 6]} />
-        <meshStandardMaterial color="#f1f5f9" metalness={0.75} roughness={0.25} />
+        <meshStandardMaterial color="#334155" metalness={0.85} roughness={0.24} />
       </instancedMesh>
     </group>
   );
@@ -458,16 +514,16 @@ function GrandEntranceCanopies({
           <mesh rotation={[-0.08, 0, 0]} castShadow>
             <boxGeometry args={[32, 0.8, 16]} />
             <meshPhysicalMaterial
-              color="#e0f2fe"
+              color="#1e293b"
               transparent
               opacity={0.72}
-              metalness={0.35}
-              roughness={0.15}
+              metalness={0.85}
+              roughness={0.1}
             />
           </mesh>
           <mesh position={[0, 0.45, 7.6]}>
             <boxGeometry args={[32.6, 0.4, 0.8]} />
-            <meshStandardMaterial color="#eab308" metalness={0.85} roughness={0.22} />
+            <meshStandardMaterial color="#c5a059" metalness={0.9} roughness={0.2} />
           </mesh>
         </group>
       ))}
@@ -645,12 +701,12 @@ function RetractableOculusPanels({
         castShadow={!xrayRoof}
       >
         <meshPhysicalMaterial
-          color="#e0f2fe"
+          color="#0f172a"
           transparent
-          opacity={xrayRoof ? 0.14 : 0.48}
+          opacity={xrayRoof ? 0.14 : 0.52}
           wireframe={xrayRoof}
-          roughness={0.18}
-          metalness={0.2}
+          roughness={0.12}
+          metalness={0.86}
           side={THREE.DoubleSide}
         />
       </mesh>
@@ -661,12 +717,12 @@ function RetractableOculusPanels({
         castShadow={!xrayRoof}
       >
         <meshPhysicalMaterial
-          color="#e0f2fe"
+          color="#0f172a"
           transparent
-          opacity={xrayRoof ? 0.14 : 0.48}
+          opacity={xrayRoof ? 0.14 : 0.52}
           wireframe={xrayRoof}
-          roughness={0.18}
-          metalness={0.2}
+          roughness={0.12}
+          metalness={0.86}
           side={THREE.DoubleSide}
         />
       </mesh>
@@ -685,7 +741,7 @@ export function RoofStructure({
   const endAngle = halfCutaway ? Math.PI * 1.98 : Math.PI * 2;
   const isNight = floodlightIntensity > 0.5;
 
-  const membraneTex = useMemo(() => createRoofMembraneTexture(), []);
+  const membranePbr = useMemo(() => createRoofMembranePbrTextures(), []);
   const curtainTex = useMemo(() => createLuxuryCurtainWallTexture(isNight), [isNight]);
   const vesselCurtainGeo = useMemo(
     () => createSculptedVesselFacadeGeometry(startAngle, endAngle),
@@ -749,11 +805,11 @@ export function RoofStructure({
           <mesh geometry={vesselCurtainGeo} receiveShadow>
             <meshStandardMaterial
               map={curtainTex}
-              emissive="#ffffff"
+              emissive="#fbbf24"
               emissiveMap={curtainTex}
-              emissiveIntensity={isNight ? 0.85 : 0.25}
-              metalness={0.72}
-              roughness={0.2}
+              emissiveIntensity={isNight ? 0.9 : 0.08}
+              metalness={0.88}
+              roughness={0.12}
               transparent={xrayRoof}
               opacity={xrayRoof ? 0.28 : 0.96}
               side={THREE.DoubleSide}
@@ -769,33 +825,36 @@ export function RoofStructure({
           <GrandEntranceCanopies startAngle={startAngle} endAngle={endAngle} />
 
           <mesh geometry={outerPearlFasciaGeo} castShadow>
-            <meshStandardMaterial color="#f8fafc" metalness={0.55} roughness={0.22} />
+            <meshStandardMaterial color="#d6d3d1" metalness={0.62} roughness={0.28} />
           </mesh>
         </>
       )}
 
-      {/* Pleated ETFE Tensile Cushions + Translucent Daylight Skylight Ring */}
+      {/* Pleated PTFE Tensile Cushions + Translucent Daylight Skylight Ring */}
       {!bimFrameMode && (
         <>
           <mesh geometry={etfeCanopyGeo} castShadow={!xrayRoof} receiveShadow>
             <meshPhysicalMaterial
-              map={xrayRoof ? null : membraneTex}
+              map={xrayRoof ? null : membranePbr.map}
+              bumpMap={xrayRoof ? null : membranePbr.bumpMap}
+              bumpScale={0.42}
+              roughnessMap={xrayRoof ? null : membranePbr.roughnessMap}
               color={xrayRoof ? '#38bdf8' : '#ffffff'}
               transparent
-              opacity={xrayRoof ? 0.14 : 0.92}
+              opacity={xrayRoof ? 0.14 : 0.95}
               wireframe={xrayRoof}
-              roughness={0.35}
-              metalness={0.08}
+              roughness={0.48}
+              metalness={0.05}
               side={THREE.DoubleSide}
             />
           </mesh>
           <mesh geometry={skylightRingGeo}>
             <meshPhysicalMaterial
-              color="#bae6fd"
+              color="#94a3b8"
               transparent
-              opacity={xrayRoof ? 0.14 : 0.45}
-              roughness={0.12}
-              metalness={0.22}
+              opacity={xrayRoof ? 0.14 : 0.42}
+              roughness={0.1}
+              metalness={0.82}
               side={THREE.DoubleSide}
             />
           </mesh>

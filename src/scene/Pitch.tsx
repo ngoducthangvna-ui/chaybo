@@ -3,43 +3,60 @@ import * as THREE from 'three';
 import { PITCH_SPECS } from '../config/stadiumSpecs';
 
 /**
- * Generates a high-resolution procedural FIFA pitch texture with alternating
- * mowing stripes and crisp regulation field markings.
+ * Generates high-resolution FIFA grass pitch albedo & velvety turf bumpMap textures.
  */
-function createPitchTexture(): THREE.CanvasTexture {
+function createPitchPbrTextures(): { map: THREE.CanvasTexture; bumpMap: THREE.CanvasTexture } {
+  const w = 2048;
+  const h = 1320;
   const canvas = document.createElement('canvas');
-  canvas.width = 2048;
-  canvas.height = 1320;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    return new THREE.CanvasTexture(canvas);
+
+  const bumpCanvas = document.createElement('canvas');
+  bumpCanvas.width = w;
+  bumpCanvas.height = h;
+  const bCtx = bumpCanvas.getContext('2d');
+
+  if (!ctx || !bCtx) {
+    return {
+      map: new THREE.CanvasTexture(canvas),
+      bumpMap: new THREE.CanvasTexture(bumpCanvas),
+    };
   }
 
   const stripeCount = 18;
-  const stripeWidth = canvas.width / stripeCount;
+  const stripeWidth = w / stripeCount;
   for (let i = 0; i < stripeCount; i += 1) {
-    ctx.fillStyle = i % 2 === 0 ? '#1e6b34' : '#247c3d';
-    ctx.fillRect(i * stripeWidth, 0, stripeWidth + 1, canvas.height);
+    ctx.fillStyle = i % 2 === 0 ? '#1a5c2c' : '#216b35';
+    ctx.fillRect(i * stripeWidth, 0, stripeWidth + 1, h);
+
+    bCtx.fillStyle = i % 2 === 0 ? '#787878' : '#9c9c9c';
+    bCtx.fillRect(i * stripeWidth, 0, stripeWidth + 1, h);
   }
 
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.015)';
-  for (let i = 0; i < 4000; i += 1) {
-    const x = (i * 73) % canvas.width;
-    const y = (i * 137) % canvas.height;
+  for (let i = 0; i < 24000; i += 1) {
+    const hash = ((i * 2654435761) >>> 0) % (w * h);
+    const x = hash % w;
+    const y = Math.floor(hash / w);
+    const light = (i & 1) === 0;
+    ctx.fillStyle = light ? 'rgba(255, 255, 255, 0.022)' : 'rgba(10, 30, 15, 0.035)';
     ctx.fillRect(x, y, 2, 2);
+    bCtx.fillStyle = light ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.16)';
+    bCtx.fillRect(x, y, 2, 2);
   }
 
   const padX = 90;
   const padY = 64;
-  const fieldW = canvas.width - padX * 2;
-  const fieldH = canvas.height - padY * 2;
+  const fieldW = w - padX * 2;
+  const fieldH = h - padY * 2;
   const scaleX = fieldW / PITCH_SPECS.length;
   const scaleY = fieldH / PITCH_SPECS.width;
   const midX = padX + fieldW / 2;
   const midY = padY + fieldH / 2;
   const centerR = PITCH_SPECS.centerCircleRadius * scaleX;
 
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.94)';
+  ctx.strokeStyle = 'rgba(245, 245, 244, 0.92)';
   ctx.lineWidth = 6;
   ctx.strokeRect(padX, padY, fieldW, fieldH);
 
@@ -52,7 +69,7 @@ function createPitchTexture(): THREE.CanvasTexture {
   ctx.arc(midX, midY, centerR, 0, Math.PI * 2);
   ctx.stroke();
 
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = '#f5f5f4';
   ctx.beginPath();
   ctx.arc(midX, midY, 5, 0, Math.PI * 2);
   ctx.fill();
@@ -67,10 +84,14 @@ function createPitchTexture(): THREE.CanvasTexture {
   ctx.strokeRect(padX, midY - goalH / 2, goalW, goalH);
   ctx.strokeRect(padX + fieldW - goalW, midY - goalH / 2, goalW, goalH);
 
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.anisotropy = 8;
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
+  const map = new THREE.CanvasTexture(canvas);
+  map.anisotropy = 8;
+  map.colorSpace = THREE.SRGBColorSpace;
+
+  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+  bumpMap.anisotropy = 8;
+
+  return { map, bumpMap };
 }
 
 function GoalFrame({ positionX, flip }: { positionX: number; flip: boolean }) {
@@ -176,26 +197,32 @@ function PitchLedPerimeter() {
 }
 
 export function Pitch() {
-  const pitchTexture = useMemo(() => createPitchTexture(), []);
+  const pitchPbr = useMemo(() => createPitchPbrTextures(), []);
 
   return (
     <group name="fifa-pitch">
       {/* Concrete technical apron */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
         <planeGeometry args={[PITCH_SPECS.apronLength + 20, PITCH_SPECS.apronWidth + 20]} />
-        <meshStandardMaterial color="#334155" roughness={0.85} />
+        <meshStandardMaterial color="#27272a" roughness={0.88} />
       </mesh>
 
       {/* Synthetic perimeter turf surround */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]} receiveShadow>
         <planeGeometry args={[PITCH_SPECS.apronLength, PITCH_SPECS.apronWidth]} />
-        <meshStandardMaterial color="#14532d" roughness={0.85} />
+        <meshStandardMaterial color="#163820" roughness={0.86} />
       </mesh>
 
-      {/* FIFA grass pitch */}
+      {/* FIFA grass pitch with turf micro-relief bump */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.08, 0]} receiveShadow>
         <planeGeometry args={[PITCH_SPECS.length + 8, PITCH_SPECS.width + 6]} />
-        <meshStandardMaterial map={pitchTexture} roughness={0.78} metalness={0.02} />
+        <meshStandardMaterial
+          map={pitchPbr.map}
+          bumpMap={pitchPbr.bumpMap}
+          bumpScale={0.05}
+          roughness={0.82}
+          metalness={0.02}
+        />
       </mesh>
 
       <GoalFrame positionX={-PITCH_SPECS.length / 2} flip={true} />
