@@ -131,12 +131,14 @@ export function StadiumScene({
         className="h-full w-full"
       >
         <color attach="background" args={[lighting.skyColor]} />
-        <fog attach="fog" args={[lighting.fogColor, 260, 740]} />
+        <fog attach="fog" args={[lighting.fogColor, 280, 760]} />
 
         {lightingMode === 'night' && (
           <Stars radius={380} depth={80} count={2500} factor={4} saturation={0.2} fade />
         )}
 
+        {/* Realistic sky-to-ground hemisphere bounce so interior pitch and under-bowl bents stay naturally lit */}
+        <hemisphereLight args={[lighting.skyColor, '#334155', 0.85]} />
         <ambientLight intensity={lighting.ambientIntensity} />
         <directionalLight
           position={[...lighting.sunPosition]}
@@ -179,7 +181,7 @@ export function StadiumScene({
           </>
         )}
 
-        <Surroundings />
+        <Surroundings halfCutaway={halfCutaway} />
         <Pitch />
         <BowlStands
           ledGlowIntensity={lighting.ledGlowIntensity}

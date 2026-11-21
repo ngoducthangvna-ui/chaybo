@@ -1,33 +1,30 @@
 <!-- devflow-template: solo-report@1.1 -->
-# 小型任务报告 — Vietnam 200K Stadium Masterpiece 3D
+# 小型任务报告 — Vietnam 200K Stadium Masterpiece 3D & Structural Physics Remediation
 
 ## 范围
 
-Nâng cấp dự án `d:\chaybo` (Vietnam 200K Stadium 3D) tận dụng tối đa hệ thống LoopForge DevFlow và bộ ngôn ngữ thiết kế Grasp + Harness UI trong `d:\LoopForge-main\design.md`. Phạm vi giới hạn trong cấu hình thông số (`src/config/stadiumSpecs.ts`), các thành phần 3D (`src/scene/*`), bảng điều khiển (`src/components/ControlPanel.tsx`) và kiểm thử (`src/config/stadiumSpecs.test.ts`).
+Nâng cấp dự án `d:\chaybo` (Vietnam 200K Stadium 3D) tận dụng tối đa hệ thống LoopForge DevFlow và bộ ngôn ngữ thiết kế Grasp + Harness UI trong `d:\LoopForge-main\design.md`, đồng thời khắc phục toàn bộ các điểm phi vật lý về kết cấu đỡ 3D. Phạm vi giới hạn trong `src/config/*`, `src/scene/*`, `src/components/*` và `src/App.tsx`.
 
 ## 计划
 
 1. Mở rộng `src/config/stadiumSpecs.ts` & `src/config/stadiumSpecs.test.ts` với công thức âm học (`dB`), điện năng (`MW`), trọng lượng thép mái (`28,500 tấn`) và danh sách 7 node LoopForge SOP.
-2. Nâng cấp `src/scene/Pitch.tsx` (họa tiết Trống đồng & ngôi sao tâm sân, 22 cầu thủ & bóng chuyển động thời gian thực, băng ghế huấn luyện).
-3. Nâng cấp `src/scene/BowlStands.tsx` (hiệu ứng sóng khán giả `InstancedMesh` và 24 tia dẫn hướng thoát hiểm 3D màu xanh lục).
-4. Nâng cấp `src/scene/RoofStructure.tsx` (mái trượt trung tâm Oculus đóng/mở 0–100% và hệ thống 360 hạt pháo hoa Lễ Khai Mạc).
-5. Nâng cấp `src/scene/Surroundings.tsx` (4 cầu đi bộ Skybridge và đài phun nước hồ Bắc–Nam).
-6. Cập nhật `src/scene/StadiumScene.tsx`, `src/components/ControlPanel.tsx` (2 tab `Kỹ thuật & Mô phỏng` | `LoopForge SOP`, bảng màu `#141417` / `#0a0a0b` / `#26262b`), và `src/App.tsx`.
+2. Khép kín tiết diện 4 tầng khán đài, thêm 36 khung cột trụ bê tông & dầm nghiêng (`StructuralSupportBents`), giàn thép treo Jumbotron (`JumbotronRig`), sóng khán giả và tuyến thoát hiểm bám sát mặt sàn/cầu dẫn trong `src/scene/BowlStands.tsx`.
+3. Bổ sung 24 bệ móng bê tông, ray trượt thép và 2 nửa vòm cong Oculus trượt gọn dưới mái chính trong `src/scene/RoofStructure.tsx`.
+4. Bổ sung cột trụ đỡ và đường dốc dẫn xuống quảng trường cho 4 cầu đi bộ Skybridge trong `src/scene/Surroundings.tsx`.
+5. Thêm `hemisphereLight` tán xạ bầu trời trong `src/scene/StadiumScene.tsx`, tối ưu quỹ đạo bóng sát mặt cỏ trong `src/scene/Pitch.tsx` và tắt mặc định pháo hoa ban ngày trong `src/App.tsx`.
 
 ## 变更
 
-- `src/config/stadiumSpecs.ts`: Thêm `StructuralMetrics`, `calculateStructuralMetrics`, `LOOPFORGE_SOP_NODES`.
-- `src/config/stadiumSpecs.test.ts`: Bổ sung unit test cho thông số âm học, công suất điện và 7 SOP nodes.
-- `src/scene/Pitch.tsx`: Bổ sung `AnimatedPlayersAndBall`, `TeamDugouts` và họa tiết Trống đồng tại tâm sân cỏ.
-- `src/scene/BowlStands.tsx`: Bổ sung `crowdWave` animation và `EvacuationFlowPaths`.
-- `src/scene/RoofStructure.tsx`: Bổ sung `RetractableOculusPanels` (0–100%) và `CeremonyFireworks`.
-- `src/scene/Surroundings.tsx`: Bổ sung 4 cầu đi bộ Skybridge và các cột phun nước cảnh quan.
-- `src/scene/StadiumScene.tsx`, `src/components/ControlPanel.tsx`, `src/App.tsx`: Kết nối toàn bộ trạng thái 3D và giao diện 2 tab chuẩn Grasp + Harness UI.
+- `src/config/stadiumSpecs.ts` & `src/config/stadiumSpecs.test.ts`: Thêm `StructuralMetrics`, `calculateStructuralMetrics`, `LOOPFORGE_SOP_NODES` và unit tests.
+- `src/scene/BowlStands.tsx`: Khép kín tiết diện 4 tầng (mặt ghế + vách hậu + sàn đáy), bổ sung `StructuralSupportBents` (36 khung cột trụ & dầm nghiêng), `JumbotronRig` (giàn treo thép nối lên mái), `CrowdInstances` (sóng khán giả) và `EvacuationFlowPaths` (bám sàn & cầu dốc).
+- `src/scene/RoofStructure.tsx`: Bổ sung `ButtressFoundations` chạm đất `y=0`, ray trượt thép và `RetractableOculusPanels` cong khép gọn dưới tán mái.
+- `src/scene/Surroundings.tsx`: Bổ sung `GroundedSkybridge` với trụ đỡ bê tông và đường dốc dẫn nối từ Tầng 2 xuống quảng trường.
+- `src/scene/Pitch.tsx`, `src/scene/StadiumScene.tsx`, `src/components/ControlPanel.tsx`, `src/App.tsx`: Thêm `hemisphereLight`, hoàn thiện bóng lăn sát cỏ và giao diện 2 tab chuẩn Grasp + Harness UI.
 
 ## 自审
 
-- Đã kiểm tra TypeScript strict mode (`noUnusedLocals`, `noUnusedParameters`, `strict: true`): không có biến dư thừa hoặc lỗi kiểu dữ liệu.
-- Đảm bảo tương thích đồng thời chế độ Mặt cắt (`halfCutaway`) và X-Ray mái (`xrayRoof`) với hệ thống ghế khán giả và đèn pha.
+- TypeScript strict mode (`tsc -b`): 0 lỗi, 0 biến dư thừa.
+- Đã kiểm tra tính liên kết vật lý: 100% khán đài, mái vòm, cầu đi bộ và bảng điện tử đều có kết cấu chịu lực gắn liền xuống móng hoặc treo lên khung giàn mái.
 
 ## 测试
 

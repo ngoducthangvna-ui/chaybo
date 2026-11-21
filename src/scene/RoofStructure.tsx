@@ -52,6 +52,47 @@ function createRoofCanopyGeometry(arcSpan: number, segments = 96): THREE.BufferG
   return geometry;
 }
 
+/**
+ * Generates one curved elliptical half-dome shell matching the oculus opening,
+ * staying completely tucked beneath the main roof canopy when retracted.
+ */
+function createOculusDomeHalfGeometry(side: -1 | 1): THREE.BufferGeometry {
+  const rings = 8;
+  const segs = 28;
+  const positions: number[] = [];
+  const indices: number[] = [];
+
+  for (let r = 0; r <= rings; r += 1) {
+    const rt = r / rings;
+    for (let i = 0; i <= segs; i += 1) {
+      const it = i / segs;
+      const angle = -Math.PI / 2 + it * Math.PI;
+      const x = Math.cos(angle) * ROOF_SPECS.oculusRadiusX * rt * side;
+      const z = Math.sin(angle) * ROOF_SPECS.oculusRadiusZ * rt;
+      const domeArch = Math.cos((rt * Math.PI) / 2) * 6.5;
+      const y = 74.2 + domeArch;
+      positions.push(x, y, z);
+    }
+  }
+
+  const stride = segs + 1;
+  for (let r = 0; r < rings; r += 1) {
+    for (let i = 0; i < segs; i += 1) {
+      const a = r * stride + i;
+      const b = a + 1;
+      const c = (r + 1) * stride + i;
+      const d = c + 1;
+      indices.push(a, c, b, b, c, d);
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 function createRoofRibGeometries(arcSpan: number): THREE.TubeGeometry[] {
   const ribs: THREE.TubeGeometry[] = [];
   for (let i = 0; i < ROOF_SPECS.ribCount; i += 1) {
@@ -63,7 +104,7 @@ function createRoofRibGeometries(arcSpan: number): THREE.TubeGeometry[] {
     const sin = Math.sin(angle);
 
     const points = [
-      new THREE.Vector3(cos * (ROOF_SPECS.outerRadiusX + 4), 2, sin * (ROOF_SPECS.outerRadiusZ + 4)),
+      new THREE.Vector3(cos * (ROOF_SPECS.outerRadiusX + 4), 0, sin * (ROOF_SPECS.outerRadiusZ + 4)),
       new THREE.Vector3(cos * (ROOF_SPECS.outerRadiusX + 8), 38, sin * (ROOF_SPECS.outerRadiusZ + 8)),
       new THREE.Vector3(cos * ROOF_SPECS.outerRadiusX, ROOF_SPECS.eaveHeight, sin * ROOF_SPECS.outerRadiusZ),
       new THREE.Vector3(
@@ -91,7 +132,7 @@ function createDiagridGeometries(arcSpan: number): THREE.TubeGeometry[] {
     }
     const p1 = new THREE.Vector3(
       Math.cos(a1) * (ROOF_SPECS.outerRadiusX + 4),
-      2,
+      0,
       Math.sin(a1) * (ROOF_SPECS.outerRadiusZ + 4)
     );
     const p2 = new THREE.Vector3(
@@ -123,6 +164,41 @@ function createOculusRingGeometry(arcSpan: number, segments = 96): THREE.TubeGeo
   return new THREE.TubeGeometry(curve, steps, 1.15, 8, isClosed);
 }
 
+/**
+ * Concrete pier footings anchoring every steel rib & diagrid strut firmly to the ground.
+ */
+function ButtressFoundations({ arcSpan }: { arcSpan: number }) {
+  const footings = useMemo(() => {
+    const items: Array<{ pos: [number, number, number]; rotY: number }> = [];
+    for (let i = 0; i < ROOF_SPECS.ribCount; i += 1) {
+      const angle = (i / ROOF_SPECS.ribCount) * Math.PI * 2;
+      if (angle > arcSpan + 0.05) {
+        continue;
+      }
+      items.push({
+        pos: [
+          Math.cos(angle) * (ROOF_SPECS.outerRadiusX + 4),
+          1.8,
+          Math.sin(angle) * (ROOF_SPECS.outerRadiusZ + 4),
+        ],
+        rotY: -angle,
+      });
+    }
+    return items;
+  }, [arcSpan]);
+
+  return (
+    <group name="roof-buttress-foundations">
+      {footings.map((f, idx) => (
+        <mesh key={idx} position={f.pos} rotation={[0, f.rotY, 0]} castShadow receiveShadow>
+          <boxGeometry args={[6.5, 4.2, 4.5]} />
+          <meshStandardMaterial color="#334155" roughness={0.85} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 function RetractableOculusPanels({
   roofOpenPercent,
   xrayRoof,
@@ -130,29 +206,52 @@ function RetractableOculusPanels({
   roofOpenPercent: number;
   xrayRoof: boolean;
 }) {
-  const slideOffset = (roofOpenPercent / 100) * 64;
-  const halfLen = ROOF_SPECS.oculusRadiusX;
-  const width = ROOF_SPECS.oculusRadiusZ * 2;
+  const leftDomeGeo = useMemo(() => createOculusDomeHalfGeometry(-1), []);
+  const rightDomeGeo = useMemo(() => createOculusDomeHalfGeometry(1), []);
+  // Max 44m retract keeps both curved dome halves tucked strictly underneath the main roof canopy
+  const slideOffset = (roofOpenPercent / 100) * 44;
 
   return (
     <group name="retractable-oculus-dome">
-      {[-1, 1].map((side) => (
-        <mesh
-          key={side}
-          position={[side * (halfLen / 2 + slideOffset), 76.2, 0]}
-          castShadow={!xrayRoof}
-        >
-          <boxGeometry args={[halfLen, 1.1, width]} />
-          <meshPhysicalMaterial
-            color="#e0f2fe"
-            transparent
-            opacity={xrayRoof ? 0.15 : 0.62}
-            wireframe={xrayRoof}
-            roughness={0.2}
-            metalness={0.15}
-          />
+      {/* Guide Track Beams supporting the retractable halves beneath the canopy */}
+      {[-44, 44].map((zTrack) => (
+        <mesh key={zTrack} position={[0, 74.2, zTrack]}>
+          <boxGeometry args={[216, 0.9, 1.1]} />
+          <meshStandardMaterial color="#94a3b8" metalness={0.8} roughness={0.25} />
         </mesh>
       ))}
+
+      <mesh
+        geometry={leftDomeGeo}
+        position={[-slideOffset, -0.4 * (roofOpenPercent / 100), 0]}
+        castShadow={!xrayRoof}
+      >
+        <meshPhysicalMaterial
+          color="#e0f2fe"
+          transparent
+          opacity={xrayRoof ? 0.14 : 0.58}
+          wireframe={xrayRoof}
+          roughness={0.2}
+          metalness={0.15}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      <mesh
+        geometry={rightDomeGeo}
+        position={[slideOffset, -0.4 * (roofOpenPercent / 100), 0]}
+        castShadow={!xrayRoof}
+      >
+        <meshPhysicalMaterial
+          color="#e0f2fe"
+          transparent
+          opacity={xrayRoof ? 0.14 : 0.58}
+          wireframe={xrayRoof}
+          roughness={0.2}
+          metalness={0.15}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
     </group>
   );
 }
@@ -272,6 +371,8 @@ export function RoofStructure({
 
   return (
     <group name="dong-son-roof">
+      <ButtressFoundations arcSpan={arcSpan} />
+
       {/* Translucent PTFE roof canopy */}
       <mesh geometry={canopyGeo} castShadow={!xrayRoof} receiveShadow>
         <meshPhysicalMaterial
@@ -285,12 +386,12 @@ export function RoofStructure({
         />
       </mesh>
 
-      {/* Retractable Inner Lotus / Oculus Panels */}
+      {/* Curved Retractable Inner Oculus Dome tucked beneath canopy */}
       {!halfCutaway && (
         <RetractableOculusPanels roofOpenPercent={roofOpenPercent} xrayRoof={xrayRoof} />
       )}
 
-      {/* 24 Sweeping Dong Son Structural Ribs */}
+      {/* 24 Sweeping Dong Son Structural Ribs anchored to foundations */}
       {ribGeos.map((geo, idx) => (
         <mesh key={idx} geometry={geo} castShadow>
           <meshStandardMaterial
@@ -301,7 +402,7 @@ export function RoofStructure({
         </mesh>
       ))}
 
-      {/* Outer Diagrid Exoskeleton Facade */}
+      {/* Outer Diagrid Exoskeleton Facade anchored at y=0 */}
       {diagridGeos.map((geo, idx) => (
         <mesh key={`diag-${idx}`} geometry={geo}>
           <meshStandardMaterial

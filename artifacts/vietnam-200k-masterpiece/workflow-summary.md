@@ -3,7 +3,7 @@
 
 ## 交付结果
 
-Hoàn thiện phiên bản Masterpiece của ứng dụng mô phỏng 3D **Vietnam 200K Stadium** chạy thời gian thực tại `http://localhost:5173/`, tích hợp quy chuẩn thiết kế **Grasp + Harness UI** từ `d:\LoopForge-main\design.md` và hoàn tất vòng đời **LoopForge DevFlow** (`SOLO` → `SUMMARY`). Người dùng có thể điều khiển đóng/mở mái vòm Oculus (`0–100%`), bật/tắt Lễ Khai Mạc (360 hạt pháo hoa 3D), Sóng Khán Giả 200.000 người, Tuyến thoát hiểm 3D, Mặt cắt kiến trúc, X-Ray mái, xem 22 cầu thủ thi đấu trên mặt sân Trống đồng và theo dõi 7 bước SOP của LoopForge ngay trong drawer bên phải.
+Hoàn thiện phiên bản Masterpiece chuẩn vật lý kết cấu của **Vietnam 200K Stadium** chạy thời gian thực tại `http://localhost:5173/`, tích hợp quy chuẩn thiết kế **Grasp + Harness UI** từ `d:\LoopForge-main\design.md` và xác thực vòng đời **LoopForge DevFlow** (`SOLO` → `SUMMARY`). Toàn bộ khán đài 4 tầng có tiết diện khép kín đặt trên 36 khung cột trụ bê tông & dầm nghiêng, 4 cầu đi bộ có trụ đỡ & đường dốc xuống quảng trường, mái trượt Oculus dạng vòm cong nằm gọn dưới mái chính trên ray thép, bảng Jumbotron treo giàn thép và ánh sáng tán xạ bầu trời giúp mặt sân FIFA hiển thị chân thực.
 
 ## 产物
 
@@ -18,7 +18,7 @@ Hoàn thiện phiên bản Masterpiece của ứng dụng mô phỏng 3D **Vietn
 
 - `npm.cmd test`: 7/7 unit tests pass (`src/config/stadiumSpecs.test.ts`).
 - `npm.cmd run build`: `tsc -b && vite build` thành công (0 lỗi TypeScript).
-- `workflow_state.py validate`: Xác thực hợp đồng artifact DevFlow `SOLO` → `SUMMARY`.
+- `workflow_state.py validate`: Xác thực hợp đồng artifact DevFlow `SOLO` → `SUMMARY` (`OK`).
 
 ## 剩余风险
 

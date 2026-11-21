@@ -11,7 +11,7 @@ export function App() {
   const [autoRotate, setAutoRotate] = useState(true);
   const [occupancyPercent, setOccupancyPercent] = useState(85);
   const [roofOpenPercent, setRoofOpenPercent] = useState(75);
-  const [ceremonyMode, setCeremonyMode] = useState(true);
+  const [ceremonyMode, setCeremonyMode] = useState(false);
   const [crowdWave, setCrowdWave] = useState(true);
   const [showEvacPaths, setShowEvacPaths] = useState(false);
 

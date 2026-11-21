@@ -16,7 +16,6 @@ function createPitchTexture(): THREE.CanvasTexture {
     return new THREE.CanvasTexture(canvas);
   }
 
-  // Base mowing stripes (18 alternating bands)
   const stripeCount = 18;
   const stripeWidth = canvas.width / stripeCount;
   for (let i = 0; i < stripeCount; i += 1) {
@@ -24,7 +23,6 @@ function createPitchTexture(): THREE.CanvasTexture {
     ctx.fillRect(i * stripeWidth, 0, stripeWidth + 1, canvas.height);
   }
 
-  // Subtle grass grain noise
   ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
   for (let i = 0; i < 4000; i += 1) {
     const x = (i * 73) % canvas.width;
@@ -42,7 +40,6 @@ function createPitchTexture(): THREE.CanvasTexture {
   const midY = padY + fieldH / 2;
   const centerR = PITCH_SPECS.centerCircleRadius * scaleX;
 
-  // Dong Son sun-rays & star watermark inside the center circle
   ctx.save();
   ctx.translate(midX, midY);
   ctx.strokeStyle = 'rgba(251, 191, 36, 0.16)';
@@ -59,7 +56,6 @@ function createPitchTexture(): THREE.CanvasTexture {
     ctx.stroke();
   }
 
-  // Central 5-point star watermark
   ctx.fillStyle = 'rgba(251, 191, 36, 0.16)';
   ctx.beginPath();
   for (let p = 0; p < 10; p += 1) {
@@ -77,7 +73,6 @@ function createPitchTexture(): THREE.CanvasTexture {
   ctx.fill();
   ctx.restore();
 
-  // Regulation white lines
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.92)';
   ctx.lineWidth = 6;
   ctx.strokeRect(padX, padY, fieldW, fieldH);
@@ -197,14 +192,15 @@ function AnimatedPlayersAndBall() {
       if (!mesh) {
         return;
       }
-      mesh.position.x = p.baseX + Math.sin(t * 0.9 + p.phase) * 4.5;
-      mesh.position.z = p.baseZ + Math.cos(t * 1.1 + p.phase) * 3.5;
+      mesh.position.x = p.baseX + Math.sin(t * 0.8 + p.phase) * 3.8;
+      mesh.position.z = p.baseZ + Math.cos(t * 1.0 + p.phase) * 3.0;
     });
 
     if (ballRef.current) {
-      ballRef.current.position.x = Math.sin(t * 1.4) * 26;
-      ballRef.current.position.z = Math.cos(t * 1.9) * 18;
-      ballRef.current.position.y = 0.35 + Math.abs(Math.sin(t * 3.6)) * 1.4;
+      ballRef.current.position.x = Math.sin(t * 1.2) * 24;
+      ballRef.current.position.z = Math.cos(t * 1.6) * 16;
+      // Low, gravity-realistic passes along the grass
+      ballRef.current.position.y = 0.28 + Math.abs(Math.sin(t * 4.2)) * 0.55;
     }
   });
 
@@ -223,9 +219,9 @@ function AnimatedPlayersAndBall() {
           <meshStandardMaterial color={p.team === 'red' ? '#ef4444' : '#f8fafc'} roughness={0.5} />
         </mesh>
       ))}
-      <mesh ref={ballRef} position={[0, 0.35, 0]} castShadow>
-        <sphereGeometry args={[0.3, 12, 12]} />
-        <meshStandardMaterial color="#fef08a" emissive="#facc15" emissiveIntensity={0.35} />
+      <mesh ref={ballRef} position={[0, 0.28, 0]} castShadow>
+        <sphereGeometry args={[0.25, 12, 12]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.35} />
       </mesh>
     </group>
   );
